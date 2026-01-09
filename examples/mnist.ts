@@ -1,151 +1,185 @@
 /**
  * MNIST Classification with ts-torch
  *
- * Trains a simple MLP on the MNIST handwritten digits dataset.
+ * Trains a simple MLP on the MNIST handwritten digits dataset
+ * using proper autograd backpropagation and SGD optimizer.
  */
 
-import { torch } from "@ts-torch/core";
-import { Linear, ReLU } from "@ts-torch/nn";
-import { MNIST } from "@ts-torch/datasets";
+import { torch } from '@ts-torch/core'
+import { Linear, ReLU } from '@ts-torch/nn'
+import { MNIST } from '@ts-torch/datasets'
+import { SGD } from '@ts-torch/optim'
 
-console.log("=== MNIST Classification ===\n");
+console.log('=== MNIST Classification with Autograd ===\n')
 
 // ==================== Load Dataset ====================
-console.log("Loading MNIST dataset...");
+console.log('Loading MNIST dataset...')
 
-const trainData = new MNIST("./data/mnist", true);
-const testData = new MNIST("./data/mnist", false);
+const trainData = new MNIST('./data/mnist', true)
+const testData = new MNIST('./data/mnist', false)
 
-await trainData.load();
-await testData.load();
+await trainData.load()
+await testData.load()
 
-console.log(`Training samples: ${trainData.length}`);
-console.log(`Test samples: ${testData.length}`);
-console.log("");
+console.log(`Training samples: ${trainData.length}`)
+console.log(`Test samples: ${testData.length}`)
+console.log('')
 
 // ==================== Define Model ====================
-console.log("Creating model: 784 -> 128 -> 64 -> 10");
+console.log('Creating model: 784 -> 128 -> 64 -> 10')
 
-// Create layers (weights persist outside scopes)
-const fc1 = new Linear(784, 128);
-const fc2 = new Linear(128, 64);
-const fc3 = new Linear(64, 10);
-const relu = new ReLU();
+// Create layers (weights automatically have requires_grad=true via Parameter class)
+const fc1 = new Linear(784, 128)
+const fc2 = new Linear(128, 64)
+const fc3 = new Linear(64, 10)
+const relu = new ReLU()
 
-console.log("  " + fc1.toString());
-console.log("  " + fc2.toString());
-console.log("  " + fc3.toString());
-console.log("");
+console.log('  ' + fc1.toString())
+console.log('  ' + fc2.toString())
+console.log('  ' + fc3.toString())
+console.log('')
 
 // Forward pass function
 function forward(x: any) {
-  let h = fc1.forward(x);
-  h = relu.forward(h as any);
-  h = fc2.forward(h as any);
-  h = relu.forward(h as any);
-  h = fc3.forward(h as any);
-  return h;
+  let h = fc1.forward(x)
+  h = relu.forward(h as any)
+  h = fc2.forward(h as any)
+  h = relu.forward(h as any)
+  h = fc3.forward(h as any)
+  return h
 }
+
+// ==================== Setup Optimizer ====================
+// Collect all parameter tensors from the model
+const allParams = [
+  ...fc1.parameters().map((p) => p.data),
+  ...fc2.parameters().map((p) => p.data),
+  ...fc3.parameters().map((p) => p.data),
+]
+
+const LEARNING_RATE = 0.01
+const optimizer = new SGD(allParams, { lr: LEARNING_RATE })
+
+console.log(`Optimizer: ${optimizer.toString()}`)
+console.log('')
 
 // ==================== Training ====================
-const EPOCHS = 3;
-const BATCH_SIZE = 64;
-const LEARNING_RATE = 0.01;
+const EPOCHS = 3
+const BATCH_SIZE = 64
 
-console.log(`Training for ${EPOCHS} epochs, batch size ${BATCH_SIZE}, lr ${LEARNING_RATE}`);
-console.log("");
+console.log(`Training for ${EPOCHS} epochs, batch size ${BATCH_SIZE}`)
+console.log('')
 
 for (let epoch = 0; epoch < EPOCHS; epoch++) {
-  let totalLoss = 0;
-  let numBatches = 0;
-  let correct = 0;
-  let total = 0;
+  let totalLoss = 0
+  let numBatches = 0
+  let correct = 0
+  let total = 0
 
-  const startTime = Date.now();
+  const startTime = Date.now()
+  console.log(`Starting epoch ${epoch + 1}...`)
 
   for (const batch of trainData.batches(BATCH_SIZE, true)) {
+    if (numBatches <= 3) console.log(`  Starting batch ${numBatches + 1}...`)
     torch.run(() => {
+      if (numBatches <= 2) console.log(`    [${numBatches}] zeroGrad...`)
+      // Zero gradients
+      optimizer.zeroGrad()
+
+      if (numBatches <= 2) console.log(`    [${numBatches}] Forward pass...`)
       // Forward pass
-      const logits = forward(batch.images);
+      const logits = forward(batch.images)
 
-      // Compute softmax probabilities
-      const probs = logits.softmax(1);
+      if (numBatches <= 2) console.log(`    [${numBatches}] Computing loss...`)
+      // Compute cross-entropy loss using native implementation
+      // This properly tracks gradients through the computation graph
+      const loss = torch.nn.crossEntropyLoss(logits as any, batch.labelsTensor as any)
 
-      // Simple cross-entropy loss approximation:
-      // For each sample, get -log(prob of correct class)
-      const probsArray = probs.toArray() as Float32Array;
-      let batchLoss = 0;
+      if (numBatches <= 2) console.log(`    [${numBatches}] Backward pass...`)
+      // Backward pass - compute gradients
+      loss.backward()
+
+      if (numBatches <= 2) console.log(`    [${numBatches}] Optimizer step...`)
+      // Update weights
+      optimizer.step()
+
+      if (numBatches <= 2) console.log(`    [${numBatches}] Getting loss value...`)
+      // Track loss (get scalar value)
+      const lossArray = loss.toArray() as Float32Array
+      totalLoss += lossArray[0] ?? 0
+      numBatches++
+      if (numBatches === 1) console.log('  First batch complete! Loss:', lossArray[0])
+      if (numBatches <= 3) console.log(`  Batch ${numBatches}: Computing accuracy...`)
+
+      // Compute accuracy
+      const probs = logits.softmax(1)
+      const probsArray = probs.toArray() as Float32Array
+      if (numBatches <= 3) console.log(`  Batch ${numBatches}: Got probs, counting ${batch.labels.length} samples...`)
 
       for (let i = 0; i < batch.labels.length; i++) {
-        const label = batch.labels[i]!;
-        const prob = probsArray[i * 10 + label]!;
-        batchLoss -= Math.log(prob + 1e-10);
+        const label = batch.labels[i]!
 
-        // Check prediction (argmax)
-        let maxProb = -1;
-        let pred = 0;
+        // Argmax prediction
+        let maxProb = -1
+        let pred = 0
         for (let c = 0; c < 10; c++) {
-          const p = probsArray[i * 10 + c]!;
+          const p = probsArray[i * 10 + c]!
           if (p > maxProb) {
-            maxProb = p;
-            pred = c;
+            maxProb = p
+            pred = c
           }
         }
-        if (pred === label) correct++;
-        total++;
+        if (pred === label) correct++
+        total++
       }
-
-      totalLoss += batchLoss / batch.labels.length;
-      numBatches++;
-
-      // Manual SGD update on weights (simplified - no autograd yet)
-      // In a real implementation, we'd use backward() and optimizer.step()
-    });
+      if (numBatches <= 3) console.log(`  Batch ${numBatches}: Accuracy loop done, exiting scope...`)
+    })
+    if (numBatches <= 3) console.log(`  Batch ${numBatches}: Scope exited successfully`)
   }
 
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  const avgLoss = (totalLoss / numBatches).toFixed(4);
-  const accuracy = ((correct / total) * 100).toFixed(2);
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+  const avgLoss = (totalLoss / numBatches).toFixed(4)
+  const accuracy = ((correct / total) * 100).toFixed(2)
 
-  console.log(`Epoch ${epoch + 1}/${EPOCHS} | Loss: ${avgLoss} | Train Acc: ${accuracy}% | Time: ${elapsed}s`);
+  console.log(`Epoch ${epoch + 1}/${EPOCHS} | Loss: ${avgLoss} | Train Acc: ${accuracy}% | Time: ${elapsed}s`)
 }
 
-console.log("");
+console.log('')
 
 // ==================== Evaluation ====================
-console.log("Evaluating on test set...");
+console.log('Evaluating on test set...')
 
-let testCorrect = 0;
-let testTotal = 0;
+let testCorrect = 0
+let testTotal = 0
 
 for (const batch of testData.batches(1000)) {
   torch.run(() => {
-    const logits = forward(batch.images);
-    const probs = logits.softmax(1);
-    const probsArray = probs.toArray() as Float32Array;
+    const logits = forward(batch.images)
+    const probs = logits.softmax(1)
+    const probsArray = probs.toArray() as Float32Array
 
     for (let i = 0; i < batch.labels.length; i++) {
-      const label = batch.labels[i]!;
+      const label = batch.labels[i]!
 
       // Argmax prediction
-      let maxProb = -1;
-      let pred = 0;
+      let maxProb = -1
+      let pred = 0
       for (let c = 0; c < 10; c++) {
-        const p = probsArray[i * 10 + c]!;
+        const p = probsArray[i * 10 + c]!
         if (p > maxProb) {
-          maxProb = p;
-          pred = c;
+          maxProb = p
+          pred = c
         }
       }
 
-      if (pred === label) testCorrect++;
-      testTotal++;
+      if (pred === label) testCorrect++
+      testTotal++
     }
-  });
+  })
 }
 
-const testAccuracy = ((testCorrect / testTotal) * 100).toFixed(2);
-console.log(`\nTest Accuracy: ${testAccuracy}%`);
-console.log(`Correct: ${testCorrect} / ${testTotal}`);
+const testAccuracy = ((testCorrect / testTotal) * 100).toFixed(2)
+console.log(`\nTest Accuracy: ${testAccuracy}%`)
+console.log(`Correct: ${testCorrect} / ${testTotal}`)
 
-console.log("\n=== Done ===");
+console.log('\n=== Done ===')

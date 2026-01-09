@@ -20,33 +20,33 @@
  * ```
  */
 
-import { getLib } from "../ffi/loader.js";
-import type { Pointer } from "bun:ffi";
+import { getLib } from '../ffi/loader.js'
+import type { Pointer } from 'bun:ffi'
 
 /**
  * Tensor interface for scope management
  * We use a minimal interface to avoid circular dependencies
  */
 export interface ScopedTensor {
-  readonly handle: Pointer;
-  readonly escaped: boolean;
-  markEscaped(): void;
+  readonly handle: Pointer
+  readonly escaped: boolean
+  markEscaped(): void
 }
 
 /**
  * Scope context tracking tensors and parent scope
  */
 interface ScopeContext {
-  readonly id: number;
-  readonly nativeHandle: Pointer; // Native scope handle from ts_scope_begin
-  readonly tensors: Set<ScopedTensor>;
-  readonly parent: ScopeContext | null;
+  readonly id: number
+  readonly nativeHandle: Pointer // Native scope handle from ts_scope_begin
+  readonly tensors: Set<ScopedTensor>
+  readonly parent: ScopeContext | null
 }
 
 /**
  * Current scope context (thread-local-like via closure)
  */
-let currentScope: ScopeContext | null = null;
+let currentScope: ScopeContext | null = null
 
 /**
  * Execute code with scoped tensor memory management.
@@ -69,10 +69,10 @@ let currentScope: ScopeContext | null = null;
  * ```
  */
 export function run<T>(fn: () => T): T {
-  const lib = getLib();
+  const lib = getLib()
 
   // Begin native scope - returns scope handle
-  const nativeHandle = lib.symbols.ts_scope_begin();
+  const nativeHandle = lib.symbols.ts_scope_begin()
 
   // Create JS scope context
   const newScope: ScopeContext = {
@@ -80,14 +80,14 @@ export function run<T>(fn: () => T): T {
     nativeHandle: nativeHandle as Pointer,
     tensors: new Set(),
     parent: currentScope,
-  };
+  }
 
-  const previousScope = currentScope;
-  currentScope = newScope;
+  const previousScope = currentScope
+  currentScope = newScope
 
   try {
-    const result = fn();
-    return result;
+    const result = fn()
+    return result
   } finally {
     // Cleanup tensors that weren't escaped
     for (const tensor of newScope.tensors) {
@@ -98,10 +98,10 @@ export function run<T>(fn: () => T): T {
     }
 
     // End native scope - pass the scope handle
-    lib.symbols.ts_scope_end(newScope.nativeHandle);
+    lib.symbols.ts_scope_end(newScope.nativeHandle)
 
     // Restore previous scope
-    currentScope = previousScope;
+    currentScope = previousScope
   }
 }
 
@@ -124,24 +124,24 @@ export function run<T>(fn: () => T): T {
  * ```
  */
 export async function runAsync<T>(fn: () => Promise<T>): Promise<T> {
-  const lib = getLib();
+  const lib = getLib()
 
   // Begin native scope - returns scope handle
-  const nativeHandle = lib.symbols.ts_scope_begin();
+  const nativeHandle = lib.symbols.ts_scope_begin()
 
   const newScope: ScopeContext = {
     id: Date.now(), // Use timestamp as unique scope ID
     nativeHandle: nativeHandle as Pointer,
     tensors: new Set(),
     parent: currentScope,
-  };
+  }
 
-  const previousScope = currentScope;
-  currentScope = newScope;
+  const previousScope = currentScope
+  currentScope = newScope
 
   try {
-    const result = await fn();
-    return result;
+    const result = await fn()
+    return result
   } finally {
     // Cleanup tensors that weren't escaped
     for (const tensor of newScope.tensors) {
@@ -151,9 +151,9 @@ export async function runAsync<T>(fn: () => Promise<T>): Promise<T> {
     }
 
     // End native scope - pass the scope handle
-    lib.symbols.ts_scope_end(newScope.nativeHandle);
+    lib.symbols.ts_scope_end(newScope.nativeHandle)
 
-    currentScope = previousScope;
+    currentScope = previousScope
   }
 }
 
@@ -167,11 +167,11 @@ export async function runAsync<T>(fn: () => Promise<T>): Promise<T> {
  */
 export function registerTensor(tensor: ScopedTensor): void {
   if (currentScope !== null) {
-    currentScope.tensors.add(tensor);
+    currentScope.tensors.add(tensor)
 
     // Register with native scope - pass scope handle and tensor handle
-    const lib = getLib();
-    lib.symbols.ts_scope_register_tensor(currentScope.nativeHandle, tensor.handle);
+    const lib = getLib()
+    lib.symbols.ts_scope_register_tensor(currentScope.nativeHandle, tensor.handle)
   }
 }
 
@@ -197,19 +197,18 @@ export function registerTensor(tensor: ScopedTensor): void {
 export function escapeTensor<T extends ScopedTensor>(tensor: T): T {
   if (currentScope === null) {
     throw new Error(
-      "Cannot escape tensor: not currently in a scope. " +
-        "Use torch.run(() => { ... }) to create a scope.",
-    );
+      'Cannot escape tensor: not currently in a scope. ' + 'Use torch.run(() => { ... }) to create a scope.',
+    )
   }
 
   // Mark as escaped in JS
-  tensor.markEscaped();
+  tensor.markEscaped()
 
   // Remove from native scope tracking - pass scope handle and tensor handle
-  const lib = getLib();
-  lib.symbols.ts_scope_escape_tensor(currentScope.nativeHandle, tensor.handle);
+  const lib = getLib()
+  lib.symbols.ts_scope_escape_tensor(currentScope.nativeHandle, tensor.handle)
 
-  return tensor;
+  return tensor
 }
 
 /**
@@ -226,7 +225,7 @@ export function escapeTensor<T extends ScopedTensor>(tensor: T): T {
  * ```
  */
 export function inScope(): boolean {
-  return currentScope !== null;
+  return currentScope !== null
 }
 
 /**
@@ -247,13 +246,13 @@ export function inScope(): boolean {
  * ```
  */
 export function scopeDepth(): number {
-  let depth = 0;
-  let scope = currentScope;
+  let depth = 0
+  let scope = currentScope
   while (scope !== null) {
-    depth++;
-    scope = scope.parent;
+    depth++
+    scope = scope.parent
   }
-  return depth;
+  return depth
 }
 
 /**
@@ -265,7 +264,7 @@ export function scopeDepth(): number {
  * @internal
  */
 export function currentScopeId(): number {
-  return currentScope?.id ?? -1;
+  return currentScope?.id ?? -1
 }
 
 /**
@@ -284,5 +283,5 @@ export function currentScopeId(): number {
  * ```
  */
 export function scopeTensorCount(): number {
-  return currentScope?.tensors.size ?? 0;
+  return currentScope?.tensors.size ?? 0
 }

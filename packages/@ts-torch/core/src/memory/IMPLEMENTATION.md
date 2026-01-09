@@ -189,12 +189,12 @@ The scope system uses a linked-list structure via closures:
 
 ```typescript
 interface ScopeContext {
-  id: number; // Native scope ID
-  tensors: Set<ScopedTensor>; // JS tracking
-  parent: ScopeContext | null; // Parent scope
+  id: number // Native scope ID
+  tensors: Set<ScopedTensor> // JS tracking
+  parent: ScopeContext | null // Parent scope
 }
 
-let currentScope: ScopeContext | null = null;
+let currentScope: ScopeContext | null = null
 ```
 
 **Entering a scope:**
@@ -241,9 +241,9 @@ ts_scope_escape_tensor: {
 All FFI calls use the error handling pattern from `ffi/error.ts`:
 
 ```typescript
-const errorPtr = createError();
-lib.symbols.ts_scope_end(scopeId, errorPtr);
-checkError(errorPtr); // Throws TorchError if code != 0
+const errorPtr = createError()
+lib.symbols.ts_scope_end(scopeId, errorPtr)
+checkError(errorPtr) // Throws TorchError if code != 0
 ```
 
 This ensures proper error propagation from native code.
@@ -279,16 +279,16 @@ The system uses minimal interfaces to avoid circular dependencies:
 ```typescript
 // scope.ts
 export interface ScopedTensor {
-  readonly handle: Pointer;
-  readonly escaped: boolean;
-  markEscaped(): void;
+  readonly handle: Pointer
+  readonly escaped: boolean
+  markEscaped(): void
 }
 
 // pool.ts
 export interface PoolableTensor {
-  readonly shape: Shape;
-  readonly dtype: DTypeName;
-  readonly handle: unknown;
+  readonly shape: Shape
+  readonly dtype: DTypeName
+  readonly handle: unknown
 }
 ```
 
@@ -302,28 +302,28 @@ To integrate with the full tensor system, the `Tensor` class should:
 
 ```typescript
 class Tensor<S extends Shape, D extends DTypeName> implements ScopedTensor {
-  private _handle: Pointer;
-  private _escaped = false;
+  private _handle: Pointer
+  private _escaped = false
 
   constructor(/* ... */) {
     // ... initialization ...
-    registerTensor(this); // Auto-register with scope
+    registerTensor(this) // Auto-register with scope
   }
 
   get handle(): Pointer {
-    return this._handle;
+    return this._handle
   }
 
   get escaped(): boolean {
-    return this._escaped;
+    return this._escaped
   }
 
   markEscaped(): void {
-    this._escaped = true;
+    this._escaped = true
   }
 
   escape(): this {
-    return escapeTensor(this);
+    return escapeTensor(this)
   }
 
   // ... other methods ...
@@ -344,17 +344,17 @@ class Tensor<S extends Shape, D extends DTypeName> implements ScopedTensor, Pool
 ```typescript
 export function zeros<S extends Shape>(
   shape: S,
-  dtype: DTypeName = "float32",
+  dtype: DTypeName = 'float32',
   pool?: TensorPool,
 ): Tensor<S, typeof dtype> {
   // Try pool first
-  const pooled = pool?.acquire(shape, dtype);
+  const pooled = pool?.acquire(shape, dtype)
   if (pooled) {
-    return pooled as Tensor<S, typeof dtype>;
+    return pooled as Tensor<S, typeof dtype>
   }
 
   // Create new tensor
-  return new Tensor(/* ... */);
+  return new Tensor(/* ... */)
 }
 ```
 
@@ -412,22 +412,22 @@ Typical training loop improvement: **10-30%**
 1. **Scope Labels:**
 
 ```typescript
-run("forward-pass", () => {
+run('forward-pass', () => {
   // Named scope for profiling
-});
+})
 ```
 
 2. **Scope Profiling:**
 
 ```typescript
-const stats = getScopeStats();
+const stats = getScopeStats()
 // { allocations: 100, frees: 95, leaked: 5 }
 ```
 
 3. **Pool Statistics Visualization:**
 
 ```typescript
-pool.printStats();
+pool.printStats()
 // float32:[256,256]: 12 tensors (hit rate: 87%)
 // float64:[100,100]: 4 tensors (hit rate: 45%)
 ```
@@ -439,7 +439,7 @@ const pool = new TensorPool({
   maxSize: 100,
   autoPrune: true,
   pruneInterval: 60000, // 1 minute
-});
+})
 ```
 
 5. **Weak References:**

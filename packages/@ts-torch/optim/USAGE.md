@@ -15,11 +15,11 @@ npm install @ts-torch/optim @ts-torch/core
 Classic SGD optimizer with optional momentum, weight decay, and Nesterov acceleration.
 
 ```typescript
-import { SGD } from "@ts-torch/optim";
-import type { Tensor } from "@ts-torch/core";
+import { SGD } from '@ts-torch/optim'
+import type { Tensor } from '@ts-torch/core'
 
 // Create model parameters
-const params: Tensor[] = model.parameters();
+const params: Tensor[] = model.parameters()
 
 // Initialize SGD optimizer
 const optimizer = new SGD(params, {
@@ -28,21 +28,21 @@ const optimizer = new SGD(params, {
   dampening: 0, // Dampening for momentum (default: 0)
   weightDecay: 1e-4, // L2 regularization (default: 0)
   nesterov: false, // Enable Nesterov momentum (default: false)
-});
+})
 
 // Training loop
 for (let epoch = 0; epoch < numEpochs; epoch++) {
   for (const batch of dataLoader) {
     // Forward pass
-    const output = model(batch.input);
-    const loss = criterion(output, batch.target);
+    const output = model(batch.input)
+    const loss = criterion(output, batch.target)
 
     // Backward pass
-    optimizer.zeroGrad();
-    loss.backward();
+    optimizer.zeroGrad()
+    loss.backward()
 
     // Update parameters
-    optimizer.step();
+    optimizer.step()
   }
 }
 ```
@@ -52,7 +52,7 @@ for (let epoch = 0; epoch < numEpochs; epoch++) {
 Adam optimizer with adaptive learning rates and optional AMSGrad variant.
 
 ```typescript
-import { Adam } from "@ts-torch/optim";
+import { Adam } from '@ts-torch/optim'
 
 const optimizer = new Adam(model.parameters(), {
   lr: 0.001, // Learning rate
@@ -60,11 +60,11 @@ const optimizer = new Adam(model.parameters(), {
   eps: 1e-8, // Term for numerical stability
   weightDecay: 0, // L2 regularization (default: 0)
   amsgrad: false, // Use AMSGrad variant (default: false)
-});
+})
 
 // Training loop
 for (let epoch = 0; epoch < numEpochs; epoch++) {
-  trainOneEpoch(model, optimizer, trainLoader);
+  trainOneEpoch(model, optimizer, trainLoader)
 }
 ```
 
@@ -73,7 +73,7 @@ for (let epoch = 0; epoch < numEpochs; epoch++) {
 AdamW properly decouples weight decay from the gradient-based optimization.
 
 ```typescript
-import { AdamW } from "@ts-torch/optim";
+import { AdamW } from '@ts-torch/optim'
 
 const optimizer = new AdamW(model.parameters(), {
   lr: 0.001,
@@ -81,7 +81,7 @@ const optimizer = new AdamW(model.parameters(), {
   eps: 1e-8,
   weightDecay: 0.01, // Decoupled weight decay
   amsgrad: false,
-});
+})
 ```
 
 ### RMSprop
@@ -89,7 +89,7 @@ const optimizer = new AdamW(model.parameters(), {
 RMSprop optimizer with momentum support.
 
 ```typescript
-import { RMSprop } from "@ts-torch/optim";
+import { RMSprop } from '@ts-torch/optim'
 
 const optimizer = new RMSprop(model.parameters(), {
   lr: 0.01,
@@ -98,7 +98,7 @@ const optimizer = new RMSprop(model.parameters(), {
   weightDecay: 0,
   momentum: 0,
   centered: false, // Compute centered RMSprop
-});
+})
 ```
 
 ## Loss Functions
@@ -108,24 +108,24 @@ const optimizer = new RMSprop(model.parameters(), {
 For multi-class classification tasks.
 
 ```typescript
-import { crossEntropyLoss } from "@ts-torch/optim";
-import { tensor } from "@ts-torch/core";
+import { crossEntropyLoss } from '@ts-torch/optim'
+import { tensor } from '@ts-torch/core'
 
 // Predictions (logits) - shape [batch_size, num_classes]
 const logits = tensor([
   [2.0, 1.0, 0.1],
   [0.5, 2.5, 0.2],
-]);
+])
 
 // Ground truth class indices - shape [batch_size]
-const targets = tensor([0, 1]);
+const targets = tensor([0, 1])
 
 // Compute loss (default reduction: 'mean')
-const loss = crossEntropyLoss(logits, targets);
+const loss = crossEntropyLoss(logits, targets)
 
 // With custom reduction
-const lossPerSample = crossEntropyLoss(logits, targets, { reduction: "none" });
-const lossSum = crossEntropyLoss(logits, targets, { reduction: "sum" });
+const lossPerSample = crossEntropyLoss(logits, targets, { reduction: 'none' })
+const lossSum = crossEntropyLoss(logits, targets, { reduction: 'sum' })
 ```
 
 ### Mean Squared Error (MSE) Loss
@@ -133,12 +133,12 @@ const lossSum = crossEntropyLoss(logits, targets, { reduction: "sum" });
 For regression tasks.
 
 ```typescript
-import { mseLoss } from "@ts-torch/optim";
+import { mseLoss } from '@ts-torch/optim'
 
-const predictions = tensor([2.5, 0.0, 2.0, 8.0]);
-const targets = tensor([3.0, -0.5, 2.0, 7.0]);
+const predictions = tensor([2.5, 0.0, 2.0, 8.0])
+const targets = tensor([3.0, -0.5, 2.0, 7.0])
 
-const loss = mseLoss(predictions, targets);
+const loss = mseLoss(predictions, targets)
 // Computes: mean((predictions - targets)^2)
 ```
 
@@ -147,13 +147,13 @@ const loss = mseLoss(predictions, targets);
 For binary classification tasks.
 
 ```typescript
-import { binaryCrossEntropyLoss } from "@ts-torch/optim";
+import { binaryCrossEntropyLoss } from '@ts-torch/optim'
 
 // Predictions after sigmoid (probabilities in [0, 1])
-const predictions = tensor([0.8, 0.3, 0.6, 0.9]);
-const targets = tensor([1.0, 0.0, 1.0, 1.0]);
+const predictions = tensor([0.8, 0.3, 0.6, 0.9])
+const targets = tensor([1.0, 0.0, 1.0, 1.0])
 
-const loss = binaryCrossEntropyLoss(predictions, targets);
+const loss = binaryCrossEntropyLoss(predictions, targets)
 ```
 
 ### L1 Loss (Mean Absolute Error)
@@ -161,12 +161,12 @@ const loss = binaryCrossEntropyLoss(predictions, targets);
 Less sensitive to outliers than MSE.
 
 ```typescript
-import { l1Loss } from "@ts-torch/optim";
+import { l1Loss } from '@ts-torch/optim'
 
-const predictions = tensor([2.5, 0.0, 2.0, 8.0]);
-const targets = tensor([3.0, -0.5, 2.0, 7.0]);
+const predictions = tensor([2.5, 0.0, 2.0, 8.0])
+const targets = tensor([3.0, -0.5, 2.0, 7.0])
 
-const loss = l1Loss(predictions, targets);
+const loss = l1Loss(predictions, targets)
 // Computes: mean(|predictions - targets|)
 ```
 
@@ -175,12 +175,12 @@ const loss = l1Loss(predictions, targets);
 Combines benefits of L1 and L2 loss.
 
 ```typescript
-import { smoothL1Loss } from "@ts-torch/optim";
+import { smoothL1Loss } from '@ts-torch/optim'
 
 const loss = smoothL1Loss(predictions, targets, {
   beta: 1.0,
-  reduction: "mean",
-});
+  reduction: 'mean',
+})
 ```
 
 ### KL Divergence Loss
@@ -188,13 +188,13 @@ const loss = smoothL1Loss(predictions, targets, {
 Measures divergence between probability distributions.
 
 ```typescript
-import { klDivLoss } from "@ts-torch/optim";
+import { klDivLoss } from '@ts-torch/optim'
 
 // Input should be log probabilities
-const logProbs = model.logSoftmax(logits);
-const targetProbs = tensor([[0.1, 0.8, 0.1]]);
+const logProbs = model.logSoftmax(logits)
+const targetProbs = tensor([[0.1, 0.8, 0.1]])
 
-const loss = klDivLoss(logProbs, targetProbs);
+const loss = klDivLoss(logProbs, targetProbs)
 ```
 
 ## Learning Rate Schedulers
@@ -204,14 +204,14 @@ const loss = klDivLoss(logProbs, targetProbs);
 Decay learning rate by gamma every stepSize epochs.
 
 ```typescript
-import { StepLR } from "@ts-torch/optim";
+import { StepLR } from '@ts-torch/optim'
 
-const scheduler = new StepLR(optimizer, 30, 0.1);
+const scheduler = new StepLR(optimizer, 30, 0.1)
 
 for (let epoch = 0; epoch < 100; epoch++) {
-  train();
-  validate();
-  scheduler.step();
+  train()
+  validate()
+  scheduler.step()
 }
 // LR: 0.1 for epochs [0-29], 0.01 for [30-59], 0.001 for [60-89], etc.
 ```
@@ -221,9 +221,9 @@ for (let epoch = 0; epoch < 100; epoch++) {
 Decay learning rate at specific milestones.
 
 ```typescript
-import { MultiStepLR } from "@ts-torch/optim";
+import { MultiStepLR } from '@ts-torch/optim'
 
-const scheduler = new MultiStepLR(optimizer, [30, 80], 0.1);
+const scheduler = new MultiStepLR(optimizer, [30, 80], 0.1)
 
 // LR decays at epochs 30 and 80
 ```
@@ -233,9 +233,9 @@ const scheduler = new MultiStepLR(optimizer, [30, 80], 0.1);
 Decay learning rate exponentially every epoch.
 
 ```typescript
-import { ExponentialLR } from "@ts-torch/optim";
+import { ExponentialLR } from '@ts-torch/optim'
 
-const scheduler = new ExponentialLR(optimizer, 0.95);
+const scheduler = new ExponentialLR(optimizer, 0.95)
 
 // LR = initial_lr * 0.95^epoch
 ```
@@ -245,9 +245,9 @@ const scheduler = new ExponentialLR(optimizer, 0.95);
 Cosine annealing schedule for smooth learning rate decay.
 
 ```typescript
-import { CosineAnnealingLR } from "@ts-torch/optim";
+import { CosineAnnealingLR } from '@ts-torch/optim'
 
-const scheduler = new CosineAnnealingLR(optimizer, 50, 0.001);
+const scheduler = new CosineAnnealingLR(optimizer, 50, 0.001)
 
 // LR follows cosine curve from initial_lr to 0.001 over 50 epochs
 ```
@@ -257,9 +257,9 @@ const scheduler = new CosineAnnealingLR(optimizer, 50, 0.001);
 Cosine annealing with periodic restarts (SGDR).
 
 ```typescript
-import { CosineAnnealingWarmRestarts } from "@ts-torch/optim";
+import { CosineAnnealingWarmRestarts } from '@ts-torch/optim'
 
-const scheduler = new CosineAnnealingWarmRestarts(optimizer, 10, 2);
+const scheduler = new CosineAnnealingWarmRestarts(optimizer, 10, 2)
 
 // Restarts every T_0 * T_mult epochs with cosine annealing
 ```
@@ -269,22 +269,22 @@ const scheduler = new CosineAnnealingWarmRestarts(optimizer, 10, 2);
 Reduce learning rate when a metric stops improving.
 
 ```typescript
-import { ReduceLROnPlateau } from "@ts-torch/optim";
+import { ReduceLROnPlateau } from '@ts-torch/optim'
 
-const scheduler = new ReduceLROnPlateau(optimizer, "min", {
+const scheduler = new ReduceLROnPlateau(optimizer, 'min', {
   factor: 0.1, // Reduce LR by factor of 0.1
   patience: 10, // Wait 10 epochs before reducing
   threshold: 0.0001, // Minimum change to qualify as improvement
   cooldown: 0, // Epochs to wait after LR reduction
   minLr: 1e-6, // Minimum learning rate
-});
+})
 
 for (let epoch = 0; epoch < 100; epoch++) {
-  train();
-  const valLoss = validate();
+  train()
+  const valLoss = validate()
 
   // Step with metric value
-  scheduler.step(valLoss);
+  scheduler.step(valLoss)
 }
 ```
 
@@ -293,13 +293,13 @@ for (let epoch = 0; epoch < 100; epoch++) {
 Linearly increase learning rate from 0 to base LR.
 
 ```typescript
-import { LinearWarmup } from "@ts-torch/optim";
+import { LinearWarmup } from '@ts-torch/optim'
 
-const scheduler = new LinearWarmup(optimizer, 1000);
+const scheduler = new LinearWarmup(optimizer, 1000)
 
 for (let step = 0; step < totalSteps; step++) {
-  train();
-  scheduler.step();
+  train()
+  scheduler.step()
 }
 // LR linearly increases for first 1000 steps
 ```
@@ -307,54 +307,54 @@ for (let step = 0; step < totalSteps; step++) {
 ## Complete Training Example
 
 ```typescript
-import { Adam, crossEntropyLoss, CosineAnnealingLR } from "@ts-torch/optim";
-import { tensor } from "@ts-torch/core";
+import { Adam, crossEntropyLoss, CosineAnnealingLR } from '@ts-torch/optim'
+import { tensor } from '@ts-torch/core'
 
 // Initialize model and optimizer
-const model = createModel();
+const model = createModel()
 const optimizer = new Adam(model.parameters(), {
   lr: 0.001,
   weightDecay: 0.01,
-});
+})
 
 // Initialize scheduler
-const scheduler = new CosineAnnealingLR(optimizer, numEpochs);
+const scheduler = new CosineAnnealingLR(optimizer, numEpochs)
 
 // Training loop
 for (let epoch = 0; epoch < numEpochs; epoch++) {
-  let totalLoss = 0;
+  let totalLoss = 0
 
   // Training phase
-  model.train();
+  model.train()
   for (const batch of trainLoader) {
     // Forward pass
-    const logits = model(batch.input);
-    const loss = crossEntropyLoss(logits, batch.targets);
+    const logits = model(batch.input)
+    const loss = crossEntropyLoss(logits, batch.targets)
 
     // Backward pass and optimization
-    optimizer.zeroGrad();
-    loss.backward();
-    optimizer.step();
+    optimizer.zeroGrad()
+    loss.backward()
+    optimizer.step()
 
-    totalLoss += loss.item();
+    totalLoss += loss.item()
   }
 
   // Validation phase
-  model.eval();
-  let valLoss = 0;
+  model.eval()
+  let valLoss = 0
   for (const batch of valLoader) {
-    const logits = model(batch.input);
-    const loss = crossEntropyLoss(logits, batch.targets);
-    valLoss += loss.item();
+    const logits = model(batch.input)
+    const loss = crossEntropyLoss(logits, batch.targets)
+    valLoss += loss.item()
   }
 
   // Update learning rate
-  scheduler.step();
+  scheduler.step()
 
-  console.log(`Epoch ${epoch + 1}/${numEpochs}`);
-  console.log(`  Train Loss: ${totalLoss / trainLoader.length}`);
-  console.log(`  Val Loss: ${valLoss / valLoader.length}`);
-  console.log(`  LR: ${scheduler.getCurrentLr()[0]}`);
+  console.log(`Epoch ${epoch + 1}/${numEpochs}`)
+  console.log(`  Train Loss: ${totalLoss / trainLoader.length}`)
+  console.log(`  Val Loss: ${valLoss / valLoader.length}`)
+  console.log(`  LR: ${scheduler.getCurrentLr()[0]}`)
 }
 ```
 
@@ -371,27 +371,27 @@ const optimizer = new SGD(
     { params: model.classifier.parameters(), lr: 0.01 },
   ],
   { lr: 0.01 },
-); // Default LR for new groups
+) // Default LR for new groups
 ```
 
 ### Accessing Optimizer State
 
 ```typescript
 // Get optimizer state (for checkpointing)
-const state = optimizer.getState();
+const state = optimizer.getState()
 
 // Load optimizer state (from checkpoint)
-optimizer.loadState(state);
+optimizer.loadState(state)
 ```
 
 ### Dynamic Learning Rate Adjustment
 
 ```typescript
 // Get current learning rate
-const currentLr = optimizer.learningRate;
+const currentLr = optimizer.learningRate
 
 // Set new learning rate
-optimizer.learningRate = 0.001;
+optimizer.learningRate = 0.001
 ```
 
 ## API Reference
@@ -402,14 +402,14 @@ All optimizers inherit from the base `Optimizer` class:
 
 ```typescript
 abstract class Optimizer {
-  step(): void; // Perform optimization step
-  zeroGrad(): void; // Zero all gradients
-  getState(): Map<Tensor, Record>; // Get optimizer state
-  loadState(state: Map): void; // Load optimizer state
-  addParamGroup(group: ParamGroup): void; // Add parameter group
-  getAllParams(): Tensor[]; // Get all parameters
-  get learningRate(): number; // Get learning rate
-  set learningRate(lr: number): void; // Set learning rate
+  step(): void // Perform optimization step
+  zeroGrad(): void // Zero all gradients
+  getState(): Map<Tensor, Record> // Get optimizer state
+  loadState(state: Map): void // Load optimizer state
+  addParamGroup(group: ParamGroup): void // Add parameter group
+  getAllParams(): Tensor[] // Get all parameters
+  get learningRate(): number // Get learning rate
+  set learningRate(lr: number): void // Set learning rate
 }
 ```
 
@@ -419,10 +419,10 @@ All schedulers inherit from the base `LRScheduler` class:
 
 ```typescript
 abstract class LRScheduler {
-  step(): void; // Update learning rate
-  getCurrentLr(): number[]; // Get current learning rates
-  getLastEpoch(): number; // Get last epoch number
-  protected abstract getLr(): number[]; // Compute new learning rates
+  step(): void // Update learning rate
+  getCurrentLr(): number[] // Get current learning rates
+  getLastEpoch(): number // Get last epoch number
+  protected abstract getLr(): number[] // Compute new learning rates
 }
 ```
 

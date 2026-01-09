@@ -748,6 +748,179 @@ ts_TensorHandle ts_tensor_tanh(ts_TensorHandle tensor, ts_Error* error) {
     }
 }
 
+ts_TensorHandle ts_tensor_log(ts_TensorHandle tensor, ts_Error* error) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::log(tensor->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_exp(ts_TensorHandle tensor, ts_Error* error) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::exp(tensor->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_neg(ts_TensorHandle tensor, ts_Error* error) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = -tensor->tensor;
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_log_softmax(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::log_softmax(tensor->tensor, dim);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// Scalar operations
+ts_TensorHandle ts_tensor_add_scalar(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = tensor->tensor + scalar;
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_sub_scalar(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = tensor->tensor - scalar;
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_mul_scalar(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = tensor->tensor * scalar;
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_div_scalar(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = tensor->tensor / scalar;
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// Gradient operations
+void ts_tensor_zero_grad(ts_TensorHandle tensor, ts_Error* error) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+
+        if (tensor->tensor.grad().defined()) {
+            tensor->tensor.grad().zero_();
+        }
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
 // Autograd operations
 void ts_tensor_backward(ts_TensorHandle tensor, ts_Error* error) {
     try {
@@ -769,8 +942,8 @@ ts_TensorHandle ts_tensor_grad(ts_TensorHandle tensor, ts_Error* error) {
             return nullptr;
         }
 
+        // No gradient is a normal condition, not an error - just return nullptr
         if (!tensor->tensor.grad().defined()) {
-            set_error(error, 1, "Tensor has no gradient");
             return nullptr;
         }
 
@@ -909,6 +1082,72 @@ ts_TensorHandle ts_tensor_cuda(
     ts_Error* error
 ) {
     return ts_tensor_to_device(tensor, TS_DEVICE_CUDA, device_index, error);
+}
+
+// Loss functions
+ts_TensorHandle ts_tensor_nll_loss(
+    ts_TensorHandle log_probs,
+    ts_TensorHandle targets,
+    ts_Error* error
+) {
+    try {
+        if (!log_probs || !targets) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        // Use PyTorch's nll_loss which handles the indexing properly
+        auto result = torch::nll_loss(log_probs->tensor, targets->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_cross_entropy_loss(
+    ts_TensorHandle logits,
+    ts_TensorHandle targets,
+    ts_Error* error
+) {
+    try {
+        if (!logits || !targets) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        // Use PyTorch's cross_entropy which combines log_softmax and nll_loss
+        auto result = torch::cross_entropy_loss(logits->tensor, targets->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_mse_loss(
+    ts_TensorHandle input,
+    ts_TensorHandle target,
+    ts_Error* error
+) {
+    try {
+        if (!input || !target) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::mse_loss(input->tensor, target->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
 }
 
 // Comparison operations

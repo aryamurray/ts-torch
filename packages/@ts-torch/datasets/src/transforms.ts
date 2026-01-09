@@ -2,13 +2,13 @@
  * Data transformation utilities
  */
 
-import type { Tensor } from "@ts-torch/core";
+import type { Tensor } from '@ts-torch/core'
 
 /**
  * Base transform interface
  */
 export interface Transform<TInput = Tensor, TOutput = Tensor> {
-  apply(input: TInput): TOutput | Promise<TOutput>;
+  apply(input: TInput): TOutput | Promise<TOutput>
 }
 
 /**
@@ -18,11 +18,11 @@ export class Compose<T = Tensor> implements Transform<T, T> {
   constructor(private transforms: Transform<T, T>[]) {}
 
   async apply(input: T): Promise<T> {
-    let result = input;
+    let result = input
     for (const transform of this.transforms) {
-      result = await Promise.resolve(transform.apply(result));
+      result = await Promise.resolve(transform.apply(result))
     }
-    return result;
+    return result
   }
 }
 
@@ -35,7 +35,7 @@ export class Normalize implements Transform<Tensor, Tensor> {
   apply(tensor: Tensor): Tensor {
     // TODO: Implement normalization
     // return (tensor - mean) / std
-    return tensor;
+    return tensor
   }
 }
 
@@ -46,7 +46,7 @@ export class Lambda<TInput = Tensor, TOutput = Tensor> implements Transform<TInp
   constructor(private fn: (input: TInput) => TOutput | Promise<TOutput>) {}
 
   apply(input: TInput): TOutput | Promise<TOutput> {
-    return this.fn(input);
+    return this.fn(input)
   }
 }
 
@@ -56,7 +56,7 @@ export class Lambda<TInput = Tensor, TOutput = Tensor> implements Transform<TInp
 export class RandomHorizontalFlip implements Transform<Tensor, Tensor> {
   constructor(private p: number = 0.5) {
     if (p < 0 || p > 1) {
-      throw new Error("Probability must be between 0 and 1");
+      throw new Error('Probability must be between 0 and 1')
     }
   }
 
@@ -65,7 +65,7 @@ export class RandomHorizontalFlip implements Transform<Tensor, Tensor> {
       // TODO: Implement horizontal flip
       // return tensor.flip(-1)
     }
-    return tensor;
+    return tensor
   }
 }
 
@@ -77,7 +77,7 @@ export class RandomCrop implements Transform<Tensor, Tensor> {
 
   apply(tensor: Tensor): Tensor {
     // TODO: Implement random crop
-    return tensor;
+    return tensor
   }
 }
 
@@ -85,14 +85,11 @@ export class RandomCrop implements Transform<Tensor, Tensor> {
  * Resize transform
  */
 export class Resize implements Transform<Tensor, Tensor> {
-  constructor(
-    _size: number | [number, number],
-    _interpolation: "nearest" | "bilinear" = "bilinear",
-  ) {}
+  constructor(_size: number | [number, number], _interpolation: 'nearest' | 'bilinear' = 'bilinear') {}
 
   apply(tensor: Tensor): Tensor {
     // TODO: Implement resize
-    return tensor;
+    return tensor
   }
 }
 
@@ -104,7 +101,7 @@ export class CenterCrop implements Transform<Tensor, Tensor> {
 
   apply(tensor: Tensor): Tensor {
     // TODO: Implement center crop
-    return tensor;
+    return tensor
   }
 }
 
@@ -115,6 +112,6 @@ export class ToTensor implements Transform<number[] | number[][], Tensor> {
   apply(_data: number[] | number[][]): Tensor {
     // TODO: Convert array to tensor
     // return tensor(data)
-    throw new Error("ToTensor not yet implemented");
+    throw new Error('ToTensor not yet implemented')
   }
 }

@@ -33,7 +33,10 @@
       "Bash(ls:*)",
       "Bash(dumpbin:*)",
       "Bash(export PATH=\"/c/Users/Arya/Documents/Code/ts-tools/packages/@ts-torch/core/native/build/Release:/c/Users/Arya/Downloads/libtorch-win-shared-with-deps-2.5.1+cpu/libtorch/lib:$PATH\")",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(PATH=\"$PATH:C:/Users/Arya/Downloads/libtorch-win-shared-with-deps-2.5.1+cpu/libtorch/lib:C:/Users/Arya/Documents/Code/ts-tools/packages/@ts-torch/core/native/build/Release\" bun run:*)",
+      "Bash(TS_TORCH_LIB=\"C:\\\\Users\\\\Arya\\\\Documents\\\\Code\\\\ts-tools\\\\packages\\\\@ts-torch-platform\\\\win32-x64\\\\lib\\\\ts_torch.dll\" bun run:*)",
+      "Bash(./build.bat --release)"
     ]
   }
 }

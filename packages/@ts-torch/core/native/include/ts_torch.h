@@ -248,6 +248,58 @@ TS_TORCH_API ts_TensorHandle ts_tensor_tanh(
     ts_Error* error
 );
 
+TS_TORCH_API ts_TensorHandle ts_tensor_log(
+    ts_TensorHandle tensor,
+    ts_Error* error
+);
+
+TS_TORCH_API ts_TensorHandle ts_tensor_exp(
+    ts_TensorHandle tensor,
+    ts_Error* error
+);
+
+TS_TORCH_API ts_TensorHandle ts_tensor_neg(
+    ts_TensorHandle tensor,
+    ts_Error* error
+);
+
+TS_TORCH_API ts_TensorHandle ts_tensor_log_softmax(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    ts_Error* error
+);
+
+// Scalar operations
+TS_TORCH_API ts_TensorHandle ts_tensor_add_scalar(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+);
+
+TS_TORCH_API ts_TensorHandle ts_tensor_sub_scalar(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+);
+
+TS_TORCH_API ts_TensorHandle ts_tensor_mul_scalar(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+);
+
+TS_TORCH_API ts_TensorHandle ts_tensor_div_scalar(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+);
+
+// Gradient operations
+TS_TORCH_API void ts_tensor_zero_grad(
+    ts_TensorHandle tensor,
+    ts_Error* error
+);
+
 // Autograd operations
 TS_TORCH_API void ts_tensor_backward(
     ts_TensorHandle tensor,
@@ -310,6 +362,25 @@ TS_TORCH_API ts_TensorHandle ts_tensor_cpu(
 TS_TORCH_API ts_TensorHandle ts_tensor_cuda(
     ts_TensorHandle tensor,
     int device_index,
+    ts_Error* error
+);
+
+// Loss functions
+TS_TORCH_API ts_TensorHandle ts_tensor_nll_loss(
+    ts_TensorHandle log_probs,
+    ts_TensorHandle targets,
+    ts_Error* error
+);
+
+TS_TORCH_API ts_TensorHandle ts_tensor_cross_entropy_loss(
+    ts_TensorHandle logits,
+    ts_TensorHandle targets,
+    ts_Error* error
+);
+
+TS_TORCH_API ts_TensorHandle ts_tensor_mse_loss(
+    ts_TensorHandle input,
+    ts_TensorHandle target,
     ts_Error* error
 );
 

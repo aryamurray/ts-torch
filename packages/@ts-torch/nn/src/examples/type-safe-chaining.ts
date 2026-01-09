@@ -8,8 +8,8 @@
  * - Type errors for shape mismatches
  */
 
-import { Linear, ReLU, Sigmoid, Softmax, Sequential, sequential } from "../index.js";
-import type { Tensor } from "../module.js";
+import { Linear, ReLU, Sigmoid, Softmax, Sequential, sequential } from '../index.js'
+import type { Tensor } from '../module.js'
 
 // ============================================================================
 // Example 1: Basic .pipe() chaining
@@ -27,17 +27,17 @@ function example1_SimplePipe() {
     .pipe(new Linear(128, 64))
     .pipe(new ReLU())
     .pipe(new Linear(64, 10))
-    .pipe(new Softmax(-1));
+    .pipe(new Softmax(-1))
 
   // Type: PipedModule<readonly [number, 784], readonly [number, 10]>
-  type ModelType = typeof model;
+  type ModelType = typeof model
 
   // Type-safe forward pass
-  const input = {} as Tensor<readonly [32, 784]>;
-  const output = model.forward(input);
+  const input = {} as Tensor<readonly [32, 784]>
+  const output = model.forward(input)
   // Type of output: Tensor<readonly [32, 10]>
 
-  return model;
+  return model
 }
 
 // ============================================================================
@@ -48,12 +48,12 @@ function example1_SimplePipe() {
  * This example shows how TypeScript catches shape mismatches at compile time
  */
 function example2_TypeErrors() {
-  const layer1 = new Linear(784, 128);
-  const layer2 = new Linear(128, 64);
-  const layer3 = new Linear(256, 10); // Note: expects 256 inputs, not 64!
+  const layer1 = new Linear(784, 128)
+  const layer2 = new Linear(128, 64)
+  const layer3 = new Linear(256, 10) // Note: expects 256 inputs, not 64!
 
   // This works: 784 -> 128 -> 64
-  const validPipeline = layer1.pipe(new ReLU()).pipe(layer2);
+  const validPipeline = layer1.pipe(new ReLU()).pipe(layer2)
 
   // This would be a TYPE ERROR:
   // const invalidPipeline = validPipeline.pipe(layer3);
@@ -61,7 +61,7 @@ function example2_TypeErrors() {
   //
   // TypeScript catches that layer3 expects 256 inputs but only gets 64!
 
-  return validPipeline;
+  return validPipeline
 }
 
 // ============================================================================
@@ -80,13 +80,13 @@ function example3_Sequential() {
     new ReLU(),
     new Linear(128, 10),
     new Softmax(-1),
-  );
+  )
 
-  const input = {} as Tensor<readonly [32, 784]>;
-  const output = model.forward(input);
+  const input = {} as Tensor<readonly [32, 784]>
+  const output = model.forward(input)
   // Type: Tensor<readonly [32, 10]>
 
-  return model;
+  return model
 }
 
 // ============================================================================
@@ -105,15 +105,15 @@ function example4_SequentialBuilder() {
     .add(new ReLU())
     .add(new Linear(128, 10))
     .add(new Softmax(-1))
-    .build();
+    .build()
 
   // Type: Sequential<readonly [number, 784], readonly [number, 10]>
 
-  const input = {} as Tensor<readonly [32, 784]>;
-  const output = model.forward(input);
+  const input = {} as Tensor<readonly [32, 784]>
+  const output = model.forward(input)
   // Type: Tensor<readonly [32, 10]>
 
-  return model;
+  return model
 }
 
 // ============================================================================
@@ -129,7 +129,7 @@ function example5_DeepNetwork() {
     .pipe(new ReLU())
     .pipe(new Linear(512, 256))
     .pipe(new ReLU())
-    .pipe(new Linear(256, 128));
+    .pipe(new Linear(256, 128))
 
   // Decoder: 128 -> 256 -> 512 -> 784
   const decoder = new Linear(128, 256)
@@ -137,18 +137,18 @@ function example5_DeepNetwork() {
     .pipe(new Linear(256, 512))
     .pipe(new ReLU())
     .pipe(new Linear(512, 784))
-    .pipe(new Sigmoid()); // Output in [0, 1] for reconstruction
+    .pipe(new Sigmoid()) // Output in [0, 1] for reconstruction
 
   // Autoencoder: combine encoder and decoder
-  const autoencoder = encoder.pipe(decoder);
+  const autoencoder = encoder.pipe(decoder)
   // Type: PipedModule<readonly [number, 784], readonly [number, 784]>
   // Input and output have same shape!
 
-  const input = {} as Tensor<readonly [32, 784]>;
-  const reconstruction = autoencoder.forward(input);
+  const input = {} as Tensor<readonly [32, 784]>
+  const reconstruction = autoencoder.forward(input)
   // Type: Tensor<readonly [32, 784]>
 
-  return { encoder, decoder, autoencoder };
+  return { encoder, decoder, autoencoder }
 }
 
 // ============================================================================
@@ -159,26 +159,26 @@ function example5_DeepNetwork() {
  * Image classifier with explicit dimensions
  */
 function example6_ImageClassifier() {
-  const NUM_CLASSES = 10 as const;
-  const IMAGE_SIZE = 784 as const; // 28x28 flattened
+  const NUM_CLASSES = 10 as const
+  const IMAGE_SIZE = 784 as const // 28x28 flattened
 
   const classifier = new Linear(IMAGE_SIZE, 512)
     .pipe(new ReLU())
     .pipe(new Linear(512, 256))
     .pipe(new ReLU())
     .pipe(new Linear(256, NUM_CLASSES))
-    .pipe(new Softmax(-1));
+    .pipe(new Softmax(-1))
 
   // Type system knows exact dimensions!
-  type InputShape = readonly [number, 784];
-  type OutputShape = readonly [number, 10];
+  type InputShape = readonly [number, 784]
+  type OutputShape = readonly [number, 10]
 
-  const batchSize = 64;
-  const images = {} as Tensor<readonly [64, 784]>;
-  const predictions = classifier.forward(images);
+  const batchSize = 64
+  const images = {} as Tensor<readonly [64, 784]>
+  const predictions = classifier.forward(images)
   // Type: Tensor<readonly [64, 10]>
 
-  return classifier;
+  return classifier
 }
 
 // ============================================================================
@@ -190,19 +190,15 @@ function example6_ImageClassifier() {
  */
 function example7_ModularConstruction() {
   // Define reusable building blocks
-  const hiddenLayer = (inFeatures: number, outFeatures: number) =>
-    new Linear(inFeatures, outFeatures).pipe(new ReLU());
+  const hiddenLayer = (inFeatures: number, outFeatures: number) => new Linear(inFeatures, outFeatures).pipe(new ReLU())
 
   const outputLayer = (inFeatures: number, numClasses: number) =>
-    new Linear(inFeatures, numClasses).pipe(new Softmax(-1));
+    new Linear(inFeatures, numClasses).pipe(new Softmax(-1))
 
   // Compose them
-  const model = hiddenLayer(784, 512)
-    .pipe(hiddenLayer(512, 256))
-    .pipe(hiddenLayer(256, 128))
-    .pipe(outputLayer(128, 10));
+  const model = hiddenLayer(784, 512).pipe(hiddenLayer(512, 256)).pipe(hiddenLayer(256, 128)).pipe(outputLayer(128, 10))
 
-  return model;
+  return model
 }
 
 // ============================================================================
@@ -213,27 +209,27 @@ function example7_ModularConstruction() {
  * Using training/eval modes and accessing parameters
  */
 function example8_TrainingMode() {
-  const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10));
+  const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10))
 
   // Switch to training mode
-  model.train();
-  console.log("Training:", model.training); // true
+  model.train()
+  console.log('Training:', model.training) // true
 
   // Get all parameters for optimizer
-  const params = model.parameters();
-  console.log("Number of parameters:", params.length);
+  const params = model.parameters()
+  console.log('Number of parameters:', params.length)
 
   // Get named parameters
-  const namedParams = model.namedParameters();
+  const namedParams = model.namedParameters()
   for (const [name, param] of namedParams) {
-    console.log(`Parameter: ${name}, requires_grad: ${param.requiresGrad}`);
+    console.log(`Parameter: ${name}, requires_grad: ${param.requiresGrad}`)
   }
 
   // Switch to evaluation mode
-  model.eval();
-  console.log("Training:", model.training); // false
+  model.eval()
+  console.log('Training:', model.training) // false
 
-  return model;
+  return model
 }
 
 // ============================================================================
@@ -249,7 +245,7 @@ export const examples = {
   example6_ImageClassifier,
   example7_ModularConstruction,
   example8_TrainingMode,
-};
+}
 
 /**
  * Type-level tests to ensure shape inference works correctly
@@ -257,23 +253,20 @@ export const examples = {
  */
 namespace TypeTests {
   // Test 1: Simple pipe preserves exact types
-  const model1 = new Linear(10, 20).pipe(new ReLU());
-  type Test1In = Parameters<typeof model1.forward>[0];
-  type Test1Out = ReturnType<typeof model1.forward>;
+  const model1 = new Linear(10, 20).pipe(new ReLU())
+  type Test1In = Parameters<typeof model1.forward>[0]
+  type Test1Out = ReturnType<typeof model1.forward>
   // Should be: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 20]>
 
   // Test 2: Long chain preserves end-to-end types
-  const model2 = new Linear(10, 20).pipe(new ReLU()).pipe(new Linear(20, 30)).pipe(new ReLU());
-  type Test2In = Parameters<typeof model2.forward>[0];
-  type Test2Out = ReturnType<typeof model2.forward>;
+  const model2 = new Linear(10, 20).pipe(new ReLU()).pipe(new Linear(20, 30)).pipe(new ReLU())
+  type Test2In = Parameters<typeof model2.forward>[0]
+  type Test2Out = ReturnType<typeof model2.forward>
   // Should be: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 30]>
 
   // Test 3: Sequential has correct types
-  const model3 = new Sequential<readonly [number, 10], readonly [number, 30]>(
-    new Linear(10, 20),
-    new Linear(20, 30),
-  );
-  type Test3In = Parameters<typeof model3.forward>[0];
-  type Test3Out = ReturnType<typeof model3.forward>;
+  const model3 = new Sequential<readonly [number, 10], readonly [number, 30]>(new Linear(10, 20), new Linear(20, 30))
+  type Test3In = Parameters<typeof model3.forward>[0]
+  type Test3Out = ReturnType<typeof model3.forward>
   // Should be: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 30]>
 }

@@ -33,6 +33,11 @@ tsconfig.tsbuildinfo
 
 #Data
 /data*
+/libtorch*
+*.dll
+*.exe
+*.pdb
+**/native/build/
 
 # Debug
 npm-debug.log*

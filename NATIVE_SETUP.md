@@ -15,6 +15,7 @@ TypeScript (Bun FFI) → C Shim (ts_torch.dll) → LibTorch (C++)
 Download the pre-built LibTorch for your platform from [pytorch.org](https://pytorch.org/get-started/locally/).
 
 ### Windows (CPU)
+
 ```powershell
 # Download and extract to C:\libtorch
 curl -L -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-win-shared-with-deps-2.5.1%2Bcpu.zip
@@ -22,18 +23,21 @@ Expand-Archive libtorch.zip -DestinationPath C:\
 ```
 
 ### Windows (CUDA 12.4)
+
 ```powershell
 curl -L -o libtorch.zip https://download.pytorch.org/libtorch/cu124/libtorch-win-shared-with-deps-2.5.1%2Bcu124.zip
 Expand-Archive libtorch.zip -DestinationPath C:\
 ```
 
 ### macOS (CPU)
+
 ```bash
 curl -L -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.5.1.zip
 unzip libtorch.zip -d /usr/local/lib/
 ```
 
 ### Linux (CPU)
+
 ```bash
 curl -L -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.5.1%2Bcpu.zip
 unzip libtorch.zip -d /opt/
@@ -116,16 +120,16 @@ export TS_TORCH_LIB=/path/to/ts_torch.dll
 
 ```typescript
 // test-native.ts
-import { torch } from "@ts-torch/core";
+import { torch } from '@ts-torch/core'
 
-console.log("LibTorch version:", torch.version());
-console.log("CUDA available:", torch.cuda.isAvailable());
+console.log('LibTorch version:', torch.version())
+console.log('CUDA available:', torch.cuda.isAvailable())
 
 // Test tensor creation
 torch.run(() => {
-  const t = torch.zeros([2, 3]);
-  console.log("Created tensor with shape:", t.shape);
-});
+  const t = torch.zeros([2, 3])
+  console.log('Created tensor with shape:', t.shape)
+})
 ```
 
 ```bash

@@ -2,19 +2,19 @@
  * RMSprop optimizer
  */
 
-import type { Tensor } from "@ts-torch/core";
-import { Optimizer, type ParameterGroup, type OptimizerOptions } from "./optimizer.js";
+import type { Tensor } from '@ts-torch/core'
+import { Optimizer, type ParameterGroup, type OptimizerOptions } from './optimizer.js'
 
 /**
  * RMSprop optimizer options
  */
 export interface RMSpropOptions extends OptimizerOptions {
-  lr: number;
-  alpha?: number;
-  eps?: number;
-  weightDecay?: number;
-  momentum?: number;
-  centered?: boolean;
+  lr: number
+  alpha?: number
+  eps?: number
+  weightDecay?: number
+  momentum?: number
+  centered?: boolean
 }
 
 /**
@@ -38,7 +38,7 @@ export interface RMSpropOptions extends OptimizerOptions {
  * ```
  */
 export class RMSprop extends Optimizer {
-  declare defaults: RMSpropOptions;
+  declare defaults: RMSpropOptions
 
   constructor(params: Tensor[] | ParameterGroup[], options: RMSpropOptions) {
     const defaults: RMSpropOptions = {
@@ -48,20 +48,19 @@ export class RMSprop extends Optimizer {
       weightDecay: options.weightDecay ?? 0,
       momentum: options.momentum ?? 0,
       centered: options.centered ?? false,
-    };
+    }
 
-    super(params, defaults);
+    super(params, defaults)
   }
 
   step(): void {
     for (const group of this.paramGroups) {
-      const lr = group.lr ?? this.defaults.lr;
-      const alpha = (group.alpha as number | undefined) ?? this.defaults.alpha ?? 0.99;
-      const eps = (group.eps as number | undefined) ?? this.defaults.eps ?? 1e-8;
-      const weightDecay =
-        (group.weightDecay as number | undefined) ?? this.defaults.weightDecay ?? 0;
-      const momentum = (group.momentum as number | undefined) ?? this.defaults.momentum ?? 0;
-      const centered = (group.centered as boolean | undefined) ?? this.defaults.centered ?? false;
+      const lr = group.lr ?? this.defaults.lr
+      const alpha = (group.alpha as number | undefined) ?? this.defaults.alpha ?? 0.99
+      const eps = (group.eps as number | undefined) ?? this.defaults.eps ?? 1e-8
+      const weightDecay = (group.weightDecay as number | undefined) ?? this.defaults.weightDecay ?? 0
+      const momentum = (group.momentum as number | undefined) ?? this.defaults.momentum ?? 0
+      const centered = (group.centered as boolean | undefined) ?? this.defaults.centered ?? false
 
       for (const param of group.params) {
         // TODO: Implement RMSprop update
@@ -115,6 +114,6 @@ export class RMSprop extends Optimizer {
   }
 
   override toString(): string {
-    return `RMSprop(lr=${this.defaults.lr}, alpha=${this.defaults.alpha}, eps=${this.defaults.eps})`;
+    return `RMSprop(lr=${this.defaults.lr}, alpha=${this.defaults.alpha}, eps=${this.defaults.eps})`
   }
 }

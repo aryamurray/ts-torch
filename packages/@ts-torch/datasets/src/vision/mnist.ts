@@ -4,18 +4,18 @@
  * Loads MNIST handwritten digit images from IDX binary files.
  */
 
-import { readFileSync } from "fs";
-import { join } from "path";
-import { torch, type Tensor, type DType } from "@ts-torch/core";
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { torch, type Tensor, type DType } from '@ts-torch/core'
 
 /**
  * MNIST sample containing image tensor and label
  */
 export interface MNISTSample {
   /** 28x28 grayscale image as flattened 784-dim tensor, normalized to [0,1] */
-  image: Tensor<readonly [784], DType<"float32">>;
+  image: Tensor<readonly [784], DType<'float32'>>
   /** Digit label 0-9 */
-  label: number;
+  label: number
 }
 
 /**
@@ -43,9 +43,9 @@ export interface MNISTSample {
  * ```
  */
 export class MNIST {
-  private images: Float32Array | null = null;
-  private labels: Uint8Array | null = null;
-  private numSamples = 0;
+  private images: Float32Array | null = null
+  private labels: Uint8Array | null = null
+  private numSamples = 0
 
   constructor(
     private root: string,
@@ -56,56 +56,56 @@ export class MNIST {
    * Load MNIST data from IDX files
    */
   async load(): Promise<void> {
-    const prefix = this.train ? "train" : "t10k";
+    const prefix = this.train ? 'train' : 't10k'
 
-    const imagesPath = join(this.root, `${prefix}-images.idx3-ubyte`);
-    const labelsPath = join(this.root, `${prefix}-labels.idx1-ubyte`);
+    const imagesPath = join(this.root, `${prefix}-images.idx3-ubyte`)
+    const labelsPath = join(this.root, `${prefix}-labels.idx1-ubyte`)
 
     // Load images
-    const imagesBuffer = readFileSync(imagesPath);
-    const imagesView = new DataView(imagesBuffer.buffer, imagesBuffer.byteOffset);
+    const imagesBuffer = readFileSync(imagesPath)
+    const imagesView = new DataView(imagesBuffer.buffer, imagesBuffer.byteOffset)
 
     // Parse IDX3 header: magic(4), numImages(4), rows(4), cols(4)
-    const magic = imagesView.getUint32(0, false);
+    const magic = imagesView.getUint32(0, false)
     if (magic !== 0x00000803) {
-      throw new Error(`Invalid MNIST images magic number: ${magic}`);
+      throw new Error(`Invalid MNIST images magic number: ${magic}`)
     }
 
-    this.numSamples = imagesView.getUint32(4, false);
-    const rows = imagesView.getUint32(8, false);
-    const cols = imagesView.getUint32(12, false);
+    this.numSamples = imagesView.getUint32(4, false)
+    const rows = imagesView.getUint32(8, false)
+    const cols = imagesView.getUint32(12, false)
 
     if (rows !== 28 || cols !== 28) {
-      throw new Error(`Unexpected MNIST image size: ${rows}x${cols}`);
+      throw new Error(`Unexpected MNIST image size: ${rows}x${cols}`)
     }
 
     // Convert pixel data to normalized Float32 [0, 1]
-    const pixelData = new Uint8Array(imagesBuffer.buffer, imagesBuffer.byteOffset + 16);
-    this.images = new Float32Array(pixelData.length);
+    const pixelData = new Uint8Array(imagesBuffer.buffer, imagesBuffer.byteOffset + 16)
+    this.images = new Float32Array(pixelData.length)
     for (let i = 0; i < pixelData.length; i++) {
-      this.images[i] = pixelData[i]! / 255.0;
+      this.images[i] = pixelData[i]! / 255.0
     }
 
     // Load labels
-    const labelsBuffer = readFileSync(labelsPath);
-    const labelsView = new DataView(labelsBuffer.buffer, labelsBuffer.byteOffset);
+    const labelsBuffer = readFileSync(labelsPath)
+    const labelsView = new DataView(labelsBuffer.buffer, labelsBuffer.byteOffset)
 
     // Parse IDX1 header: magic(4), numLabels(4)
-    const labelsMagic = labelsView.getUint32(0, false);
+    const labelsMagic = labelsView.getUint32(0, false)
     if (labelsMagic !== 0x00000801) {
-      throw new Error(`Invalid MNIST labels magic number: ${labelsMagic}`);
+      throw new Error(`Invalid MNIST labels magic number: ${labelsMagic}`)
     }
 
-    this.labels = new Uint8Array(labelsBuffer.buffer, labelsBuffer.byteOffset + 8);
+    this.labels = new Uint8Array(labelsBuffer.buffer, labelsBuffer.byteOffset + 8)
 
-    console.log(`Loaded MNIST ${this.train ? "train" : "test"}: ${this.numSamples} samples`);
+    console.log(`Loaded MNIST ${this.train ? 'train' : 'test'}: ${this.numSamples} samples`)
   }
 
   /**
    * Get number of samples
    */
   get length(): number {
-    return this.numSamples;
+    return this.numSamples
   }
 
   /**
@@ -113,24 +113,21 @@ export class MNIST {
    */
   get(index: number): MNISTSample {
     if (!this.images || !this.labels) {
-      throw new Error("MNIST not loaded. Call load() first.");
+      throw new Error('MNIST not loaded. Call load() first.')
     }
 
     if (index < 0 || index >= this.numSamples) {
-      throw new Error(`Index ${index} out of bounds [0, ${this.numSamples})`);
+      throw new Error(`Index ${index} out of bounds [0, ${this.numSamples})`)
     }
 
-    const start = index * 784;
-    const imageData = this.images.slice(start, start + 784);
-    const image = torch.tensor(
-      Array.from(imageData),
-      [784] as const,
-    ) as Tensor<readonly [784], DType<"float32">>;
+    const start = index * 784
+    const imageData = this.images.slice(start, start + 784)
+    const image = torch.tensor(Array.from(imageData), [784] as const) as Tensor<readonly [784], DType<'float32'>>
 
     return {
       image,
       label: this.labels[index]!,
-    };
+    }
   }
 
   /**
@@ -139,27 +136,27 @@ export class MNIST {
   getBatch(
     startIndex: number,
     batchSize: number,
-  ): { images: Tensor<readonly [number, 784], DType<"float32">>; labels: number[] } {
+  ): { images: Tensor<readonly [number, 784], DType<'float32'>>; labels: number[] } {
     if (!this.images || !this.labels) {
-      throw new Error("MNIST not loaded. Call load() first.");
+      throw new Error('MNIST not loaded. Call load() first.')
     }
 
-    const actualBatchSize = Math.min(batchSize, this.numSamples - startIndex);
-    const batchData = new Float32Array(actualBatchSize * 784);
-    const batchLabels: number[] = [];
+    const actualBatchSize = Math.min(batchSize, this.numSamples - startIndex)
+    const batchData = new Float32Array(actualBatchSize * 784)
+    const batchLabels: number[] = []
 
     for (let i = 0; i < actualBatchSize; i++) {
-      const srcStart = (startIndex + i) * 784;
-      batchData.set(this.images.slice(srcStart, srcStart + 784), i * 784);
-      batchLabels.push(this.labels[startIndex + i]!);
+      const srcStart = (startIndex + i) * 784
+      batchData.set(this.images.slice(srcStart, srcStart + 784), i * 784)
+      batchLabels.push(this.labels[startIndex + i]!)
     }
 
-    const images = torch.tensor(
-      Array.from(batchData),
-      [actualBatchSize, 784] as const,
-    ) as Tensor<readonly [number, 784], DType<"float32">>;
+    const images = torch.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<
+      readonly [number, 784],
+      DType<'float32'>
+    >
 
-    return { images, labels: batchLabels };
+    return { images, labels: batchLabels }
   }
 
   /**
@@ -168,41 +165,51 @@ export class MNIST {
   *batches(
     batchSize: number,
     shuffle = false,
-  ): Generator<{ images: Tensor<readonly [number, 784], DType<"float32">>; labels: number[] }> {
+  ): Generator<{
+    images: Tensor<readonly [number, 784], DType<'float32'>>
+    labels: number[]
+    labelsTensor: Tensor<readonly [number], DType<'int64'>>
+  }> {
     if (!this.images || !this.labels) {
-      throw new Error("MNIST not loaded. Call load() first.");
+      throw new Error('MNIST not loaded. Call load() first.')
     }
 
     // Create index array
-    const indices = Array.from({ length: this.numSamples }, (_, i) => i);
+    const indices = Array.from({ length: this.numSamples }, (_, i) => i)
 
     // Shuffle if requested
     if (shuffle) {
       for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j]!, indices[i]!];
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[indices[i], indices[j]] = [indices[j]!, indices[i]!]
       }
     }
 
     // Yield batches
     for (let start = 0; start < this.numSamples; start += batchSize) {
-      const actualBatchSize = Math.min(batchSize, this.numSamples - start);
-      const batchData = new Float32Array(actualBatchSize * 784);
-      const batchLabels: number[] = [];
+      const actualBatchSize = Math.min(batchSize, this.numSamples - start)
+      const batchData = new Float32Array(actualBatchSize * 784)
+      const batchLabels: number[] = []
 
       for (let i = 0; i < actualBatchSize; i++) {
-        const idx = indices[start + i]!;
-        const srcStart = idx * 784;
-        batchData.set(this.images!.slice(srcStart, srcStart + 784), i * 784);
-        batchLabels.push(this.labels![idx]!);
+        const idx = indices[start + i]!
+        const srcStart = idx * 784
+        batchData.set(this.images!.slice(srcStart, srcStart + 784), i * 784)
+        batchLabels.push(this.labels![idx]!)
       }
 
-      const images = torch.tensor(
-        Array.from(batchData),
-        [actualBatchSize, 784] as const,
-      ) as Tensor<readonly [number, 784], DType<"float32">>;
+      const images = torch.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<
+        readonly [number, 784],
+        DType<'float32'>
+      >
 
-      yield { images, labels: batchLabels };
+      // Create labels tensor as int64 for cross_entropy_loss
+      const labelsTensor = torch.tensor(batchLabels, [actualBatchSize] as const, torch.int64) as Tensor<
+        readonly [number],
+        DType<'int64'>
+      >
+
+      yield { images, labels: batchLabels, labelsTensor }
     }
   }
 
@@ -210,6 +217,6 @@ export class MNIST {
    * Class labels
    */
   get classes(): string[] {
-    return ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    return ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
   }
 }

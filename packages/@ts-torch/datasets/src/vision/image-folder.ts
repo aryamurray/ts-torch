@@ -2,9 +2,9 @@
  * ImageFolder dataset for loading images from a directory structure
  */
 
-import type { Tensor } from "@ts-torch/core";
-import { BaseDataset } from "../dataset.js";
-import type { Transform } from "../transforms.js";
+import type { Tensor } from '@ts-torch/core'
+import { BaseDataset } from '../dataset.js'
+import type { Transform } from '../transforms.js'
 
 /**
  * ImageFolder dataset
@@ -23,16 +23,16 @@ import type { Transform } from "../transforms.js";
  * ```
  */
 export class ImageFolder extends BaseDataset<[Tensor, number]> {
-  private samples: Array<[string, number]> = [];
-  private classToIdx: Map<string, number> = new Map();
-  private classes: string[] = [];
+  private samples: Array<[string, number]> = []
+  private classToIdx: Map<string, number> = new Map()
+  private classes: string[] = []
 
   constructor(
     _root: string,
     _transform?: Transform<Tensor, Tensor>,
-    _extensions: string[] = [".jpg", ".jpeg", ".png", ".gif", ".bmp"],
+    _extensions: string[] = ['.jpg', '.jpeg', '.png', '.gif', '.bmp'],
   ) {
-    super();
+    super()
   }
 
   async init(): Promise<void> {
@@ -55,10 +55,10 @@ export class ImageFolder extends BaseDataset<[Tensor, number]> {
 
   async getItem(index: number): Promise<[Tensor, number]> {
     if (index < 0 || index >= this.length) {
-      throw new Error(`Index ${index} out of bounds`);
+      throw new Error(`Index ${index} out of bounds`)
     }
 
-    const [_path, _label] = this.samples[index]!;
+    const [_path, _label] = this.samples[index]!
 
     // TODO: Load image and convert to tensor
     // let image = await loadImage(path);
@@ -67,18 +67,18 @@ export class ImageFolder extends BaseDataset<[Tensor, number]> {
     // }
     // return [image, label];
 
-    throw new Error("ImageFolder.getItem not yet implemented");
+    throw new Error('ImageFolder.getItem not yet implemented')
   }
 
   get length(): number {
-    return this.samples.length;
+    return this.samples.length
   }
 
   getClasses(): string[] {
-    return this.classes;
+    return this.classes
   }
 
   getClassToIdx(): Map<string, number> {
-    return this.classToIdx;
+    return this.classToIdx
   }
 }

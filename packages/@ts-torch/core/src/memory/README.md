@@ -12,16 +12,16 @@ The memory management system provides two key features:
 ## Quick Start
 
 ```typescript
-import { run } from "@ts-torch/core/memory";
-import { zeros, ones } from "@ts-torch/core";
+import { run } from '@ts-torch/core/memory'
+import { zeros, ones } from '@ts-torch/core'
 
 // All tensors auto-freed when scope exits
 const result = run(() => {
-  const a = zeros([100, 100]); // Auto-freed
-  const b = ones([100, 100]); // Auto-freed
-  const c = a.add(b); // Auto-freed
-  return c.escape(); // Escaped - not freed
-});
+  const a = zeros([100, 100]) // Auto-freed
+  const b = ones([100, 100]) // Auto-freed
+  const c = a.add(b) // Auto-freed
+  return c.escape() // Escaped - not freed
+})
 // a, b are freed; result persists
 ```
 
@@ -45,11 +45,11 @@ Execute a function with scoped memory management. All tensors created within the
 
 ```typescript
 const tensor = run(() => {
-  const x = zeros([10, 10]);
-  const y = ones([10, 10]);
-  const result = x.add(y);
-  return result.escape();
-});
+  const x = zeros([10, 10])
+  const y = ones([10, 10])
+  const result = x.add(y)
+  return result.escape()
+})
 ```
 
 #### `runAsync<T>(fn: () => Promise<T>): Promise<T>`
@@ -60,11 +60,11 @@ Async version of `run()` for async operations.
 
 ```typescript
 const result = await runAsync(async () => {
-  const data = await fetchData();
-  const tensor = fromBuffer(data);
-  const processed = await processAsync(tensor);
-  return processed.escape();
-});
+  const data = await fetchData()
+  const tensor = fromBuffer(data)
+  const processed = await processAsync(tensor)
+  return processed.escape()
+})
 ```
 
 #### `escapeTensor<T>(tensor: T): T`
@@ -79,11 +79,11 @@ Escape a tensor from the current scope to prevent it from being freed.
 
 ```typescript
 run(() => {
-  const temp = zeros([10, 10]);
-  const keep = ones([10, 10]);
-  escapeTensor(keep);
+  const temp = zeros([10, 10])
+  const keep = ones([10, 10])
+  escapeTensor(keep)
   // temp will be freed, keep will persist
-});
+})
 ```
 
 #### `inScope(): boolean`
@@ -93,10 +93,10 @@ Check if currently inside a scope.
 **Example:**
 
 ```typescript
-console.log(inScope()); // false
+console.log(inScope()) // false
 run(() => {
-  console.log(inScope()); // true
-});
+  console.log(inScope()) // true
+})
 ```
 
 #### `scopeDepth(): number`
@@ -107,11 +107,11 @@ Get current scope depth (0 if not in a scope).
 
 ```typescript
 run(() => {
-  console.log(scopeDepth()); // 1
+  console.log(scopeDepth()) // 1
   run(() => {
-    console.log(scopeDepth()); // 2
-  });
-});
+    console.log(scopeDepth()) // 2
+  })
+})
 ```
 
 #### `scopeTensorCount(): number`
@@ -122,10 +122,10 @@ Get number of tensors tracked in current scope.
 
 ```typescript
 run(() => {
-  zeros([10, 10]);
-  ones([10, 10]);
-  console.log(scopeTensorCount()); // 2
-});
+  zeros([10, 10])
+  ones([10, 10])
+  console.log(scopeTensorCount()) // 2
+})
 ```
 
 ### Tensor Pooling
@@ -153,8 +153,8 @@ Acquire a tensor from the pool if available.
 **Example:**
 
 ```typescript
-const pool = new TensorPool();
-const tensor = pool.acquire([10, 10], "float32") ?? zeros([10, 10]);
+const pool = new TensorPool()
+const tensor = pool.acquire([10, 10], 'float32') ?? zeros([10, 10])
 ```
 
 ##### `release(tensor: Tensor): void`
@@ -164,7 +164,7 @@ Release a tensor back to the pool for reuse.
 **Example:**
 
 ```typescript
-pool.release(tensor);
+pool.release(tensor)
 ```
 
 ##### `stats(): PoolStats`
@@ -175,11 +175,11 @@ Get pool statistics including hit rate.
 
 ```typescript
 {
-  size: number; // Total cached tensors
-  hitCount: number; // Number of hits
-  missCount: number; // Number of misses
-  hitRate: number; // Hit rate (0-1)
-  pools: Map<string, number>; // Per-key sizes
+  size: number // Total cached tensors
+  hitCount: number // Number of hits
+  missCount: number // Number of misses
+  hitRate: number // Hit rate (0-1)
+  pools: Map<string, number> // Per-key sizes
 }
 ```
 
@@ -199,7 +199,7 @@ Reduce pool size to target (default: half current size).
 
 ```typescript
 if (pool.stats().size > 1000) {
-  pool.prune(500); // Reduce to 500 tensors
+  pool.prune(500) // Reduce to 500 tensors
 }
 ```
 
@@ -210,10 +210,10 @@ Global tensor pool instance for convenience.
 **Example:**
 
 ```typescript
-import { globalTensorPool } from "@ts-torch/core/memory";
+import { globalTensorPool } from '@ts-torch/core/memory'
 
-const tensor = globalTensorPool.acquire([10, 10], "float32") ?? zeros([10, 10]);
-globalTensorPool.release(tensor);
+const tensor = globalTensorPool.acquire([10, 10], 'float32') ?? zeros([10, 10])
+globalTensorPool.release(tensor)
 ```
 
 ## Usage Patterns
@@ -225,16 +225,16 @@ for (let epoch = 0; epoch < 10; epoch++) {
   run(() => {
     for (let batch = 0; batch < batches.length; batch++) {
       const loss = run(() => {
-        const input = getBatch(batch);
-        const output = model.forward(input);
-        const loss = criterion(output, target);
+        const input = getBatch(batch)
+        const output = model.forward(input)
+        const loss = criterion(output, target)
 
-        optimizer.step(loss);
-        return loss.item(); // Escape scalar value
-      });
+        optimizer.step(loss)
+        return loss.item() // Escape scalar value
+      })
       // input, output freed here
     }
-  });
+  })
   // All batch tensors freed here
 }
 ```
@@ -244,48 +244,48 @@ for (let epoch = 0; epoch < 10; epoch++) {
 ```typescript
 const results = inputs.map((input) => {
   return run(() => {
-    const processed = preprocess(input);
-    const output = model.forward(processed);
-    return output.argmax().item();
-  });
+    const processed = preprocess(input)
+    const output = model.forward(processed)
+    return output.argmax().item()
+  })
   // All intermediate tensors freed
-});
+})
 ```
 
 ### With Pooling
 
 ```typescript
-const pool = new TensorPool();
+const pool = new TensorPool()
 
 for (let i = 0; i < 1000; i++) {
   run(() => {
-    const grad = pool.acquire([256, 256], "float32") ?? zeros([256, 256]);
+    const grad = pool.acquire([256, 256], 'float32') ?? zeros([256, 256])
 
     // Use gradient...
-    optimizer.step(grad);
+    optimizer.step(grad)
 
-    pool.release(grad);
-  });
+    pool.release(grad)
+  })
 }
 
-console.log("Pool hit rate:", pool.stats().hitRate);
+console.log('Pool hit rate:', pool.stats().hitRate)
 ```
 
 ### Nested Scopes
 
 ```typescript
 const result = run(() => {
-  const x = randn([100, 100]);
+  const x = randn([100, 100])
 
   const intermediate = run(() => {
-    const y = randn([100, 100]);
-    const z = x.matmul(y);
-    return z.escape();
-  });
+    const y = randn([100, 100])
+    const z = x.matmul(y)
+    return z.escape()
+  })
   // y freed, z persists
 
-  return x.add(intermediate).escape();
-});
+  return x.add(intermediate).escape()
+})
 // x and intermediate freed, result persists
 ```
 
@@ -294,12 +294,12 @@ const result = run(() => {
 ```typescript
 try {
   run(() => {
-    const tensor = zeros([100, 100]);
-    throw new Error("Something failed!");
+    const tensor = zeros([100, 100])
+    throw new Error('Something failed!')
     // tensor still gets cleaned up
-  });
+  })
 } catch (error) {
-  console.log("Error caught, memory still cleaned up");
+  console.log('Error caught, memory still cleaned up')
 }
 ```
 
@@ -310,12 +310,12 @@ try {
 Scopes are implemented using a closure-based stack:
 
 ```typescript
-let currentScope: ScopeContext | null = null;
+let currentScope: ScopeContext | null = null
 
 interface ScopeContext {
-  id: number;
-  tensors: Set<Tensor>;
-  parent: ScopeContext | null;
+  id: number
+  tensors: Set<Tensor>
+  parent: ScopeContext | null
 }
 ```
 
@@ -369,17 +369,17 @@ Tensors are stored in LIFO (stack) order for cache locality.
 
 ```typescript
 // Small pool for memory-constrained environments
-const smallPool = new TensorPool(8);
+const smallPool = new TensorPool(8)
 
 // Large pool for high-throughput scenarios
-const largePool = new TensorPool(128);
+const largePool = new TensorPool(128)
 
 // Monitor and prune based on memory pressure
 setInterval(() => {
   if (memoryUsage() > threshold) {
-    pool.prune();
+    pool.prune()
   }
-}, 60000);
+}, 60000)
 ```
 
 ## Best Practices
@@ -396,23 +396,23 @@ setInterval(() => {
 ### Check scope state
 
 ```typescript
-import { inScope, scopeDepth, scopeTensorCount } from "@ts-torch/core/memory";
+import { inScope, scopeDepth, scopeTensorCount } from '@ts-torch/core/memory'
 
-console.log("In scope:", inScope());
-console.log("Scope depth:", scopeDepth());
-console.log("Tensors tracked:", scopeTensorCount());
+console.log('In scope:', inScope())
+console.log('Scope depth:', scopeDepth())
+console.log('Tensors tracked:', scopeTensorCount())
 ```
 
 ### Monitor pool performance
 
 ```typescript
-const stats = pool.stats();
-console.log(`Pool size: ${stats.size}`);
-console.log(`Hit rate: ${(stats.hitRate * 100).toFixed(1)}%`);
-console.log(`Efficiency: ${stats.hitCount}/${stats.hitCount + stats.missCount}`);
+const stats = pool.stats()
+console.log(`Pool size: ${stats.size}`)
+console.log(`Hit rate: ${(stats.hitRate * 100).toFixed(1)}%`)
+console.log(`Efficiency: ${stats.hitCount}/${stats.hitCount + stats.missCount}`)
 
 for (const [key, count] of stats.pools) {
-  console.log(`  ${key}: ${count} tensors`);
+  console.log(`  ${key}: ${count} tensors`)
 }
 ```
 
@@ -435,11 +435,11 @@ ts-torch scopes are similar to context managers:
 ```typescript
 // ts-torch - scope-based
 run(() => {
-  const x = zeros([10, 10]);
-  const y = ones([10, 10]);
-  const z = x.add(y);
+  const x = zeros([10, 10])
+  const y = ones([10, 10])
+  const z = x.add(y)
   // x, y freed when scope exits
-});
+})
 ```
 
 ### JAX

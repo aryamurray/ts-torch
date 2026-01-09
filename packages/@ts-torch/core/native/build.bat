@@ -85,11 +85,17 @@ echo   --help, -h        Show this help message
 exit /b 0
 
 :check_args
-REM Check for LibTorch path
+REM Auto-detect LibTorch path if not specified
 if "%LIBTORCH_PATH%"=="" (
-    echo Error: LibTorch path is required
-    echo Please specify it with --libtorch C:\path\to\libtorch
-    exit /b 1
+    REM Try project root /libtorch first
+    set LIBTORCH_PATH=%~dp0..\..\..\..\libtorch
+    if not exist "!LIBTORCH_PATH!" (
+        echo Error: LibTorch path is required
+        echo Please specify it with --libtorch C:\path\to\libtorch
+        echo Or place libtorch at the project root: ts-tools/libtorch
+        exit /b 1
+    )
+    echo Auto-detected LibTorch at project root
 )
 
 if not exist "%LIBTORCH_PATH%" (

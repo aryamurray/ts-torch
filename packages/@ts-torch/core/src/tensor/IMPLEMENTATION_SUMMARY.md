@@ -103,7 +103,7 @@ return new Tensor(handle as Pointer, ...); // Add type assertion after checkNull
 Need to add `| null` to return type in creation function parameter:
 
 ```typescript
-creationFn: (...args) => Pointer | null; // Not just Pointer
+creationFn: (...args) => Pointer | null // Not just Pointer
 ```
 
 ### 3. DType Name Narrowing
@@ -119,7 +119,7 @@ switch (this.dtype.name as DTypeName) { ... }
 TypedArray.buffer is `ArrayBufferLike`, need cast to `ArrayBuffer`:
 
 ```typescript
-buffer = result.buffer as ArrayBuffer;
+buffer = result.buffer as ArrayBuffer
 ```
 
 ### 5. Transpose Shape Assertion
@@ -153,18 +153,18 @@ Remove unused imports and mark intentional non-use:
 Cast FFI symbols to expected type in factory functions:
 
 ```typescript
-return createTensor(lib.symbols.ts_tensor_zeros as any, shape, dtype, requiresGrad);
+return createTensor(lib.symbols.ts_tensor_zeros as any, shape, dtype, requiresGrad)
 ```
 
 ## Usage Examples
 
 ```typescript
-import { Tensor, zeros, ones, fromArray } from "@ts-torch/core/tensor";
-import { DType } from "@ts-torch/core/types";
+import { Tensor, zeros, ones, fromArray } from '@ts-torch/core/tensor'
+import { DType } from '@ts-torch/core/types'
 
 // Create tensors
-const a = zeros([2, 3], DType.float32);
-const b = ones([2, 3], DType.float32);
+const a = zeros([2, 3], DType.float32)
+const b = ones([2, 3], DType.float32)
 const c = fromArray(
   [
     [1, 2],
@@ -172,31 +172,31 @@ const c = fromArray(
   ],
   [2, 2] as const,
   DType.float32,
-);
+)
 
 // Type-safe operations
-const sum = a.add(b); // Type: Tensor<[2, 3], DType<"float32">>
-const product = a.matmul(b.transpose(0, 1)); // Type: Tensor<[2, 2], DType<"float32">>
+const sum = a.add(b) // Type: Tensor<[2, 3], DType<"float32">>
+const product = a.matmul(b.transpose(0, 1)) // Type: Tensor<[2, 2], DType<"float32">>
 
 // Activations
-const activated = sum.relu();
-const probs = activated.softmax(1);
+const activated = sum.relu()
+const probs = activated.softmax(1)
 
 // Autograd
-const x = fromArray([2], [1] as const, DType.float32);
-x.requiresGrad = true;
-const y = x.mul(x);
-y.backward();
-console.log(x.grad?.item()); // 4 (derivative of x^2 at x=2)
+const x = fromArray([2], [1] as const, DType.float32)
+x.requiresGrad = true
+const y = x.mul(x)
+y.backward()
+console.log(x.grad?.item()) // 4 (derivative of x^2 at x=2)
 
 // Device management
-const gpu_tensor = a.cuda();
-const cpu_tensor = gpu_tensor.cpu();
+const gpu_tensor = a.cuda()
+const cpu_tensor = gpu_tensor.cpu()
 
 // Memory management
-const t = zeros([1000, 1000], DType.float32).escape();
+const t = zeros([1000, 1000], DType.float32).escape()
 // ... use tensor ...
-t.free(); // Manual cleanup
+t.free() // Manual cleanup
 ```
 
 ## Next Steps

@@ -86,49 +86,44 @@ bun add @ts-torch/core @ts-torch/nn @ts-torch/optim @ts-torch/datasets
 ## Quick Start
 
 ```typescript
-import { tensor, zeros, ones } from "@ts-torch/core";
-import { Sequential, Linear, ReLU, Dropout } from "@ts-torch/nn";
-import { Adam } from "@ts-torch/optim";
-import { DataLoader, TensorDataset } from "@ts-torch/datasets";
+import { tensor, zeros, ones } from '@ts-torch/core'
+import { Sequential, Linear, ReLU, Dropout } from '@ts-torch/nn'
+import { Adam } from '@ts-torch/optim'
+import { DataLoader, TensorDataset } from '@ts-torch/datasets'
 
 // Create tensors
 const x = tensor([
   [1, 2, 3],
   [4, 5, 6],
-]);
-const z = zeros([3, 3]);
+])
+const z = zeros([3, 3])
 
 // Build a neural network
-const model = new Sequential(
-  new Linear(784, 256),
-  new ReLU(),
-  new Dropout(0.5),
-  new Linear(256, 10),
-);
+const model = new Sequential(new Linear(784, 256), new ReLU(), new Dropout(0.5), new Linear(256, 10))
 
 // Create an optimizer
-const optimizer = new Adam(model.parameters(), { lr: 0.001 });
+const optimizer = new Adam(model.parameters(), { lr: 0.001 })
 
 // Create a dataset and data loader
-const dataset = new TensorDataset([trainData, trainLabels]);
+const dataset = new TensorDataset([trainData, trainLabels])
 const loader = new DataLoader(dataset, {
   batchSize: 32,
   shuffle: true,
-});
+})
 
 // Training loop
-model.train();
+model.train()
 for (const [inputs, targets] of loader.iter()) {
-  optimizer.zeroGrad();
-  const outputs = model.forward(inputs);
+  optimizer.zeroGrad()
+  const outputs = model.forward(inputs)
   // const loss = criterion(outputs, targets);
   // loss.backward();
-  optimizer.step();
+  optimizer.step()
 }
 
 // Evaluation
-model.eval();
-const testOutput = model.forward(testInput);
+model.eval()
+const testOutput = model.forward(testInput)
 ```
 
 ## Advanced Type System
@@ -136,17 +131,17 @@ const testOutput = model.forward(testInput);
 ts-torch includes an advanced TypeScript type system for compile-time shape and dtype checking:
 
 ```typescript
-import type { TensorType, MatMulShape } from "@ts-torch/core/types";
+import type { TensorType, MatMulShape } from '@ts-torch/core/types'
 
 // Define tensor types
-type Matrix = TensorType<[100, 50], "float32">;
-type Vector = TensorType<[50, 1], "float32">;
+type Matrix = TensorType<[100, 50], 'float32'>
+type Vector = TensorType<[50, 1], 'float32'>
 
 // Compute result shape at compile time
-type Result = MatMulShape<[100, 50], [50, 1]>; // [100, 1]
+type Result = MatMulShape<[100, 50], [50, 1]> // [100, 1]
 
 // This would be a compile error:
-type Invalid = MatMulShape<[100, 50], [60, 1]>; // never (incompatible)
+type Invalid = MatMulShape<[100, 50], [60, 1]> // never (incompatible)
 ```
 
 ## Architecture

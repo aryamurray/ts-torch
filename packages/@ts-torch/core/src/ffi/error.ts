@@ -3,7 +3,7 @@
  * Manages error struct allocation and error checking
  */
 
-import { ptr, type Pointer } from "bun:ffi";
+import { ptr, type Pointer } from 'bun:ffi'
 
 /**
  * C error struct layout:
@@ -13,7 +13,7 @@ import { ptr, type Pointer } from "bun:ffi";
  * }
  * Total: 260 bytes
  */
-export const ERROR_STRUCT_SIZE = 260;
+export const ERROR_STRUCT_SIZE = 260
 
 /**
  * Error codes returned by native library
@@ -35,37 +35,37 @@ export enum ErrorCode {
  * Error code to message mapping
  */
 const ERROR_MESSAGES: Record<ErrorCode, string> = {
-  [ErrorCode.OK]: "Success",
-  [ErrorCode.NULL_POINTER]: "Null pointer encountered",
-  [ErrorCode.INVALID_SHAPE]: "Invalid tensor shape",
-  [ErrorCode.INVALID_DTYPE]: "Invalid data type",
-  [ErrorCode.DIMENSION_MISMATCH]: "Tensor dimension mismatch",
-  [ErrorCode.OUT_OF_MEMORY]: "Out of memory",
-  [ErrorCode.CUDA_ERROR]: "CUDA error",
-  [ErrorCode.GRAD_ERROR]: "Gradient computation error",
-  [ErrorCode.SCOPE_ERROR]: "Memory scope error",
-  [ErrorCode.UNKNOWN]: "Unknown error",
-};
+  [ErrorCode.OK]: 'Success',
+  [ErrorCode.NULL_POINTER]: 'Null pointer encountered',
+  [ErrorCode.INVALID_SHAPE]: 'Invalid tensor shape',
+  [ErrorCode.INVALID_DTYPE]: 'Invalid data type',
+  [ErrorCode.DIMENSION_MISMATCH]: 'Tensor dimension mismatch',
+  [ErrorCode.OUT_OF_MEMORY]: 'Out of memory',
+  [ErrorCode.CUDA_ERROR]: 'CUDA error',
+  [ErrorCode.GRAD_ERROR]: 'Gradient computation error',
+  [ErrorCode.SCOPE_ERROR]: 'Memory scope error',
+  [ErrorCode.UNKNOWN]: 'Unknown error',
+}
 
 /**
  * Custom error class for torch operations
  */
 export class TorchError extends Error {
-  public readonly code: ErrorCode;
-  public readonly nativeMessage: string;
+  public readonly code: ErrorCode
+  public readonly nativeMessage: string
 
   constructor(code: ErrorCode, nativeMessage: string) {
-    const baseMessage = ERROR_MESSAGES[code] || ERROR_MESSAGES[ErrorCode.UNKNOWN];
-    const fullMessage = nativeMessage ? `${baseMessage}: ${nativeMessage}` : baseMessage;
+    const baseMessage = ERROR_MESSAGES[code] || ERROR_MESSAGES[ErrorCode.UNKNOWN]
+    const fullMessage = nativeMessage ? `${baseMessage}: ${nativeMessage}` : baseMessage
 
-    super(fullMessage);
-    this.name = "TorchError";
-    this.code = code;
-    this.nativeMessage = nativeMessage;
+    super(fullMessage)
+    this.name = 'TorchError'
+    this.code = code
+    this.nativeMessage = nativeMessage
 
     // Maintain proper stack trace for V8
     if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, TorchError);
+      Error.captureStackTrace(this, TorchError)
     }
   }
 
@@ -73,7 +73,7 @@ export class TorchError extends Error {
    * Check if error is a specific type
    */
   public is(code: ErrorCode): boolean {
-    return this.code === code;
+    return this.code === code
   }
 
   /**
@@ -85,7 +85,7 @@ export class TorchError extends Error {
       code: this.code,
       message: this.message,
       nativeMessage: this.nativeMessage,
-    };
+    }
   }
 }
 
@@ -93,8 +93,8 @@ export class TorchError extends Error {
  * Error buffer wrapper that holds both pointer and backing ArrayBuffer
  */
 interface ErrorBuffer {
-  ptr: Pointer;
-  buffer: ArrayBuffer;
+  ptr: Pointer
+  buffer: ArrayBuffer
 }
 
 /**
@@ -105,17 +105,17 @@ interface ErrorBuffer {
  */
 export function createError(): ErrorBuffer {
   // Allocate buffer for error struct
-  const buffer = new ArrayBuffer(ERROR_STRUCT_SIZE);
-  const view = new DataView(buffer);
+  const buffer = new ArrayBuffer(ERROR_STRUCT_SIZE)
+  const view = new DataView(buffer)
 
   // Initialize error code to 0 (OK)
-  view.setInt32(0, 0, true); // little-endian
+  view.setInt32(0, 0, true) // little-endian
 
   // Return both pointer and buffer
   return {
     ptr: ptr(buffer),
     buffer,
-  };
+  }
 }
 
 /**
@@ -127,30 +127,30 @@ export function createError(): ErrorBuffer {
  */
 export function checkError(errorBuffer: ErrorBuffer): void {
   // Read error code (first 4 bytes) from the backing ArrayBuffer
-  const codeView = new DataView(errorBuffer.buffer, 0, 4);
-  const code = codeView.getInt32(0, true) as ErrorCode;
+  const codeView = new DataView(errorBuffer.buffer, 0, 4)
+  const code = codeView.getInt32(0, true) as ErrorCode
 
   if (code === ErrorCode.OK) {
-    return; // No error
+    return // No error
   }
 
   // Read error message (next 256 bytes)
-  const messageBytes = new Uint8Array(errorBuffer.buffer, 4, 256);
+  const messageBytes = new Uint8Array(errorBuffer.buffer, 4, 256)
 
   // Find null terminator
-  let messageLength = 0;
+  let messageLength = 0
   for (let i = 0; i < messageBytes.length; i++) {
     if (messageBytes[i] === 0) {
-      messageLength = i;
-      break;
+      messageLength = i
+      break
     }
   }
 
   // Decode message string
-  const decoder = new TextDecoder("utf-8");
-  const message = decoder.decode(messageBytes.subarray(0, messageLength));
+  const decoder = new TextDecoder('utf-8')
+  const message = decoder.decode(messageBytes.subarray(0, messageLength))
 
-  throw new TorchError(code, message);
+  throw new TorchError(code, message)
 }
 
 /**
@@ -165,11 +165,11 @@ export function checkError(errorBuffer: ErrorBuffer): void {
  * const result = withError(err => lib.symbols.ts_tensor_zeros(shape, ndim, dtype, false, err));
  */
 export function withError<T>(fn: (errorPtr: Pointer) => T): T {
-  const errorBuffer = createError();
+  const errorBuffer = createError()
   try {
-    const result = fn(errorBuffer.ptr);
-    checkError(errorBuffer);
-    return result;
+    const result = fn(errorBuffer.ptr)
+    checkError(errorBuffer)
+    return result
   } finally {
     // Error buffer is automatically freed when it goes out of scope
     // Bun's GC will handle cleanup
@@ -181,9 +181,9 @@ export function withError<T>(fn: (errorPtr: Pointer) => T): T {
  * @param ptr - Pointer to check
  * @throws TorchError if pointer is null
  */
-export function checkNull(ptr: Pointer | null, message = "Unexpected null pointer"): void {
+export function checkNull(ptr: Pointer | null, message = 'Unexpected null pointer'): void {
   if (ptr === null || ptr === 0) {
-    throw new TorchError(ErrorCode.NULL_POINTER, message);
+    throw new TorchError(ErrorCode.NULL_POINTER, message)
   }
 }
 
@@ -194,18 +194,15 @@ export function checkNull(ptr: Pointer | null, message = "Unexpected null pointe
  */
 export function validateShape(shape: number[] | bigint[]): void {
   if (!Array.isArray(shape) || shape.length === 0) {
-    throw new TorchError(ErrorCode.INVALID_SHAPE, "Shape must be non-empty array");
+    throw new TorchError(ErrorCode.INVALID_SHAPE, 'Shape must be non-empty array')
   }
 
   for (let i = 0; i < shape.length; i++) {
-    const rawDim = shape[i];
-    if (rawDim === undefined) continue;
-    const dim = typeof rawDim === "bigint" ? Number(rawDim) : rawDim;
+    const rawDim = shape[i]
+    if (rawDim === undefined) continue
+    const dim = typeof rawDim === 'bigint' ? Number(rawDim) : rawDim
     if (!Number.isInteger(dim) || dim < 0) {
-      throw new TorchError(
-        ErrorCode.INVALID_SHAPE,
-        `Shape dimension ${i} must be non-negative integer, got ${rawDim}`,
-      );
+      throw new TorchError(ErrorCode.INVALID_SHAPE, `Shape dimension ${i} must be non-negative integer, got ${rawDim}`)
     }
   }
 }
@@ -220,6 +217,6 @@ export function validateDtype(dtype: number): void {
     throw new TorchError(
       ErrorCode.INVALID_DTYPE,
       `Invalid dtype ${dtype}, must be 0 (f32), 1 (f64), 2 (i32), or 3 (i64)`,
-    );
+    )
   }
 }

@@ -33,31 +33,26 @@ bun add @ts-torch-platform/loader
 ## Usage
 
 ```typescript
-import {
-  getPlatformInfo,
-  loadNativeBinary,
-  isNativeAvailable,
-  getPlatformIdentifier,
-} from "@ts-torch-platform/loader";
+import { getPlatformInfo, loadNativeBinary, isNativeAvailable, getPlatformIdentifier } from '@ts-torch-platform/loader'
 
 // Get platform information
-const info = getPlatformInfo();
-console.log("Platform:", info.platform);
-console.log("Architecture:", info.arch);
-console.log("Package name:", info.packageName);
+const info = getPlatformInfo()
+console.log('Platform:', info.platform)
+console.log('Architecture:', info.arch)
+console.log('Package name:', info.packageName)
 
 // Check if native binaries are available
 if (isNativeAvailable()) {
-  console.log("Native binaries found");
-  const binaryPath = loadNativeBinary();
-  console.log("Binary path:", binaryPath);
+  console.log('Native binaries found')
+  const binaryPath = loadNativeBinary()
+  console.log('Binary path:', binaryPath)
 } else {
-  console.log("Native binaries not available, using fallback");
+  console.log('Native binaries not available, using fallback')
 }
 
 // Get platform identifier
-const identifier = getPlatformIdentifier();
-console.log("Platform ID:", identifier); // e.g., "win32-x64"
+const identifier = getPlatformIdentifier()
+console.log('Platform ID:', identifier) // e.g., "win32-x64"
 ```
 
 ## Error Handling
@@ -65,13 +60,13 @@ console.log("Platform ID:", identifier); // e.g., "win32-x64"
 When native binaries are not available, the package provides helpful error messages:
 
 ```typescript
-import { loadNativeBinaryOrThrow, getMissingBinaryInfo } from "@ts-torch-platform/loader";
+import { loadNativeBinaryOrThrow, getMissingBinaryInfo } from '@ts-torch-platform/loader'
 
 try {
-  const binaryPath = loadNativeBinaryOrThrow();
+  const binaryPath = loadNativeBinaryOrThrow()
   // Use binary
 } catch (error) {
-  console.error(error.message);
+  console.error(error.message)
   // Includes installation instructions
 }
 ```

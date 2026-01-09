@@ -2,7 +2,7 @@
  * Convolutional layers
  */
 
-import { Module, type Tensor } from "../module.js";
+import { Module, type Tensor } from '../module.js'
 
 /**
  * 2D Convolutional layer
@@ -18,16 +18,16 @@ export class Conv2d extends Module {
     public groups: number = 1,
     public bias: boolean = true,
   ) {
-    super();
+    super()
     // TODO: Initialize conv weights and bias
   }
 
   forward(_input: Tensor): Tensor {
     // TODO: Implement 2D convolution
-    throw new Error("Conv2d.forward not yet implemented");
+    throw new Error('Conv2d.forward not yet implemented')
   }
 
   override toString(): string {
-    return `Conv2d(${this.inChannels}, ${this.outChannels}, kernel_size=${JSON.stringify(this.kernelSize)})`;
+    return `Conv2d(${this.inChannels}, ${this.outChannels}, kernel_size=${JSON.stringify(this.kernelSize)})`
   }
 }

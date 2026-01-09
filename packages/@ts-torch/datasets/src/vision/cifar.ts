@@ -2,9 +2,9 @@
  * CIFAR-10 and CIFAR-100 datasets
  */
 
-import type { Tensor } from "@ts-torch/core";
-import { BaseDataset } from "../dataset.js";
-import type { Transform } from "../transforms.js";
+import type { Tensor } from '@ts-torch/core'
+import { BaseDataset } from '../dataset.js'
+import type { Transform } from '../transforms.js'
 
 /**
  * CIFAR-10 dataset
@@ -14,7 +14,7 @@ import type { Transform } from "../transforms.js";
  * - Test set: 10,000 images
  */
 export class CIFAR10 extends BaseDataset<[Tensor, number]> {
-  private data: Tensor | null = null;
+  private data: Tensor | null = null
 
   constructor(
     _root: string,
@@ -22,7 +22,7 @@ export class CIFAR10 extends BaseDataset<[Tensor, number]> {
     _transform?: Transform<Tensor, Tensor>,
     _download: boolean = false,
   ) {
-    super();
+    super()
   }
 
   async init(): Promise<void> {
@@ -31,33 +31,22 @@ export class CIFAR10 extends BaseDataset<[Tensor, number]> {
 
   getItem(index: number): [Tensor, number] {
     if (!this.data) {
-      throw new Error("CIFAR10 dataset not initialized. Call init() first.");
+      throw new Error('CIFAR10 dataset not initialized. Call init() first.')
     }
 
     if (index < 0 || index >= this.length) {
-      throw new Error(`Index ${index} out of bounds`);
+      throw new Error(`Index ${index} out of bounds`)
     }
 
-    throw new Error("CIFAR10.getItem not yet implemented");
+    throw new Error('CIFAR10.getItem not yet implemented')
   }
 
   get length(): number {
-    return this.train ? 50000 : 10000;
+    return this.train ? 50000 : 10000
   }
 
   get classes(): string[] {
-    return [
-      "airplane",
-      "automobile",
-      "bird",
-      "cat",
-      "deer",
-      "dog",
-      "frog",
-      "horse",
-      "ship",
-      "truck",
-    ];
+    return ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
   }
 }
 
@@ -68,7 +57,7 @@ export class CIFAR10 extends BaseDataset<[Tensor, number]> {
  * Each class contains 600 images (500 training, 100 test).
  */
 export class CIFAR100 extends BaseDataset<[Tensor, number]> {
-  private fineLabels: boolean;
+  private fineLabels: boolean
 
   constructor(
     _root: string,
@@ -77,8 +66,8 @@ export class CIFAR100 extends BaseDataset<[Tensor, number]> {
     _download: boolean = false,
     fineLabels: boolean = true,
   ) {
-    super();
-    this.fineLabels = fineLabels;
+    super()
+    this.fineLabels = fineLabels
   }
 
   async init(): Promise<void> {
@@ -86,14 +75,14 @@ export class CIFAR100 extends BaseDataset<[Tensor, number]> {
   }
 
   getItem(_index: number): [Tensor, number] {
-    throw new Error("CIFAR100.getItem not yet implemented");
+    throw new Error('CIFAR100.getItem not yet implemented')
   }
 
   get length(): number {
-    return this.train ? 50000 : 10000;
+    return this.train ? 50000 : 10000
   }
 
   get numClasses(): number {
-    return this.fineLabels ? 100 : 20;
+    return this.fineLabels ? 100 : 20
   }
 }

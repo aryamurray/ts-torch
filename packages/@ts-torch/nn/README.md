@@ -45,18 +45,18 @@ const output = model.forward(input);
 TypeScript catches shape mismatches at compile time:
 
 ```typescript
-const layer1 = new Linear(128, 64);
-const layer2 = new Linear(256, 10); // Expects 256 inputs
+const layer1 = new Linear(128, 64)
+const layer2 = new Linear(256, 10) // Expects 256 inputs
 
 // This will fail to compile!
-const invalid = layer1.pipe(layer2);
+const invalid = layer1.pipe(layer2)
 // Error: Type 'readonly [number, 64]' is not assignable to 'readonly [number, 256]'
 ```
 
 ### Sequential Container
 
 ```typescript
-import { Sequential } from "@ts-torch/nn";
+import { Sequential } from '@ts-torch/nn'
 
 // Using Sequential with explicit types
 const model = new Sequential<readonly [number, 784], readonly [number, 10]>(
@@ -66,13 +66,13 @@ const model = new Sequential<readonly [number, 784], readonly [number, 10]>(
   new ReLU(),
   new Linear(128, 10),
   new Softmax(-1),
-);
+)
 ```
 
 ### Sequential Builder (Best Type Inference)
 
 ```typescript
-import { sequential } from "@ts-torch/nn";
+import { sequential } from '@ts-torch/nn'
 
 // Builder pattern with full shape tracking
 const model = sequential<readonly [number, 784]>()
@@ -82,7 +82,7 @@ const model = sequential<readonly [number, 784]>()
   .add(new ReLU())
   .add(new Linear(128, 10))
   .add(new Softmax(-1))
-  .build();
+  .build()
 
 // Type: Sequential<readonly [number, 784], readonly [number, 10]>
 ```
@@ -92,17 +92,17 @@ const model = sequential<readonly [number, 784]>()
 ### Linear Layers
 
 ```typescript
-import { Linear } from "@ts-torch/nn";
+import { Linear } from '@ts-torch/nn'
 
 // Basic usage
-const fc = new Linear(784, 128);
+const fc = new Linear(784, 128)
 
 // With options
 const fc = new Linear(784, 128, {
   bias: true, // Include bias term (default: true)
-  init: "kaiming_uniform", // Weight initialization strategy
+  init: 'kaiming_uniform', // Weight initialization strategy
   dtype: DType.float32, // Data type
-});
+})
 
 // Initialization strategies:
 // - 'kaiming_uniform': He uniform for ReLU networks
@@ -117,25 +117,25 @@ const fc = new Linear(784, 128, {
 All activation functions preserve input shape and are type-safe:
 
 ```typescript
-import { ReLU, Sigmoid, Tanh, Softmax, LeakyReLU, GELU } from "@ts-torch/nn";
+import { ReLU, Sigmoid, Tanh, Softmax, LeakyReLU, GELU } from '@ts-torch/nn'
 
 // ReLU: max(0, x)
-const relu = new ReLU();
+const relu = new ReLU()
 
 // Sigmoid: 1 / (1 + e^(-x))
-const sigmoid = new Sigmoid();
+const sigmoid = new Sigmoid()
 
 // Tanh: (e^x - e^(-x)) / (e^x + e^(-x))
-const tanh = new Tanh();
+const tanh = new Tanh()
 
 // Softmax: normalize to probability distribution
-const softmax = new Softmax(-1); // dim = -1 (last dimension)
+const softmax = new Softmax(-1) // dim = -1 (last dimension)
 
 // Leaky ReLU: max(αx, x)
-const leaky = new LeakyReLU(0.01); // negative_slope = 0.01
+const leaky = new LeakyReLU(0.01) // negative_slope = 0.01
 
 // GELU: Gaussian Error Linear Unit (for transformers)
-const gelu = new GELU();
+const gelu = new GELU()
 ```
 
 ### Functional API
@@ -143,15 +143,15 @@ const gelu = new GELU();
 Stateless operations for custom forward passes:
 
 ```typescript
-import { F } from "@ts-torch/nn";
+import { F } from '@ts-torch/nn'
 
 class CustomModule extends Module {
   forward(x: Tensor) {
-    x = F.linear(x, this.weight, this.bias);
-    x = F.relu(x);
-    x = F.dropout(x, 0.5, this.training);
-    x = F.softmax(x, -1);
-    return x;
+    x = F.linear(x, this.weight, this.bias)
+    x = F.relu(x)
+    x = F.dropout(x, 0.5, this.training)
+    x = F.softmax(x, -1)
+    return x
   }
 }
 
@@ -173,7 +173,7 @@ const encoder = new Linear(784, 512)
   .pipe(new ReLU())
   .pipe(new Linear(512, 256))
   .pipe(new ReLU())
-  .pipe(new Linear(256, 128));
+  .pipe(new Linear(256, 128))
 
 // Decoder: 128 -> 256 -> 512 -> 784
 const decoder = new Linear(128, 256)
@@ -181,10 +181,10 @@ const decoder = new Linear(128, 256)
   .pipe(new Linear(256, 512))
   .pipe(new ReLU())
   .pipe(new Linear(512, 784))
-  .pipe(new Sigmoid());
+  .pipe(new Sigmoid())
 
 // Compose into full autoencoder
-const autoencoder = encoder.pipe(decoder);
+const autoencoder = encoder.pipe(decoder)
 // Type: PipedModule<readonly [number, 784], readonly [number, 784]>
 ```
 
@@ -192,32 +192,30 @@ const autoencoder = encoder.pipe(decoder);
 
 ```typescript
 // Define building blocks
-const hiddenLayer = (inFeatures: number, outFeatures: number) =>
-  new Linear(inFeatures, outFeatures).pipe(new ReLU());
+const hiddenLayer = (inFeatures: number, outFeatures: number) => new Linear(inFeatures, outFeatures).pipe(new ReLU())
 
-const outputLayer = (inFeatures: number, numClasses: number) =>
-  new Linear(inFeatures, numClasses).pipe(new Softmax(-1));
+const outputLayer = (inFeatures: number, numClasses: number) => new Linear(inFeatures, numClasses).pipe(new Softmax(-1))
 
 // Compose them
 const classifier = hiddenLayer(784, 512)
   .pipe(hiddenLayer(512, 256))
   .pipe(hiddenLayer(256, 128))
-  .pipe(outputLayer(128, 10));
+  .pipe(outputLayer(128, 10))
 ```
 
 ### Parameter Management
 
 ```typescript
-const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10));
+const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10))
 
 // Get all parameters
-const params = model.parameters();
-console.log(`Model has ${params.length} parameter tensors`);
+const params = model.parameters()
+console.log(`Model has ${params.length} parameter tensors`)
 
 // Get named parameters (for debugging/analysis)
-const namedParams = model.namedParameters();
+const namedParams = model.namedParameters()
 for (const [name, param] of namedParams) {
-  console.log(`${name}: shape=${param.data.shape}, requires_grad=${param.requiresGrad}`);
+  console.log(`${name}: shape=${param.data.shape}, requires_grad=${param.requiresGrad}`)
 }
 // Output:
 // 0.weight: shape=[128, 784], requires_grad=true
@@ -229,18 +227,18 @@ for (const [name, param] of namedParams) {
 ### Training vs Evaluation Mode
 
 ```typescript
-const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10));
+const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10))
 
 // Training mode (enables dropout, etc.)
-model.train();
-const trainOutput = model.forward(input);
+model.train()
+const trainOutput = model.forward(input)
 
 // Evaluation mode (disables dropout, etc.)
-model.eval();
-const evalOutput = model.forward(input);
+model.eval()
+const evalOutput = model.forward(input)
 
 // Toggle back to training
-model.train(true);
+model.train(true)
 ```
 
 ## Type System
@@ -289,59 +287,54 @@ The `next` module's input shape must match `OutShape` (this module's output shap
 
 ```typescript
 // Good: Type-safe chaining
-const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10));
+const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10))
 
 // Also good: Sequential builder
 const model = sequential<readonly [number, 784]>()
   .add(new Linear(784, 128))
   .add(new ReLU())
   .add(new Linear(128, 10))
-  .build();
+  .build()
 ```
 
 ### 2. Specify Exact Dimensions as Const
 
 ```typescript
-const INPUT_DIM = 784 as const;
-const HIDDEN_DIM = 128 as const;
-const OUTPUT_DIM = 10 as const;
+const INPUT_DIM = 784 as const
+const HIDDEN_DIM = 128 as const
+const OUTPUT_DIM = 10 as const
 
-const model = new Linear(INPUT_DIM, HIDDEN_DIM)
-  .pipe(new ReLU())
-  .pipe(new Linear(HIDDEN_DIM, OUTPUT_DIM));
+const model = new Linear(INPUT_DIM, HIDDEN_DIM).pipe(new ReLU()).pipe(new Linear(HIDDEN_DIM, OUTPUT_DIM))
 ```
 
 ### 3. Use Type Parameters for Generic Models
 
 ```typescript
-function createClassifier<InputDim extends number, OutputDim extends number>(
-  inputDim: InputDim,
-  outputDim: OutputDim,
-) {
+function createClassifier<InputDim extends number, OutputDim extends number>(inputDim: InputDim, outputDim: OutputDim) {
   return new Linear(inputDim, 256)
     .pipe(new ReLU())
     .pipe(new Linear(256, 128))
     .pipe(new ReLU())
-    .pipe(new Linear(128, outputDim));
+    .pipe(new Linear(128, outputDim))
 }
 
-const mnist = createClassifier(784, 10);
-const cifar = createClassifier(3072, 10);
+const mnist = createClassifier(784, 10)
+const cifar = createClassifier(3072, 10)
 ```
 
 ### 4. Leverage Functional API in Custom Modules
 
 ```typescript
-import { Module, F } from "@ts-torch/nn";
+import { Module, F } from '@ts-torch/nn'
 
 class CustomLayer extends Module<readonly [number, 128], readonly [number, 64]> {
-  weight: Parameter<readonly [64, 128]>;
+  weight: Parameter<readonly [64, 128]>
 
   forward(x: Tensor<readonly [number, 128]>): Tensor<readonly [number, 64]> {
-    let out = F.linear(x, this.weight);
-    out = F.relu(out);
-    out = F.dropout(out, 0.5, this.training);
-    return out;
+    let out = F.linear(x, this.weight)
+    out = F.relu(out)
+    out = F.dropout(out, 0.5, this.training)
+    return out
   }
 }
 ```
@@ -356,10 +349,10 @@ For ReLU networks. Based on [He et al. 2015](https://arxiv.org/abs/1502.01852).
 
 ```typescript
 // Uniform: W ~ U(-√(6/fan_in), √(6/fan_in))
-const layer = new Linear(784, 128, { init: "kaiming_uniform" });
+const layer = new Linear(784, 128, { init: 'kaiming_uniform' })
 
 // Normal: W ~ N(0, √(2/fan_in))
-const layer = new Linear(784, 128, { init: "kaiming_normal" });
+const layer = new Linear(784, 128, { init: 'kaiming_normal' })
 ```
 
 ### Xavier (Glorot) Initialization
@@ -368,10 +361,10 @@ For tanh/sigmoid networks. Based on [Glorot & Bengio 2010](http://proceedings.ml
 
 ```typescript
 // Uniform: W ~ U(-√(6/(fan_in+fan_out)), √(6/(fan_in+fan_out)))
-const layer = new Linear(784, 128, { init: "xavier_uniform" });
+const layer = new Linear(784, 128, { init: 'xavier_uniform' })
 
 // Normal: W ~ N(0, √(2/(fan_in+fan_out)))
-const layer = new Linear(784, 128, { init: "xavier_normal" });
+const layer = new Linear(784, 128, { init: 'xavier_normal' })
 ```
 
 ## License

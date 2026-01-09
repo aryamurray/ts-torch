@@ -5,8 +5,8 @@
  * enabling compile-time verification of shape compatibility.
  */
 
-import type { DTypeName } from "./dtype";
-import type { Shape, Rank, SetDim, RemoveDim, InsertDim, NumElements, Reverse } from "./shape";
+import type { DTypeName } from './dtype'
+import type { Shape, Rank, SetDim, RemoveDim, InsertDim, NumElements, Reverse } from './shape'
 
 /**
  * Core tensor type combining shape and dtype information
@@ -22,9 +22,9 @@ import type { Shape, Rank, SetDim, RemoveDim, InsertDim, NumElements, Reverse } 
  * ```
  */
 export interface TensorType<S extends Shape = Shape, D extends DTypeName = DTypeName> {
-  readonly shape: S;
-  readonly dtype: D;
-  readonly ndim: Rank<S>;
+  readonly shape: S
+  readonly dtype: D
+  readonly ndim: Rank<S>
 }
 
 /**
@@ -52,11 +52,7 @@ export type MatMulShape<S1 extends Shape, S2 extends Shape> =
     : Rank<S2> extends 0 | 1
       ? never
       : // Extract last two dimensions
-        S1 extends readonly [
-            ...infer Batch1 extends readonly number[],
-            infer M extends number,
-            infer K1 extends number,
-          ]
+        S1 extends readonly [...infer Batch1 extends readonly number[], infer M extends number, infer K1 extends number]
         ? S2 extends readonly [
             ...infer Batch2 extends readonly number[],
             infer K2 extends number,
@@ -74,7 +70,7 @@ export type MatMulShape<S1 extends Shape, S2 extends Shape> =
                 : never
             : never // K dimensions don't match
           : never
-        : never;
+        : never
 
 /**
  * Computes the shape after transposing dimensions D0 and D1
@@ -89,19 +85,15 @@ export type MatMulShape<S1 extends Shape, S2 extends Shape> =
  * type R2 = TransposeShape<[100, 50], 0, 1>; // [50, 100]
  * ```
  */
-export type TransposeShape<
-  S extends Shape,
-  D0 extends number,
-  D1 extends number,
-> = D0 extends keyof S
+export type TransposeShape<S extends Shape, D0 extends number, D1 extends number> = D0 extends keyof S
   ? D1 extends keyof S
     ? {
-        [K in keyof S]: K extends `${D0}` ? S[D1] : K extends `${D1}` ? S[D0] : S[K];
+        [K in keyof S]: K extends `${D0}` ? S[D1] : K extends `${D1}` ? S[D0] : S[K]
       } extends infer R extends readonly number[]
       ? R
       : never
     : never
-  : never;
+  : never
 
 /**
  * Validates that reshape preserves element count
@@ -116,11 +108,7 @@ export type TransposeShape<
  * ```
  */
 export type ReshapeValid<From extends Shape, To extends Shape> =
-  NumElements<From> extends NumElements<To>
-    ? NumElements<To> extends NumElements<From>
-      ? To
-      : never
-    : never;
+  NumElements<From> extends NumElements<To> ? (NumElements<To> extends NumElements<From> ? To : never) : never
 
 /**
  * Removes dimension D if it has size 1
@@ -134,16 +122,13 @@ export type ReshapeValid<From extends Shape, To extends Shape> =
  * type R2 = SqueezeShape<[1, 3, 1, 4], undefined>; // [3, 4] (squeeze all)
  * ```
  */
-export type SqueezeShape<
-  S extends Shape,
-  D extends number | undefined = undefined,
-> = D extends number
+export type SqueezeShape<S extends Shape, D extends number | undefined = undefined> = D extends number
   ? D extends keyof S
     ? S[D] extends 1
       ? RemoveDim<S, D>
       : S // Can't squeeze non-1 dimension
     : never // Invalid dimension
-  : SqueezeAllOnes<S>;
+  : SqueezeAllOnes<S>
 
 /**
  * Helper to squeeze all dimensions of size 1
@@ -156,7 +141,7 @@ type SqueezeAllOnes<S extends Shape> = S extends readonly [
   ? Head extends 1
     ? SqueezeAllOnes<Tail>
     : readonly [Head, ...SqueezeAllOnes<Tail>]
-  : readonly [];
+  : readonly []
 
 /**
  * Adds a dimension of size 1 at index D
@@ -176,7 +161,7 @@ export type UnsqueezeShape<S extends Shape, D extends number> = D extends number
     ? // Append to end
       readonly [...S, 1]
     : InsertDim<S, D, 1>
-  : never;
+  : never
 
 /**
  * Concatenates two tensors along dimension D
@@ -206,7 +191,7 @@ export type ConcatShape<S1 extends Shape, S2 extends Shape, D extends number> =
           : never
         : never
       : never
-    : never;
+    : never
 
 /**
  * Helper to add two numbers at type level
@@ -220,23 +205,17 @@ type Add<A extends number, B extends number> = A extends 0
       ? number
       : number extends B
         ? number
-        : number; // Fallback for general case
+        : number // Fallback for general case
 
 /**
  * Check if all dimensions except D match between two shapes
  * @internal
  */
 type ShapesMatchExcept<S1 extends Shape, S2 extends Shape, D extends number> = {
-  [K in keyof S1]: K extends `${D}`
-    ? true
-    : K extends keyof S2
-      ? S1[K] extends S2[K]
-        ? true
-        : false
-      : false;
+  [K in keyof S1]: K extends `${D}` ? true : K extends keyof S2 ? (S1[K] extends S2[K] ? true : false) : false
 }[number] extends true
   ? true
-  : false;
+  : false
 
 /**
  * Computes the broadcast shape of two tensors
@@ -257,7 +236,7 @@ type ShapesMatchExcept<S1 extends Shape, S2 extends Shape, D extends number> = {
  * ```
  */
 export type BroadcastShape<S1 extends Shape, S2 extends Shape> =
-  BroadcastShapeImpl<Reverse<S1>, Reverse<S2>> extends infer R extends Shape ? Reverse<R> : never;
+  BroadcastShapeImpl<Reverse<S1>, Reverse<S2>> extends infer R extends Shape ? Reverse<R> : never
 
 /**
  * Implementation of broadcasting working from right to left
@@ -282,7 +261,7 @@ type BroadcastShapeImpl<S1 extends Shape, S2 extends Shape> = S1 extends readonl
     ? // S1 exhausted: use remaining S2
       S2
     : // Both exhausted
-      readonly [];
+      readonly []
 
 /**
  * Computes the shape after reducing along dimension D
@@ -297,11 +276,9 @@ type BroadcastShapeImpl<S1 extends Shape, S2 extends Shape> = S1 extends readonl
  * type R2 = ReduceShape<[2, 3, 4], 1, true>; // [2, 1, 4]
  * ```
  */
-export type ReduceShape<
-  S extends Shape,
-  D extends number,
-  KeepDim extends boolean = false,
-> = KeepDim extends true ? SetDim<S, D, 1> : RemoveDim<S, D>;
+export type ReduceShape<S extends Shape, D extends number, KeepDim extends boolean = false> = KeepDim extends true
+  ? SetDim<S, D, 1>
+  : RemoveDim<S, D>
 
 /**
  * Computes the shape after permuting dimensions
@@ -318,11 +295,11 @@ export type ReduceShape<
 export type PermuteShape<S extends Shape, Perm extends readonly number[]> =
   Rank<S> extends Rank<Perm>
     ? {
-        [K in keyof Perm]: Perm[K] extends keyof S ? S[Perm[K]] : never;
+        [K in keyof Perm]: Perm[K] extends keyof S ? S[Perm[K]] : never
       } extends infer R extends readonly number[]
       ? R
       : never
-    : never;
+    : never
 
 /**
  * Computes the shape after expanding dimension D to size N
@@ -342,7 +319,7 @@ export type ExpandShape<S extends Shape, D extends number, N extends number> = D
   ? S[D] extends 1
     ? SetDim<S, D, N>
     : never // Can only expand size-1 dimensions
-  : never;
+  : never
 
 /**
  * Computes the shape of a slice operation
@@ -362,7 +339,7 @@ export type SliceShape<
   _Start extends number = 0,
   _End extends number = number,
   _Step extends number = 1,
-> = D extends keyof S ? SetDim<S, D, number> : never;
+> = D extends keyof S ? SetDim<S, D, number> : never
 
 /**
  * Flattens a shape from dimension Start to End into a single dimension
@@ -377,11 +354,11 @@ export type SliceShape<
  * type R2 = FlattenShape<[2, 3, 4], 0, 3>; // [24]
  * ```
  */
-export type FlattenShape<
-  S extends Shape,
-  Start extends number = 0,
-  End extends number = Rank<S>,
-> = S extends readonly [...infer Prefix, ...infer Middle, ...infer Suffix]
+export type FlattenShape<S extends Shape, Start extends number = 0, End extends number = Rank<S>> = S extends readonly [
+  ...infer Prefix,
+  ...infer Middle,
+  ...infer Suffix,
+]
   ? Prefix extends { length: Start }
     ? Middle extends Shape
       ? End extends number
@@ -389,4 +366,4 @@ export type FlattenShape<
         : never
       : never
     : never
-  : never;
+  : never

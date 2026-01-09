@@ -4,8 +4,8 @@
  * Provides Sequential for building linear pipelines with type-safe shape inference.
  */
 
-import { Module, type Tensor, type float32 } from "../module.js";
-import type { Shape, DType } from "@ts-torch/core";
+import { Module, type Tensor, type float32 } from '../module.js'
+import type { Shape, DType } from '@ts-torch/core'
 
 /**
  * Sequential container for linear module composition
@@ -40,7 +40,7 @@ export class Sequential<
   Out extends Shape = Shape,
   D extends DType<string> = float32,
 > extends Module<In, Out, D> {
-  private readonly modules: Module<any, any, D>[];
+  private readonly modules: Module<any, any, D>[]
 
   /**
    * Create a new Sequential container
@@ -53,18 +53,18 @@ export class Sequential<
    * the explicit type parameters or use .pipe() chaining instead.
    */
   constructor(...modules: Module<any, any, D>[]) {
-    super();
+    super()
 
     if (modules.length === 0) {
-      throw new Error("Sequential requires at least one module");
+      throw new Error('Sequential requires at least one module')
     }
 
-    this.modules = modules;
+    this.modules = modules
 
     // Register all modules with numeric keys
     modules.forEach((module, index) => {
-      this.registerModule(String(index), module);
-    });
+      this.registerModule(String(index), module)
+    })
   }
 
   /**
@@ -74,13 +74,13 @@ export class Sequential<
    * @returns Output tensor after all transformations
    */
   forward(input: Tensor<In, D>): Tensor<Out, D> {
-    let output: any = input;
+    let output: any = input
 
     for (const module of this.modules) {
-      output = module.forward(output);
+      output = module.forward(output)
     }
 
-    return output as Tensor<Out, D>;
+    return output as Tensor<Out, D>
   }
 
   /**
@@ -90,7 +90,7 @@ export class Sequential<
    * @returns New Sequential with appended module
    */
   append<NextOut extends Shape>(module: Module<Out, NextOut, D>): Sequential<In, NextOut, D> {
-    return new Sequential<In, NextOut, D>(...this.modules, module);
+    return new Sequential<In, NextOut, D>(...this.modules, module)
   }
 
   /**
@@ -100,26 +100,26 @@ export class Sequential<
    * @returns Module at index
    */
   at(index: number): Module<any, any, D> | undefined {
-    return this.modules[index];
+    return this.modules[index]
   }
 
   /**
    * Get number of modules in sequential
    */
   get length(): number {
-    return this.modules.length;
+    return this.modules.length
   }
 
   /**
    * Iterate over modules
    */
   *[Symbol.iterator](): Iterator<Module<any, any, D>> {
-    yield* this.modules;
+    yield* this.modules
   }
 
   override toString(): string {
-    const moduleStrs = this.modules.map((m, i) => `  (${i}): ${m.toString()}`);
-    return `Sequential(\n${moduleStrs.join("\n")}\n)`;
+    const moduleStrs = this.modules.map((m, i) => `  (${i}): ${m.toString()}`)
+    return `Sequential(\n${moduleStrs.join('\n')}\n)`
   }
 }
 
@@ -146,18 +146,14 @@ export class Sequential<
  * // Type is: Sequential<readonly [number, 784], readonly [number, 10]>
  * ```
  */
-export class SequentialBuilder<
-  In extends Shape = Shape,
-  Out extends Shape = Shape,
-  D extends DType<string> = float32,
-> {
-  private modules: Module<any, any, D>[] = [];
+export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Shape, D extends DType<string> = float32> {
+  private modules: Module<any, any, D>[] = []
 
   private constructor(
     private readonly inputShape?: In,
     modules: Module<any, any, D>[] = [],
   ) {
-    this.modules = modules;
+    this.modules = modules
   }
 
   /**
@@ -172,10 +168,8 @@ export class SequentialBuilder<
    * const builder = sequential<readonly [number, 784]>();
    * ```
    */
-  static create<In extends Shape, D extends DType<string> = float32>(
-    _inputShape?: In,
-  ): SequentialBuilder<In, In, D> {
-    return new SequentialBuilder<In, In, D>(_inputShape);
+  static create<In extends Shape, D extends DType<string> = float32>(_inputShape?: In): SequentialBuilder<In, In, D> {
+    return new SequentialBuilder<In, In, D>(_inputShape)
   }
 
   /**
@@ -186,11 +180,8 @@ export class SequentialBuilder<
    * @returns Updated builder with new output shape
    */
   add<NextOut extends Shape>(module: Module<Out, NextOut, D>): SequentialBuilder<In, NextOut, D> {
-    const newBuilder = new SequentialBuilder<In, NextOut, D>(this.inputShape, [
-      ...this.modules,
-      module,
-    ]);
-    return newBuilder;
+    const newBuilder = new SequentialBuilder<In, NextOut, D>(this.inputShape, [...this.modules, module])
+    return newBuilder
   }
 
   /**
@@ -199,7 +190,7 @@ export class SequentialBuilder<
    * @returns Sequential module with full type information
    */
   build(): Sequential<In, Out, D> {
-    return new Sequential<In, Out, D>(...this.modules);
+    return new Sequential<In, Out, D>(...this.modules)
   }
 }
 
@@ -219,9 +210,6 @@ export class SequentialBuilder<
  *   .build();
  * ```
  */
-export function sequential<
-  In extends Shape,
-  D extends DType<string> = float32,
->(): SequentialBuilder<In, In, D> {
-  return SequentialBuilder.create<In, D>();
+export function sequential<In extends Shape, D extends DType<string> = float32>(): SequentialBuilder<In, In, D> {
+  return SequentialBuilder.create<In, D>()
 }

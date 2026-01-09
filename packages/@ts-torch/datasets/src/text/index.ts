@@ -2,4 +2,4 @@
  * Text datasets
  */
 
-export * from "./text-classification.js";
+export * from './text-classification.js'

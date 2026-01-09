@@ -5,7 +5,7 @@
  * and the tensor pool for performance optimization.
  */
 
-import { run, runAsync, TensorPool, globalTensorPool } from "./index.js";
+import { run, runAsync, TensorPool, globalTensorPool } from './index.js'
 
 // Note: These examples use a hypothetical Tensor API
 // In practice, you would use the actual ts-torch Tensor class
@@ -17,12 +17,12 @@ import { run, runAsync, TensorPool, globalTensorPool } from "./index.js";
  */
 export function basicScopeExample() {
   // Outside scope - tensors must be manually freed
-  console.log("Before scope:");
-  console.log("In scope:", false);
+  console.log('Before scope:')
+  console.log('In scope:', false)
 
   const result = run(() => {
-    console.log("\nInside scope:");
-    console.log("In scope:", true);
+    console.log('\nInside scope:')
+    console.log('In scope:', true)
 
     // These tensors will be auto-freed when scope exits
     // const a = torch.zeros([100, 100]);
@@ -31,12 +31,12 @@ export function basicScopeExample() {
 
     // Return the result - it will be escaped automatically
     // return c.escape();
-    return "result";
-  });
+    return 'result'
+  })
 
-  console.log("\nAfter scope:");
-  console.log("In scope:", false);
-  console.log("Result:", result);
+  console.log('\nAfter scope:')
+  console.log('In scope:', false)
+  console.log('Result:', result)
   // a and b have been freed
   // c persists because it was escaped
 }
@@ -47,27 +47,27 @@ export function basicScopeExample() {
  * Scopes can be nested for fine-grained control over memory lifetimes.
  */
 export function nestedScopesExample() {
-  console.log("Outer scope:");
+  console.log('Outer scope:')
 
   const outerResult = run(() => {
     // const x = torch.randn([50, 50]);
 
-    console.log("  Inner scope:");
+    console.log('  Inner scope:')
     const innerResult = run(() => {
       // const y = torch.randn([50, 50]);
       // const z = x.matmul(y);
       // return z.escape();
-      return "inner";
-    });
+      return 'inner'
+    })
     // y is freed, z persists
 
     // const result = x.add(innerResult);
     // return result.escape();
-    return innerResult;
-  });
+    return innerResult
+  })
   // x is freed, result persists
 
-  console.log("Result:", outerResult);
+  console.log('Result:', outerResult)
 }
 
 /**
@@ -76,13 +76,13 @@ export function nestedScopesExample() {
  * Use scopes in training loops to prevent memory leaks from intermediate tensors.
  */
 export function trainingLoopExample() {
-  console.log("Training loop with scoped memory:");
+  console.log('Training loop with scoped memory:')
 
   // const model = createModel();
   // const optimizer = new SGD(model.parameters());
 
   for (let epoch = 0; epoch < 10; epoch++) {
-    let totalLoss = 0;
+    let totalLoss = 0
 
     // Scope per epoch
     run(() => {
@@ -95,16 +95,16 @@ export function trainingLoopExample() {
 
           // Only the loss value escapes
           // return loss.item();
-          return Math.random();
-        });
+          return Math.random()
+        })
 
-        totalLoss += loss;
+        totalLoss += loss
 
         // All intermediate tensors (input, output) are freed here
       }
-    });
+    })
 
-    console.log(`Epoch ${epoch}: Loss = ${totalLoss / 100}`);
+    console.log(`Epoch ${epoch}: Loss = ${totalLoss / 100}`)
   }
 }
 
@@ -114,25 +114,25 @@ export function trainingLoopExample() {
  * Use runAsync() for async operations while maintaining memory safety.
  */
 export async function asyncScopeExample() {
-  console.log("Async scope example:");
+  console.log('Async scope example:')
 
   const result = await runAsync(async () => {
-    console.log("  Loading data...");
+    console.log('  Loading data...')
     // Simulate async data loading
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100))
 
     // const data = await fetchTensorData();
     // const tensor = torch.fromBuffer(data);
 
-    console.log("  Processing...");
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    console.log('  Processing...')
+    await new Promise((resolve) => setTimeout(resolve, 100))
 
     // const processed = await processAsync(tensor);
     // return processed.escape();
-    return "processed";
-  });
+    return 'processed'
+  })
 
-  console.log("Result:", result);
+  console.log('Result:', result)
 }
 
 /**
@@ -141,9 +141,9 @@ export async function asyncScopeExample() {
  * Reuse tensor allocations to reduce overhead in hot paths.
  */
 export function tensorPoolExample() {
-  console.log("Tensor pool example:");
+  console.log('Tensor pool example:')
 
-  const pool = new TensorPool();
+  const pool = new TensorPool()
 
   // Training loop with pooling
   for (let i = 0; i < 1000; i++) {
@@ -154,14 +154,14 @@ export function tensorPoolExample() {
       // optimizer.step(grad);
       // Return to pool for reuse
       // pool.release(grad);
-    });
+    })
   }
 
-  const stats = pool.stats();
-  console.log("Pool stats:");
-  console.log(`  Total tensors: ${stats.size}`);
-  console.log(`  Hit rate: ${(stats.hitRate * 100).toFixed(1)}%`);
-  console.log(`  Hits: ${stats.hitCount}, Misses: ${stats.missCount}`);
+  const stats = pool.stats()
+  console.log('Pool stats:')
+  console.log(`  Total tensors: ${stats.size}`)
+  console.log(`  Hit rate: ${(stats.hitRate * 100).toFixed(1)}%`)
+  console.log(`  Hits: ${stats.hitCount}, Misses: ${stats.missCount}`)
 }
 
 /**
@@ -170,25 +170,25 @@ export function tensorPoolExample() {
  * Efficient memory usage during model inference.
  */
 export function inferenceExample() {
-  console.log("Inference with scoped memory:");
+  console.log('Inference with scoped memory:')
 
   // const model = loadModel();
 
-  const results = [];
+  const results = []
 
   for (let i = 0; i < 100; i++) {
     const prediction = run(() => {
       // const input = preprocessInput(data[i]);
       // const output = model.forward(input);
       // return output.argmax().item();
-      return i % 10;
-    });
+      return i % 10
+    })
 
-    results.push(prediction);
+    results.push(prediction)
     // All intermediate tensors are freed after each inference
   }
 
-  console.log(`Processed ${results.length} inputs`);
+  console.log(`Processed ${results.length} inputs`)
 }
 
 /**
@@ -197,7 +197,7 @@ export function inferenceExample() {
  * Escape only the tensors you need to keep alive.
  */
 export function selectiveEscapingExample() {
-  console.log("Selective escaping:");
+  console.log('Selective escaping:')
 
   const { mean, variance } = run(() => {
     // const data = torch.randn([1000, 100]);
@@ -210,13 +210,13 @@ export function selectiveEscapingExample() {
     return {
       // mean: data.mean(0).escape(),
       // variance: squared.mean(0).escape(),
-      mean: "mean",
-      variance: "variance",
-    };
-  });
+      mean: 'mean',
+      variance: 'variance',
+    }
+  })
 
   // Only mean and variance persist
-  console.log("Statistics computed:", { mean, variance });
+  console.log('Statistics computed:', { mean, variance })
 }
 
 /**
@@ -225,7 +225,7 @@ export function selectiveEscapingExample() {
  * Use the global pool for convenience.
  */
 export function globalPoolExample() {
-  console.log("Global tensor pool:");
+  console.log('Global tensor pool:')
 
   for (let i = 0; i < 100; i++) {
     run(() => {
@@ -234,11 +234,11 @@ export function globalPoolExample() {
       // Use tensor...
       // Return to global pool
       // globalTensorPool.release(temp);
-    });
+    })
   }
 
-  const stats = globalTensorPool.stats();
-  console.log("Global pool stats:", stats);
+  const stats = globalTensorPool.stats()
+  console.log('Global pool stats:', stats)
 }
 
 /**
@@ -247,7 +247,7 @@ export function globalPoolExample() {
  * Combine scoped memory with manual control where needed.
  */
 export function mixedMemoryManagementExample() {
-  console.log("Mixed memory management:");
+  console.log('Mixed memory management:')
 
   // Manual allocation outside scope
   // const weights = torch.randn([100, 100]);
@@ -261,7 +261,7 @@ export function mixedMemoryManagementExample() {
       // Update weights (escaped from scope)
       // weights.sub_(loss.grad());
       // input, output, loss are freed here
-    });
+    })
   }
 
   // Manual cleanup when done
@@ -274,21 +274,21 @@ export function mixedMemoryManagementExample() {
  * Scopes ensure cleanup even when exceptions occur.
  */
 export function errorHandlingExample() {
-  console.log("Error handling with scopes:");
+  console.log('Error handling with scopes:')
 
   try {
     run(() => {
       // const tensor = torch.zeros([100, 100]);
 
       // Simulate an error
-      throw new Error("Something went wrong!");
+      throw new Error('Something went wrong!')
 
       // Even though this code doesn't execute,
       // the scope will still clean up 'tensor'
-    });
+    })
   } catch (error) {
-    console.log("Error caught:", (error as Error).message);
-    console.log("Tensor was still cleaned up!");
+    console.log('Error caught:', (error as Error).message)
+    console.log('Tensor was still cleaned up!')
   }
 }
 
@@ -296,39 +296,39 @@ export function errorHandlingExample() {
  * Run all examples
  */
 export function runAllExamples() {
-  console.log("=".repeat(60));
-  console.log("Memory Management Examples");
-  console.log("=".repeat(60));
+  console.log('='.repeat(60))
+  console.log('Memory Management Examples')
+  console.log('='.repeat(60))
 
-  basicScopeExample();
-  console.log("\n" + "-".repeat(60) + "\n");
+  basicScopeExample()
+  console.log('\n' + '-'.repeat(60) + '\n')
 
-  nestedScopesExample();
-  console.log("\n" + "-".repeat(60) + "\n");
+  nestedScopesExample()
+  console.log('\n' + '-'.repeat(60) + '\n')
 
-  trainingLoopExample();
-  console.log("\n" + "-".repeat(60) + "\n");
+  trainingLoopExample()
+  console.log('\n' + '-'.repeat(60) + '\n')
 
   asyncScopeExample().then(() => {
-    console.log("\n" + "-".repeat(60) + "\n");
-    tensorPoolExample();
-    console.log("\n" + "-".repeat(60) + "\n");
+    console.log('\n' + '-'.repeat(60) + '\n')
+    tensorPoolExample()
+    console.log('\n' + '-'.repeat(60) + '\n')
 
-    inferenceExample();
-    console.log("\n" + "-".repeat(60) + "\n");
+    inferenceExample()
+    console.log('\n' + '-'.repeat(60) + '\n')
 
-    selectiveEscapingExample();
-    console.log("\n" + "-".repeat(60) + "\n");
+    selectiveEscapingExample()
+    console.log('\n' + '-'.repeat(60) + '\n')
 
-    globalPoolExample();
-    console.log("\n" + "-".repeat(60) + "\n");
+    globalPoolExample()
+    console.log('\n' + '-'.repeat(60) + '\n')
 
-    mixedMemoryManagementExample();
-    console.log("\n" + "-".repeat(60) + "\n");
+    mixedMemoryManagementExample()
+    console.log('\n' + '-'.repeat(60) + '\n')
 
-    errorHandlingExample();
-    console.log("\n" + "=".repeat(60));
-  });
+    errorHandlingExample()
+    console.log('\n' + '='.repeat(60))
+  })
 }
 
 // Uncomment to run examples:

@@ -5,13 +5,13 @@
  * All functions integrate with the memory scope system for automatic cleanup.
  */
 
-import { ptr } from "bun:ffi";
-import { Tensor } from "./tensor.js";
-import type { Shape } from "../types/shape.js";
-import type { DType } from "../types/dtype.js";
-import { DType as DTypeConstants } from "../types/dtype.js";
-import { getLib } from "../ffi/loader.js";
-import { withError, checkNull } from "../ffi/error.js";
+import { ptr } from 'bun:ffi'
+import { Tensor } from './tensor.js'
+import type { Shape } from '../types/shape.js'
+import type { DType } from '../types/dtype.js'
+import { DType as DTypeConstants } from '../types/dtype.js'
+import { getLib } from '../ffi/loader.js'
+import { withError, checkNull } from '../ffi/error.js'
 
 /**
  * Create a tensor filled with zeros
@@ -29,24 +29,30 @@ import { withError, checkNull } from "../ffi/error.js";
  * // Type: Tensor<[2, 3], DType<"float32">>
  * ```
  */
-export function zeros<S extends Shape, D extends DType<string> = DType<"float32">>(
+export function zeros<S extends Shape, D extends DType<string> = DType<'float32'>>(
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
-  const lib = getLib();
+  const lib = getLib()
 
   // Convert shape to BigInt64Array for FFI
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)));
-  const shapePtr = ptr(shapeArray);
+  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  const shapePtr = ptr(shapeArray)
 
-  const handle = withError((err) =>
-    lib.symbols.ts_tensor_zeros(shapePtr, shape.length, dtype.value, requiresGrad, err),
-  );
+  // Device: CPU (0), device_index: 0
+  const handle = withError((err) => lib.symbols.ts_tensor_zeros(shapePtr, shape.length, dtype.value, 0, 0, err))
 
-  checkNull(handle, "Failed to create zeros tensor");
+  checkNull(handle, 'Failed to create zeros tensor')
 
-  return new Tensor<S, D>(handle!, shape, dtype);
+  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+
+  // Set requires_grad after creation
+  if (requiresGrad) {
+    tensor.requiresGrad = true
+  }
+
+  return tensor
 }
 
 /**
@@ -65,23 +71,28 @@ export function zeros<S extends Shape, D extends DType<string> = DType<"float32"
  * // Type: Tensor<[2, 3], DType<"float32">>
  * ```
  */
-export function ones<S extends Shape, D extends DType<string> = DType<"float32">>(
+export function ones<S extends Shape, D extends DType<string> = DType<'float32'>>(
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
-  const lib = getLib();
+  const lib = getLib()
 
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)));
-  const shapePtr = ptr(shapeArray);
+  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  const shapePtr = ptr(shapeArray)
 
-  const handle = withError((err) =>
-    lib.symbols.ts_tensor_ones(shapePtr, shape.length, dtype.value, requiresGrad, err),
-  );
+  // Device: CPU (0), device_index: 0
+  const handle = withError((err) => lib.symbols.ts_tensor_ones(shapePtr, shape.length, dtype.value, 0, 0, err))
 
-  checkNull(handle, "Failed to create ones tensor");
+  checkNull(handle, 'Failed to create ones tensor')
 
-  return new Tensor<S, D>(handle!, shape, dtype);
+  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+
+  if (requiresGrad) {
+    tensor.requiresGrad = true
+  }
+
+  return tensor
 }
 
 /**
@@ -103,23 +114,28 @@ export function ones<S extends Shape, D extends DType<string> = DType<"float32">
  * // Fast allocation, fill it yourself
  * ```
  */
-export function empty<S extends Shape, D extends DType<string> = DType<"float32">>(
+export function empty<S extends Shape, D extends DType<string> = DType<'float32'>>(
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
-  const lib = getLib();
+  const lib = getLib()
 
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)));
-  const shapePtr = ptr(shapeArray);
+  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  const shapePtr = ptr(shapeArray)
 
-  const handle = withError((err) =>
-    lib.symbols.ts_tensor_empty(shapePtr, shape.length, dtype.value, requiresGrad, err),
-  );
+  // Device: CPU (0), device_index: 0
+  const handle = withError((err) => lib.symbols.ts_tensor_empty(shapePtr, shape.length, dtype.value, 0, 0, err))
 
-  checkNull(handle, "Failed to create empty tensor");
+  checkNull(handle, 'Failed to create empty tensor')
 
-  return new Tensor<S, D>(handle!, shape, dtype);
+  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+
+  if (requiresGrad) {
+    tensor.requiresGrad = true
+  }
+
+  return tensor
 }
 
 /**
@@ -138,23 +154,28 @@ export function empty<S extends Shape, D extends DType<string> = DType<"float32"
  * // Random initialization for neural networks
  * ```
  */
-export function randn<S extends Shape, D extends DType<string> = DType<"float32">>(
+export function randn<S extends Shape, D extends DType<string> = DType<'float32'>>(
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
-  const lib = getLib();
+  const lib = getLib()
 
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)));
-  const shapePtr = ptr(shapeArray);
+  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  const shapePtr = ptr(shapeArray)
 
-  const handle = withError((err) =>
-    lib.symbols.ts_tensor_randn(shapePtr, shape.length, dtype.value, requiresGrad, err),
-  );
+  // Device: CPU (0), device_index: 0
+  const handle = withError((err) => lib.symbols.ts_tensor_randn(shapePtr, shape.length, dtype.value, 0, 0, err))
 
-  checkNull(handle, "Failed to create randn tensor");
+  checkNull(handle, 'Failed to create randn tensor')
 
-  return new Tensor<S, D>(handle!, shape, dtype);
+  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+
+  if (requiresGrad) {
+    tensor.requiresGrad = true
+  }
+
+  return tensor
 }
 
 /**
@@ -178,63 +199,61 @@ export function randn<S extends Shape, D extends DType<string> = DType<"float32"
  * // [[1, 2, 3], [4, 5, 6]]
  * ```
  */
-export function fromArray<S extends Shape, D extends DType<string> = DType<"float32">>(
+export function fromArray<S extends Shape, D extends DType<string> = DType<'float32'>>(
   data: number[] | Float32Array | Float64Array | Int32Array | BigInt64Array,
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
-  const lib = getLib();
+  const lib = getLib()
 
   // Validate size
-  const expectedSize = shape.reduce((acc, dim) => acc * dim, 1);
+  const expectedSize = shape.reduce((acc, dim) => acc * dim, 1)
   if (data.length !== expectedSize) {
-    throw new Error(
-      `Data length ${data.length} does not match shape [${shape.join(", ")}] (expected ${expectedSize})`,
-    );
+    throw new Error(`Data length ${data.length} does not match shape [${shape.join(', ')}] (expected ${expectedSize})`)
   }
 
   // Convert to TypedArray if needed
-  let typedData: Float32Array | Float64Array | Int32Array | BigInt64Array;
+  let typedData: Float32Array | Float64Array | Int32Array | BigInt64Array
   if (Array.isArray(data)) {
     switch (dtype.name) {
-      case "float32":
-        typedData = new Float32Array(data);
-        break;
-      case "float64":
-        typedData = new Float64Array(data);
-        break;
-      case "int32":
-        typedData = new Int32Array(data);
-        break;
-      case "int64":
-        typedData = new BigInt64Array(data.map((x) => BigInt(x)));
-        break;
+      case 'float32':
+        typedData = new Float32Array(data)
+        break
+      case 'float64':
+        typedData = new Float64Array(data)
+        break
+      case 'int32':
+        typedData = new Int32Array(data)
+        break
+      case 'int64':
+        typedData = new BigInt64Array(data.map((x) => BigInt(x)))
+        break
       default:
-        throw new Error(`Unsupported dtype: ${dtype.name}`);
+        throw new Error(`Unsupported dtype: ${dtype.name}`)
     }
   } else {
-    typedData = data as Float32Array | Float64Array | Int32Array | BigInt64Array;
+    typedData = data as Float32Array | Float64Array | Int32Array | BigInt64Array
   }
 
-  const dataPtr = ptr(typedData.buffer);
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)));
-  const shapePtr = ptr(shapeArray);
+  const dataPtr = ptr(typedData.buffer)
+  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  const shapePtr = ptr(shapeArray)
 
+  // Device: CPU (0), device_index: 0
   const handle = withError((err) =>
-    lib.symbols.ts_tensor_from_buffer(
-      dataPtr,
-      shapePtr,
-      shape.length,
-      dtype.value,
-      requiresGrad,
-      err,
-    ),
-  );
+    lib.symbols.ts_tensor_from_buffer(dataPtr, shapePtr, shape.length, dtype.value, 0, 0, err),
+  )
 
-  checkNull(handle, "Failed to create tensor from array");
+  checkNull(handle, 'Failed to create tensor from array')
 
-  return new Tensor<S, D>(handle!, shape, dtype);
+  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+
+  if (requiresGrad) {
+    tensor.requiresGrad = true
+  }
+
+  return tensor
 }
 
 /**
@@ -253,28 +272,28 @@ export function fromArray<S extends Shape, D extends DType<string> = DType<"floa
  * const t2 = createArange(0, 1, 0.1); // [0.0, 0.1, 0.2, ..., 0.9]
  * ```
  */
-export function createArange<D extends DType<string> = DType<"float32">>(
+export function createArange<D extends DType<string> = DType<'float32'>>(
   start: number,
   end: number,
   step = 1,
   dtype: D = DTypeConstants.float32 as D,
 ): Tensor<readonly [number], D> {
   if (step === 0) {
-    throw new Error("Step cannot be zero");
+    throw new Error('Step cannot be zero')
   }
 
-  const size = Math.ceil((end - start) / step);
+  const size = Math.ceil((end - start) / step)
   if (size <= 0) {
-    throw new Error(`Invalid range: start=${start}, end=${end}, step=${step}`);
+    throw new Error(`Invalid range: start=${start}, end=${end}, step=${step}`)
   }
 
   // Generate data
-  const data: number[] = [];
+  const data: number[] = []
   for (let i = 0; i < size; i++) {
-    data.push(start + i * step);
+    data.push(start + i * step)
   }
 
-  return fromArray(data, [size] as const, dtype);
+  return fromArray(data, [size] as const, dtype)
 }
 
 /**
@@ -297,18 +316,18 @@ export function createArange<D extends DType<string> = DType<"float32">>(
  * // Type: Tensor<readonly [number, number], DType<"float32">>
  * ```
  */
-export function createTensorFromData<D extends DType<string> = DType<"float32">>(
+export function createTensorFromData<D extends DType<string> = DType<'float32'>>(
   data: number | number[] | number[][] | number[][][] | number[][][][],
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<readonly number[], D> {
   // Infer shape
-  const shape = inferShape(data);
+  const shape = inferShape(data)
 
   // Flatten data
-  const flatData = flattenArray(data);
+  const flatData = flattenArray(data)
 
-  return fromArray(flatData, shape as readonly number[], dtype, requiresGrad);
+  return fromArray(flatData, shape as readonly number[], dtype, requiresGrad)
 }
 
 /**
@@ -316,15 +335,15 @@ export function createTensorFromData<D extends DType<string> = DType<"float32">>
  * @internal
  */
 function inferShape(data: any): number[] {
-  const shape: number[] = [];
-  let current = data;
+  const shape: number[] = []
+  let current = data
 
   while (Array.isArray(current)) {
-    shape.push(current.length);
-    current = current[0];
+    shape.push(current.length)
+    current = current[0]
   }
 
-  return shape;
+  return shape
 }
 
 /**
@@ -333,21 +352,21 @@ function inferShape(data: any): number[] {
  */
 function flattenArray(data: any): number[] {
   if (!Array.isArray(data)) {
-    return [data];
+    return [data]
   }
 
-  const result: number[] = [];
+  const result: number[] = []
 
   function flatten(arr: any): void {
     for (const item of arr) {
       if (Array.isArray(item)) {
-        flatten(item);
+        flatten(item)
       } else {
-        result.push(item);
+        result.push(item)
       }
     }
   }
 
-  flatten(data);
-  return result;
+  flatten(data)
+  return result
 }

@@ -21,12 +21,12 @@ Successfully implemented a comprehensive optimizer module for ts-torch with SGD,
 
 ```typescript
 abstract class Optimizer {
-  abstract step(): void;
-  zeroGrad(): void;
-  get learningRate(): number;
-  set learningRate(lr: number);
-  getState(): Map<Tensor, Record<string, unknown>>;
-  loadState(state: Map<Tensor, Record<string, unknown>>): void;
+  abstract step(): void
+  zeroGrad(): void
+  get learningRate(): number
+  set learningRate(lr: number)
+  getState(): Map<Tensor, Record<string, unknown>>
+  loadState(state: Map<Tensor, Record<string, unknown>>): void
 }
 ```
 
@@ -122,7 +122,7 @@ abstract class Optimizer {
 
 ```typescript
 interface LossOptions {
-  reduction?: "mean" | "sum" | "none"; // Default: 'mean'
+  reduction?: 'mean' | 'sum' | 'none' // Default: 'mean'
 }
 ```
 
@@ -178,10 +178,10 @@ interface LossOptions {
 
 ```typescript
 abstract class LRScheduler {
-  step(): void; // Update learning rate
-  getCurrentLr(): number[]; // Get current LR per group
-  getLastEpoch(): number; // Get epoch counter
-  protected abstract getLr(): number[]; // Compute new LRs
+  step(): void // Update learning rate
+  getCurrentLr(): number[] // Get current LR per group
+  getLastEpoch(): number // Get epoch counter
+  protected abstract getLr(): number[] // Compute new LRs
 }
 ```
 
@@ -234,13 +234,13 @@ All implementations leverage TypeScript's advanced type system:
 function mseLoss<S extends Shape, D extends DType<string>>(
   input: Tensor<S, D>,
   target: Tensor<S, D>,
-): Tensor<readonly [], D>;
+): Tensor<readonly [], D>
 
 // Batch and class dimensions tracked at compile-time
 function crossEntropyLoss<B extends number, C extends number, D extends DType<string>>(
   logits: Tensor<readonly [B, C], D>,
   targets: Tensor<readonly [B], D>,
-): Tensor<readonly [], D>;
+): Tensor<readonly [], D>
 ```
 
 ### Tensor Operations Used
@@ -255,8 +255,8 @@ The implementations assume these tensor operations exist:
 These operations are called via duck-typing with runtime checks:
 
 ```typescript
-if ("mul" in tensor && typeof tensor.mul === "function") {
-  const result = tensor.mul(scalar) as Tensor;
+if ('mul' in tensor && typeof tensor.mul === 'function') {
+  const result = tensor.mul(scalar) as Tensor
 }
 ```
 
@@ -287,7 +287,7 @@ const optimizer = new SGD(
     { params: head.parameters(), lr: 0.01 },
   ],
   { lr: 0.01 },
-); // Default
+) // Default
 ```
 
 ## Testing Strategy
@@ -369,12 +369,12 @@ The API closely matches PyTorch for easy migration:
 
 ```typescript
 // PyTorch
-optimizer = torch.optim.SGD(model.parameters(), (lr = 0.01), (momentum = 0.9));
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, (step_size = 30), (gamma = 0.1));
+optimizer = torch.optim.SGD(model.parameters(), (lr = 0.01), (momentum = 0.9))
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, (step_size = 30), (gamma = 0.1))
 
 // ts-torch
-const optimizer = new SGD(model.parameters(), { lr: 0.01, momentum: 0.9 });
-const scheduler = new StepLR(optimizer, 30, 0.1);
+const optimizer = new SGD(model.parameters(), { lr: 0.01, momentum: 0.9 })
+const scheduler = new StepLR(optimizer, 30, 0.1)
 ```
 
 ## Performance Characteristics
@@ -444,11 +444,11 @@ const scheduler = new StepLR(optimizer, 30, 0.1);
 
 ```typescript
 // From other packages
-import { SGD, Adam, crossEntropyLoss, StepLR } from "@ts-torch/optim";
+import { SGD, Adam, crossEntropyLoss, StepLR } from '@ts-torch/optim'
 
 // Internal imports
-import { Optimizer } from "./optimizer.js";
-import type { Tensor } from "@ts-torch/core";
+import { Optimizer } from './optimizer.js'
+import type { Tensor } from '@ts-torch/core'
 ```
 
 ### Build Configuration

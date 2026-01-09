@@ -4,8 +4,8 @@
  * Activation functions maintain input shape, making them easy to compose.
  */
 
-import { Module, type Tensor, type float32 } from "../module.js";
-import type { Shape, DType } from "@ts-torch/core";
+import { Module, type Tensor, type float32 } from '../module.js'
+import type { Shape, DType } from '@ts-torch/core'
 
 /**
  * Rectified Linear Unit activation: ReLU(x) = max(0, x)
@@ -27,18 +27,14 @@ import type { Shape, DType } from "@ts-torch/core";
  *   .pipe(new Linear(128, 10));
  * ```
  */
-export class ReLU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
-  S,
-  S,
-  D
-> {
+export class ReLU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
   /**
    * Create a new ReLU activation
    *
    * @param inplace - Whether to modify input tensor in-place (default: false)
    */
   constructor(public readonly inplace: boolean = false) {
-    super();
+    super()
   }
 
   /**
@@ -52,11 +48,11 @@ export class ReLU<S extends Shape = Shape, D extends DType<string> = float32> ex
     // return input.relu();
     // or: return input.clamp(0, Infinity);
 
-    return input as any; // Placeholder - maintains type safety
+    return input as any // Placeholder - maintains type safety
   }
 
   override toString(): string {
-    return `ReLU(inplace=${this.inplace})`;
+    return `ReLU(inplace=${this.inplace})`
   }
 }
 
@@ -76,11 +72,7 @@ export class ReLU<S extends Shape = Shape, D extends DType<string> = float32> ex
  * const probs = sigmoid.forward(logits); // Type: Tensor<readonly [32, 10]>
  * ```
  */
-export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
-  S,
-  S,
-  D
-> {
+export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
   /**
    * Forward pass: σ(x) = 1 / (1 + e^(-x))
    *
@@ -92,11 +84,11 @@ export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32>
     // return input.sigmoid();
     // or: return 1 / (1 + input.neg().exp());
 
-    return input as any; // Placeholder - maintains type safety
+    return input as any // Placeholder - maintains type safety
   }
 
   override toString(): string {
-    return "Sigmoid()";
+    return 'Sigmoid()'
   }
 }
 
@@ -116,11 +108,7 @@ export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32>
  * const output = tanh.forward(input); // Type: Tensor<readonly [32, 64]>
  * ```
  */
-export class Tanh<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
-  S,
-  S,
-  D
-> {
+export class Tanh<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
   /**
    * Forward pass: tanh(x)
    *
@@ -131,11 +119,11 @@ export class Tanh<S extends Shape = Shape, D extends DType<string> = float32> ex
     // TODO: Implement actual Tanh when Tensor ops are ready
     // return input.tanh();
 
-    return input as any; // Placeholder - maintains type safety
+    return input as any // Placeholder - maintains type safety
   }
 
   override toString(): string {
-    return "Tanh()";
+    return 'Tanh()'
   }
 }
 
@@ -157,18 +145,14 @@ export class Tanh<S extends Shape = Shape, D extends DType<string> = float32> ex
  * // Each row sums to 1
  * ```
  */
-export class Softmax<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
-  S,
-  S,
-  D
-> {
+export class Softmax<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
   /**
    * Create a new Softmax activation
    *
    * @param dim - Dimension along which to apply softmax (default: -1, last dimension)
    */
   constructor(public readonly dim: number = -1) {
-    super();
+    super()
   }
 
   /**
@@ -186,11 +170,11 @@ export class Softmax<S extends Shape = Shape, D extends DType<string> = float32>
     // const exp = input.sub(maxVals).exp();
     // return exp.div(exp.sum(dim=this.dim, keepdim=true));
 
-    return input as any; // Placeholder - maintains type safety
+    return input as any // Placeholder - maintains type safety
   }
 
   override toString(): string {
-    return `Softmax(dim=${this.dim})`;
+    return `Softmax(dim=${this.dim})`
   }
 }
 
@@ -210,11 +194,7 @@ export class Softmax<S extends Shape = Shape, D extends DType<string> = float32>
  * const output = leaky.forward(input); // Type: Tensor<readonly [32, 128]>
  * ```
  */
-export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
-  S,
-  S,
-  D
-> {
+export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
   /**
    * Create a new Leaky ReLU activation
    *
@@ -225,7 +205,7 @@ export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float3
     public readonly negativeSlope: number = 0.01,
     public readonly inplace: boolean = false,
   ) {
-    super();
+    super()
   }
 
   /**
@@ -239,11 +219,11 @@ export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float3
     // return input.leaky_relu(this.negativeSlope);
     // or: return input.maximum(input.mul(this.negativeSlope));
 
-    return input as any; // Placeholder - maintains type safety
+    return input as any // Placeholder - maintains type safety
   }
 
   override toString(): string {
-    return `LeakyReLU(negative_slope=${this.negativeSlope}, inplace=${this.inplace})`;
+    return `LeakyReLU(negative_slope=${this.negativeSlope}, inplace=${this.inplace})`
   }
 }
 
@@ -266,11 +246,7 @@ export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float3
  * const output = gelu.forward(input); // Type: Tensor<readonly [32, 768]>
  * ```
  */
-export class GELU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
-  S,
-  S,
-  D
-> {
+export class GELU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
   /**
    * Forward pass: GELU(x)
    *
@@ -286,10 +262,10 @@ export class GELU<S extends Shape = Shape, D extends DType<string> = float32> ex
     // const inner = Math.sqrt(2/Math.PI) * (input + 0.044715 * x3);
     // return 0.5 * input * (1 + inner.tanh());
 
-    return input as any; // Placeholder - maintains type safety
+    return input as any // Placeholder - maintains type safety
   }
 
   override toString(): string {
-    return "GELU()";
+    return 'GELU()'
   }
 }

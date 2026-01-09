@@ -8,9 +8,9 @@
   },
   "dependencies": {
     "@ts-torch/core": "workspace:*",
+    "@ts-torch/datasets": "workspace:*",
     "@ts-torch/nn": "workspace:*",
-    "@ts-torch/optim": "workspace:*",
-    "@ts-torch/datasets": "workspace:*"
+    "@ts-torch/optim": "workspace:*"
   },
   "devDependencies": {
     "typescript": "5.9.2"

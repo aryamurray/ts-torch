@@ -22,11 +22,11 @@ export {
   currentScopeId,
   scopeTensorCount,
   type ScopedTensor,
-} from "./scope.js";
+} from './scope.js'
 
 // ==================== Tensor Pooling ====================
 
-export { TensorPool, globalTensorPool, type PoolableTensor, type PoolStats } from "./pool.js";
+export { TensorPool, globalTensorPool, type PoolableTensor, type PoolStats } from './pool.js'
 
 // ==================== ArrayBuffer Memory Pool ====================
 
@@ -35,58 +35,58 @@ export { TensorPool, globalTensorPool, type PoolableTensor, type PoolStats } fro
  * Separate from TensorPool - this pools raw buffers, not tensor objects
  */
 export class MemoryPool {
-  private pools: Map<number, ArrayBuffer[]> = new Map();
+  private pools: Map<number, ArrayBuffer[]> = new Map()
 
   /**
    * Allocate a buffer from the pool
    */
   allocate(size: number): ArrayBuffer {
-    const pool = this.pools.get(size);
+    const pool = this.pools.get(size)
     if (pool && pool.length > 0) {
-      const buffer = pool.pop();
-      if (buffer) return buffer;
+      const buffer = pool.pop()
+      if (buffer) return buffer
     }
-    return new ArrayBuffer(size);
+    return new ArrayBuffer(size)
   }
 
   /**
    * Return a buffer to the pool
    */
   deallocate(buffer: ArrayBuffer): void {
-    const size = buffer.byteLength;
+    const size = buffer.byteLength
     if (!this.pools.has(size)) {
-      this.pools.set(size, []);
+      this.pools.set(size, [])
     }
-    this.pools.get(size)!.push(buffer);
+    this.pools.get(size)!.push(buffer)
   }
 
   /**
    * Clear all pools
    */
   clear(): void {
-    this.pools.clear();
+    this.pools.clear()
   }
 
   /**
    * Get memory statistics
    */
   stats(): { totalBuffers: number; totalSize: number } {
-    let totalBuffers = 0;
-    let totalSize = 0;
+    let totalBuffers = 0
+    let totalSize = 0
 
     for (const [size, buffers] of this.pools.entries()) {
-      totalBuffers += buffers.length;
-      totalSize += size * buffers.length;
+      totalBuffers += buffers.length
+      totalSize += size * buffers.length
     }
 
-    return { totalBuffers, totalSize };
+    return { totalBuffers, totalSize }
   }
 }
 
 /**
  * Global memory pool instance for ArrayBuffers
  */
-export const globalMemoryPool = new MemoryPool();
+export const globalMemoryPool = new MemoryPool()
 
 // ==================== Memory Usage Tracking ====================
 
@@ -94,35 +94,35 @@ export const globalMemoryPool = new MemoryPool();
  * Memory usage tracker
  */
 export class MemoryTracker {
-  private allocated: number = 0;
-  private peak: number = 0;
+  private allocated: number = 0
+  private peak: number = 0
 
   track(size: number): void {
-    this.allocated += size;
+    this.allocated += size
     if (this.allocated > this.peak) {
-      this.peak = this.allocated;
+      this.peak = this.allocated
     }
   }
 
   release(size: number): void {
-    this.allocated -= size;
+    this.allocated -= size
   }
 
   reset(): void {
-    this.allocated = 0;
-    this.peak = 0;
+    this.allocated = 0
+    this.peak = 0
   }
 
   getCurrentUsage(): number {
-    return this.allocated;
+    return this.allocated
   }
 
   getPeakUsage(): number {
-    return this.peak;
+    return this.peak
   }
 }
 
 /**
  * Global memory tracker instance
  */
-export const globalMemoryTracker = new MemoryTracker();
+export const globalMemoryTracker = new MemoryTracker()

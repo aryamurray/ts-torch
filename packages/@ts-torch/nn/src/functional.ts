@@ -9,8 +9,8 @@
  * - Module: stateful, may have parameters, higher level abstraction
  */
 
-import type { Tensor, float32 } from "./module.js";
-import type { Shape, DType } from "@ts-torch/core";
+import type { Tensor, float32 } from './module.js'
+import type { Shape, DType } from '@ts-torch/core'
 
 /**
  * Apply ReLU activation: max(0, x)
@@ -26,12 +26,10 @@ import type { Shape, DType } from "@ts-torch/core";
  * const y = relu(x); // Type: Tensor<readonly [32, 128]>
  * ```
  */
-export function relu<S extends Shape, D extends DType<string> = float32>(
-  x: Tensor<S, D>,
-): Tensor<S, D> {
+export function relu<S extends Shape, D extends DType<string> = float32>(x: Tensor<S, D>): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.relu();
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }
 
 /**
@@ -48,12 +46,10 @@ export function relu<S extends Shape, D extends DType<string> = float32>(
  * const probs = sigmoid(logits); // Type: Tensor<readonly [32, 10]>
  * ```
  */
-export function sigmoid<S extends Shape, D extends DType<string> = float32>(
-  x: Tensor<S, D>,
-): Tensor<S, D> {
+export function sigmoid<S extends Shape, D extends DType<string> = float32>(x: Tensor<S, D>): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.sigmoid();
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }
 
 /**
@@ -70,12 +66,10 @@ export function sigmoid<S extends Shape, D extends DType<string> = float32>(
  * const y = tanh(x); // Type: Tensor<readonly [32, 64]>
  * ```
  */
-export function tanh<S extends Shape, D extends DType<string> = float32>(
-  x: Tensor<S, D>,
-): Tensor<S, D> {
+export function tanh<S extends Shape, D extends DType<string> = float32>(x: Tensor<S, D>): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.tanh();
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }
 
 /**
@@ -100,7 +94,7 @@ export function softmax<S extends Shape, D extends DType<string> = float32>(
 ): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.softmax(dim);
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }
 
 /**
@@ -124,7 +118,7 @@ export function leakyRelu<S extends Shape, D extends DType<string> = float32>(
 ): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.leakyRelu(negativeSlope);
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }
 
 /**
@@ -141,12 +135,10 @@ export function leakyRelu<S extends Shape, D extends DType<string> = float32>(
  * const y = gelu(x); // Type: Tensor<readonly [32, 768]>
  * ```
  */
-export function gelu<S extends Shape, D extends DType<string> = float32>(
-  x: Tensor<S, D>,
-): Tensor<S, D> {
+export function gelu<S extends Shape, D extends DType<string> = float32>(x: Tensor<S, D>): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.gelu();
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }
 
 /**
@@ -174,11 +166,11 @@ export function dropout<S extends Shape, D extends DType<string> = float32>(
   training: boolean = true,
 ): Tensor<S, D> {
   if (!training || p === 0) {
-    return x;
+    return x
   }
 
   if (p < 0 || p >= 1) {
-    throw new Error(`Dropout probability must be in [0, 1), got ${p}`);
+    throw new Error(`Dropout probability must be in [0, 1), got ${p}`)
   }
 
   // TODO: Implement actual dropout when Tensor ops are ready
@@ -186,7 +178,7 @@ export function dropout<S extends Shape, D extends DType<string> = float32>(
   // const mask = (random(x.shape) > p).cast(x.dtype);
   // return x.mul(mask).div(1 - p); // Scale to maintain expected value
 
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }
 
 /**
@@ -226,7 +218,7 @@ export function linear<
   // }
   // return output;
 
-  return input as any; // Placeholder
+  return input as any // Placeholder
 }
 
 /**
@@ -260,7 +252,7 @@ export function logSoftmax<S extends Shape, D extends DType<string> = float32>(
   // const logSumExp = shifted.exp().sum(dim=dim, keepdim=true).log();
   // return shifted.sub(logSumExp);
 
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }
 
 /**
@@ -290,7 +282,7 @@ export function normalize<S extends Shape, D extends DType<string> = float32>(
   // const norm = x.norm(p, dim=dim, keepdim=true);
   // return x.div(norm.clamp(min=eps));
 
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }
 
 /**
@@ -317,5 +309,5 @@ export function clamp<S extends Shape, D extends DType<string> = float32>(
   // TODO: Implement when Tensor ops are ready
   // return x.clamp(min, max);
 
-  return x as any; // Placeholder
+  return x as any // Placeholder
 }

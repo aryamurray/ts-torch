@@ -2,7 +2,7 @@
  * Text classification datasets
  */
 
-import { BaseDataset } from "../dataset.js";
+import { BaseDataset } from '../dataset.js'
 
 /**
  * Simple text classification dataset
@@ -12,23 +12,23 @@ export class TextClassificationDataset extends BaseDataset<[string, number]> {
     private texts: string[],
     private labels: number[],
   ) {
-    super();
+    super()
 
     if (texts.length !== labels.length) {
-      throw new Error("Texts and labels must have the same length");
+      throw new Error('Texts and labels must have the same length')
     }
   }
 
   getItem(index: number): [string, number] {
     if (index < 0 || index >= this.length) {
-      throw new Error(`Index ${index} out of bounds`);
+      throw new Error(`Index ${index} out of bounds`)
     }
 
-    return [this.texts[index]!, this.labels[index]!];
+    return [this.texts[index]!, this.labels[index]!]
   }
 
   get length(): number {
-    return this.texts.length;
+    return this.texts.length
   }
 }
 
@@ -36,10 +36,10 @@ export class TextClassificationDataset extends BaseDataset<[string, number]> {
  * CSV text classification dataset
  */
 export class CSVTextDataset extends BaseDataset<[string, number]> {
-  private data: Array<[string, number]> = [];
+  private data: Array<[string, number]> = []
 
-  constructor(_csvPath: string, _textColumn: string = "text", _labelColumn: string = "label") {
-    super();
+  constructor(_csvPath: string, _textColumn: string = 'text', _labelColumn: string = 'label') {
+    super()
   }
 
   async init(): Promise<void> {
@@ -51,13 +51,13 @@ export class CSVTextDataset extends BaseDataset<[string, number]> {
 
   getItem(index: number): [string, number] {
     if (index < 0 || index >= this.length) {
-      throw new Error(`Index ${index} out of bounds`);
+      throw new Error(`Index ${index} out of bounds`)
     }
 
-    return this.data[index]!;
+    return this.data[index]!
   }
 
   get length(): number {
-    return this.data.length;
+    return this.data.length
   }
 }

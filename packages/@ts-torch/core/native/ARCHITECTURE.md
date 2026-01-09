@@ -425,18 +425,18 @@ native/
 
 ```typescript
 // TypeScript wrapper will use node-ffi-napi or N-API
-import { Library } from "ffi-napi";
+import { Library } from 'ffi-napi'
 
-const libts_torch = Library("libts_torch", {
-  ts_tensor_zeros: ["pointer", ["pointer", "size_t", "int", "int", "int", "pointer"]],
+const libts_torch = Library('libts_torch', {
+  ts_tensor_zeros: ['pointer', ['pointer', 'size_t', 'int', 'int', 'int', 'pointer']],
   // ... other functions
-});
+})
 
 class Tensor {
-  private handle: Buffer;
+  private handle: Buffer
 
   constructor(shape: number[], dtype: DType = DType.Float32) {
-    const error = Buffer.alloc(260); // ts_Error size
+    const error = Buffer.alloc(260) // ts_Error size
     this.handle = libts_torch.ts_tensor_zeros(
       Buffer.from(new BigInt64Array(shape).buffer),
       shape.length,
@@ -444,7 +444,7 @@ class Tensor {
       DeviceType.CPU,
       0,
       error,
-    );
+    )
   }
 
   // ... methods

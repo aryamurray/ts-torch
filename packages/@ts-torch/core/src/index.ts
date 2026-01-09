@@ -6,52 +6,54 @@
  */
 
 // ===============================
+// Internal Imports for Loss Functions
+// ===============================
+
+import { getLib } from './ffi/loader.js'
+import { withError, checkNull } from './ffi/error.js'
+
+// ===============================
 // Type Exports
 // ===============================
 
-export type { Shape, ValidDim, Dim } from "./types/shape.js";
-export type {
-  DType as DTypeType,
-  DTypeName,
-  DTypeToTypedArray,
-  DTypeElement,
-} from "./types/dtype.js";
-export type { TensorType, MatMulShape, TransposeShape } from "./types/tensor.js";
+export type { Shape, ValidDim, Dim } from './types/shape.js'
+export type { DType as DTypeType, DTypeName, DTypeToTypedArray, DTypeElement } from './types/dtype.js'
+export type { TensorType, MatMulShape, TransposeShape } from './types/tensor.js'
 
 // ===============================
 // Runtime DType Values
 // ===============================
 
 // Export the full DType namespace
-import { DType as DTypeNamespace } from "./types/dtype.js";
-export { DTypeNamespace as DType };
+import { DType as DTypeNamespace } from './types/dtype.js'
+export { DTypeNamespace as DType }
 
 // Individual dtype constants for direct access
-export const float16 = DTypeNamespace.float16;
-export const float32 = DTypeNamespace.float32;
-export const float64 = DTypeNamespace.float64;
-export const int32 = DTypeNamespace.int32;
-export const int64 = DTypeNamespace.int64;
-export const bool = DTypeNamespace.bool;
-export const bfloat16 = DTypeNamespace.bfloat16;
+export const float16 = DTypeNamespace.float16
+export const float32 = DTypeNamespace.float32
+export const float64 = DTypeNamespace.float64
+export const int32 = DTypeNamespace.int32
+export const int64 = DTypeNamespace.int64
+export const bool = DTypeNamespace.bool
+export const bfloat16 = DTypeNamespace.bfloat16
 
 // ===============================
 // Tensor Class
 // ===============================
 
-export { Tensor } from "./tensor/tensor.js";
+export { Tensor } from './tensor/tensor.js'
 
 // ===============================
 // Memory Management
 // ===============================
 
-export { run, runAsync, inScope, scopeDepth } from "./memory/scope.js";
+export { run, runAsync, inScope, scopeDepth } from './memory/scope.js'
 
 // ===============================
 // Debug Mode
 // ===============================
 
-export { DebugMode } from "./debug.js";
+export { DebugMode } from './debug.js'
 
 // ===============================
 // Device
@@ -69,24 +71,24 @@ export { DebugMode } from "./debug.js";
  */
 export class Device {
   private constructor(
-    public readonly type: "cpu" | "cuda" | "mps",
+    public readonly type: 'cpu' | 'cuda' | 'mps',
     public readonly index: number,
   ) {}
 
   static cpu(): Device {
-    return new Device("cpu", 0);
+    return new Device('cpu', 0)
   }
 
   static cuda(index = 0): Device {
-    return new Device("cuda", index);
+    return new Device('cuda', index)
   }
 
   static mps(): Device {
-    return new Device("mps", 0);
+    return new Device('mps', 0)
   }
 
   toString(): string {
-    return this.type === "cpu" ? "cpu" : `${this.type}:${this.index}`;
+    return this.type === 'cpu' ? 'cpu' : `${this.type}:${this.index}`
   }
 }
 
@@ -94,8 +96,8 @@ export class Device {
 // torch Namespace
 // ===============================
 
-import { run as runScope, runAsync as runAsyncScope } from "./memory/scope.js";
-import { Tensor } from "./tensor/tensor.js";
+import { run as runScope, runAsync as runAsyncScope } from './memory/scope.js'
+import { Tensor } from './tensor/tensor.js'
 import {
   zeros as zerosFactory,
   ones as onesFactory,
@@ -104,10 +106,9 @@ import {
   fromArray as fromArrayFactory,
   createArange,
   createTensorFromData,
-} from "./tensor/factory.js";
-import type { Shape } from "./types/shape.js";
-import type { DType } from "./types/dtype.js";
-import { getLib } from "./ffi/loader.js";
+} from './tensor/factory.js'
+import type { Shape } from './types/shape.js'
+import type { DType } from './types/dtype.js'
 
 /**
  * Main torch namespace providing PyTorch-like API
@@ -166,11 +167,8 @@ export const torch = {
    * const t2 = torch.zeros([10, 20] as const, torch.float64);
    * ```
    */
-  zeros<S extends Shape, D extends DType<string> = typeof float32>(
-    shape: S,
-    dtype?: D,
-  ): Tensor<S, D> {
-    return zerosFactory(shape, dtype);
+  zeros<S extends Shape, D extends DType<string> = typeof float32>(shape: S, dtype?: D): Tensor<S, D> {
+    return zerosFactory(shape, dtype)
   },
 
   /**
@@ -187,11 +185,8 @@ export const torch = {
    * const t = torch.ones([2, 3] as const);
    * ```
    */
-  ones<S extends Shape, D extends DType<string> = typeof float32>(
-    shape: S,
-    dtype?: D,
-  ): Tensor<S, D> {
-    return onesFactory(shape, dtype);
+  ones<S extends Shape, D extends DType<string> = typeof float32>(shape: S, dtype?: D): Tensor<S, D> {
+    return onesFactory(shape, dtype)
   },
 
   /**
@@ -208,11 +203,8 @@ export const torch = {
    * const t = torch.randn([100, 50] as const);
    * ```
    */
-  randn<S extends Shape, D extends DType<string> = typeof float32>(
-    shape: S,
-    dtype?: D,
-  ): Tensor<S, D> {
-    return randnFactory(shape, dtype);
+  randn<S extends Shape, D extends DType<string> = typeof float32>(shape: S, dtype?: D): Tensor<S, D> {
+    return randnFactory(shape, dtype)
   },
 
   /**
@@ -229,11 +221,8 @@ export const torch = {
    * const t = torch.empty([1000, 1000] as const);
    * ```
    */
-  empty<S extends Shape, D extends DType<string> = typeof float32>(
-    shape: S,
-    dtype?: D,
-  ): Tensor<S, D> {
-    return emptyFactory(shape, dtype);
+  empty<S extends Shape, D extends DType<string> = typeof float32>(shape: S, dtype?: D): Tensor<S, D> {
+    return emptyFactory(shape, dtype)
   },
 
   /**
@@ -259,7 +248,7 @@ export const torch = {
     shape: S,
     dtype?: D,
   ): Tensor<S, D> {
-    return fromArrayFactory(data, shape, dtype);
+    return fromArrayFactory(data, shape, dtype)
   },
 
   /**
@@ -284,7 +273,7 @@ export const torch = {
     step?: number,
     dtype?: D,
   ): Tensor<readonly [number], D> {
-    return createArange(start, end, step, dtype);
+    return createArange(start, end, step, dtype)
   },
 
   /**
@@ -304,7 +293,7 @@ export const torch = {
     data: number | number[] | number[][] | number[][][] | number[][][][],
     dtype?: D,
   ): Tensor<readonly number[], D> {
-    return createTensorFromData(data, dtype);
+    return createTensorFromData(data, dtype)
   },
 
   // ==================== CUDA Utilities ====================
@@ -327,10 +316,10 @@ export const torch = {
      */
     isAvailable(): boolean {
       try {
-        const lib = getLib();
-        return lib.symbols.ts_cuda_is_available() !== 0; // Convert i32 to boolean
+        const lib = getLib()
+        return lib.symbols.ts_cuda_is_available() !== 0 // Convert i32 to boolean
       } catch {
-        return false;
+        return false
       }
     },
 
@@ -347,10 +336,10 @@ export const torch = {
      */
     deviceCount(): number {
       try {
-        const lib = getLib();
-        return lib.symbols.ts_cuda_device_count();
+        const lib = getLib()
+        return lib.symbols.ts_cuda_device_count()
       } catch {
-        return 0;
+        return 0
       }
     },
 
@@ -366,7 +355,7 @@ export const torch = {
      */
     synchronize(_device = 0): void {
       // TODO: Implement when FFI symbol is available
-      console.warn("torch.cuda.synchronize() not yet implemented");
+      console.warn('torch.cuda.synchronize() not yet implemented')
     },
   },
 
@@ -385,7 +374,7 @@ export const torch = {
    */
   version(): { major: number; minor: number; patch: number } {
     // TODO: Get from native library when available
-    return { major: 0, minor: 1, patch: 0 };
+    return { major: 0, minor: 1, patch: 0 }
   },
 
   // ==================== Device Management ====================
@@ -407,7 +396,106 @@ export const torch = {
   int64,
   bool,
   bfloat16,
-};
+
+  // ==================== Loss Functions ====================
+
+  /**
+   * Functional loss utilities
+   */
+  nn: {
+    /**
+     * Negative Log Likelihood Loss
+     *
+     * Takes log-probabilities (from logSoftmax) and target class indices.
+     *
+     * @param logProbs - Log probabilities of shape [N, C]
+     * @param targets - Target class indices of shape [N] (int64)
+     * @returns Scalar loss tensor
+     *
+     * @example
+     * ```ts
+     * const logits = model.forward(input);
+     * const logProbs = logits.logSoftmax(1);
+     * const loss = torch.nn.nllLoss(logProbs, targets);
+     * loss.backward();
+     * ```
+     */
+    nllLoss<D extends DType<string>>(logProbs: Tensor<Shape, D>, targets: Tensor<Shape, D>): Tensor<readonly [], D> {
+      const lib = getLib()
+
+      const handle = withError((err: any) =>
+        lib.symbols.ts_tensor_nll_loss((logProbs as any)._handle, (targets as any)._handle, err),
+      )
+
+      checkNull(handle, 'Failed to compute NLL loss')
+
+      return new Tensor<readonly [], D>(handle!, [] as const, logProbs.dtype)
+    },
+
+    /**
+     * Cross Entropy Loss
+     *
+     * Combines logSoftmax and NLL loss in a single operation.
+     * More numerically stable than computing them separately.
+     *
+     * @param logits - Raw logits of shape [N, C]
+     * @param targets - Target class indices of shape [N] (int64)
+     * @returns Scalar loss tensor
+     *
+     * @example
+     * ```ts
+     * const logits = model.forward(input);
+     * const loss = torch.nn.crossEntropyLoss(logits, targets);
+     * loss.backward();
+     * ```
+     */
+    crossEntropyLoss<D extends DType<string>>(
+      logits: Tensor<Shape, D>,
+      targets: Tensor<Shape, D>,
+    ): Tensor<readonly [], D> {
+      const lib = getLib()
+
+      const handle = withError((err: any) =>
+        lib.symbols.ts_tensor_cross_entropy_loss((logits as any)._handle, (targets as any)._handle, err),
+      )
+
+      checkNull(handle, 'Failed to compute cross entropy loss')
+
+      return new Tensor<readonly [], D>(handle!, [] as const, logits.dtype)
+    },
+
+    /**
+     * Mean Squared Error Loss
+     *
+     * Computes the mean squared error between input and target.
+     *
+     * @param input - Predicted values
+     * @param target - Target values
+     * @returns Scalar loss tensor
+     *
+     * @example
+     * ```ts
+     * const predictions = model.forward(input);
+     * const loss = torch.nn.mseLoss(predictions, targets);
+     * loss.backward();
+     * ```
+     */
+    mseLoss<S extends Shape, D extends DType<string>>(
+      input: Tensor<S, D>,
+      target: Tensor<S, D>,
+    ): Tensor<readonly [], D> {
+      const lib = getLib()
+
+      const handle = withError((err: any) =>
+        lib.symbols.ts_tensor_mse_loss((input as any)._handle, (target as any)._handle, err),
+      )
+
+      checkNull(handle, 'Failed to compute MSE loss')
+
+      return new Tensor<readonly [], D>(handle!, [] as const, input.dtype)
+    },
+  },
+}
 
 // ===============================
 // Default Export
@@ -423,4 +511,4 @@ export const torch = {
  * const x = torch.zeros([2, 3]);
  * ```
  */
-export default torch;
+export default torch

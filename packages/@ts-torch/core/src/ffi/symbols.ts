@@ -5,12 +5,12 @@
  * These MUST match the signatures in native/include/ts_torch.h
  */
 
-import { FFIType, type Pointer } from "bun:ffi";
+import { FFIType, type Pointer } from 'bun:ffi'
 
 /**
  * Opaque pointer type representing a tensor handle in native code
  */
-export type TensorHandle = Pointer;
+export type TensorHandle = Pointer
 
 /**
  * FFI symbol definitions mapping C function names to their signatures
@@ -26,29 +26,30 @@ export const FFI_SYMBOLS = {
 
   // ==================== Tensor Creation ====================
 
-  // ts_tensor_zeros(shape, ndim, dtype, requires_grad, error) -> TensorHandle
+  // ts_tensor_zeros(shape, ndim, dtype, device, device_index, error) -> TensorHandle
   ts_tensor_zeros: {
-    args: [FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.bool, FFIType.ptr],
+    args: [FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.ptr],
     returns: FFIType.ptr,
   },
 
   ts_tensor_ones: {
-    args: [FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.bool, FFIType.ptr],
+    args: [FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.ptr],
     returns: FFIType.ptr,
   },
 
   ts_tensor_randn: {
-    args: [FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.bool, FFIType.ptr],
+    args: [FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.ptr],
     returns: FFIType.ptr,
   },
 
   ts_tensor_empty: {
-    args: [FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.bool, FFIType.ptr],
+    args: [FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.ptr],
     returns: FFIType.ptr,
   },
 
+  // ts_tensor_from_buffer(data, shape, ndim, dtype, device, device_index, error) -> TensorHandle
   ts_tensor_from_buffer: {
-    args: [FFIType.ptr, FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.bool, FFIType.ptr],
+    args: [FFIType.ptr, FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.i32, FFIType.ptr],
     returns: FFIType.ptr,
   },
 
@@ -207,6 +208,82 @@ export const FFI_SYMBOLS = {
     returns: FFIType.ptr,
   },
 
+  // ts_tensor_log(tensor, error) -> TensorHandle
+  ts_tensor_log: {
+    args: [FFIType.ptr, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ts_tensor_exp(tensor, error) -> TensorHandle
+  ts_tensor_exp: {
+    args: [FFIType.ptr, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ts_tensor_neg(tensor, error) -> TensorHandle
+  ts_tensor_neg: {
+    args: [FFIType.ptr, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ts_tensor_log_softmax(tensor, dim, error) -> TensorHandle
+  ts_tensor_log_softmax: {
+    args: [FFIType.ptr, FFIType.i32, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ==================== Scalar Operations ====================
+
+  // ts_tensor_add_scalar(tensor, scalar, error) -> TensorHandle
+  ts_tensor_add_scalar: {
+    args: [FFIType.ptr, FFIType.f64, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ts_tensor_sub_scalar(tensor, scalar, error) -> TensorHandle
+  ts_tensor_sub_scalar: {
+    args: [FFIType.ptr, FFIType.f64, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ts_tensor_mul_scalar(tensor, scalar, error) -> TensorHandle
+  ts_tensor_mul_scalar: {
+    args: [FFIType.ptr, FFIType.f64, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ts_tensor_div_scalar(tensor, scalar, error) -> TensorHandle
+  ts_tensor_div_scalar: {
+    args: [FFIType.ptr, FFIType.f64, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ts_tensor_zero_grad(tensor, error)
+  ts_tensor_zero_grad: {
+    args: [FFIType.ptr, FFIType.ptr],
+    returns: FFIType.void,
+  },
+
+  // ==================== Loss Functions ====================
+
+  // ts_tensor_nll_loss(log_probs, targets, error) -> TensorHandle
+  ts_tensor_nll_loss: {
+    args: [FFIType.ptr, FFIType.ptr, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ts_tensor_cross_entropy_loss(logits, targets, error) -> TensorHandle
+  ts_tensor_cross_entropy_loss: {
+    args: [FFIType.ptr, FFIType.ptr, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
+  // ts_tensor_mse_loss(input, target, error) -> TensorHandle
+  ts_tensor_mse_loss: {
+    args: [FFIType.ptr, FFIType.ptr, FFIType.ptr],
+    returns: FFIType.ptr,
+  },
+
   // ==================== Autograd ====================
 
   // ts_tensor_backward(tensor, error)
@@ -264,6 +341,6 @@ export const FFI_SYMBOLS = {
     args: [FFIType.ptr, FFIType.i32, FFIType.i32, FFIType.ptr],
     returns: FFIType.ptr,
   },
-} as const;
+} as const
 
-export type FFISymbols = typeof FFI_SYMBOLS;
+export type FFISymbols = typeof FFI_SYMBOLS

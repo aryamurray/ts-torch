@@ -74,7 +74,7 @@ This allows compile-time verification that intermediate shapes match:
 ```typescript
 const model = new Linear(784, 128)
   .pipe(new ReLU()) // Verified: 128 matches 128
-  .pipe(new Linear(128, 10)); // Verified: 128 matches 128
+  .pipe(new Linear(128, 10)) // Verified: 128 matches 128
 ```
 
 ### 3. Linear Layer with Weight Initialization
@@ -135,7 +135,7 @@ const model = new Sequential<readonly [number, 784], readonly [number, 10]>(
   new Linear(784, 128),
   new ReLU(),
   new Linear(128, 10),
-);
+)
 ```
 
 **B. Builder pattern (better type inference):**
@@ -145,7 +145,7 @@ const model = sequential<readonly [number, 784]>()
   .add(new Linear(784, 128))
   .add(new ReLU())
   .add(new Linear(128, 10))
-  .build();
+  .build()
 ```
 
 The builder tracks shape changes at each step for full type safety.
@@ -180,11 +180,11 @@ F.clamp<S>(x: Tensor<S>, min: number | null, max: number | null): Tensor<S>
 The type system catches shape mismatches at compile time:
 
 ```typescript
-const layer1 = new Linear(128, 64);
-const layer2 = new Linear(256, 10); // Expects 256 inputs
+const layer1 = new Linear(128, 64)
+const layer2 = new Linear(256, 10) // Expects 256 inputs
 
 // TypeScript ERROR:
-const invalid = layer1.pipe(layer2);
+const invalid = layer1.pipe(layer2)
 // Error: Type 'readonly [number, 64]' is not assignable to
 //        type 'readonly [number, 256]'
 ```
@@ -212,18 +212,15 @@ const output = model.forward(input);
 Modules can be fully generic:
 
 ```typescript
-function createEncoder<InputDim extends number, LatentDim extends number>(
-  inputDim: InputDim,
-  latentDim: LatentDim,
-) {
+function createEncoder<InputDim extends number, LatentDim extends number>(inputDim: InputDim, latentDim: LatentDim) {
   return new Linear(inputDim, 512)
     .pipe(new ReLU())
     .pipe(new Linear(512, 256))
     .pipe(new ReLU())
-    .pipe(new Linear(256, latentDim));
+    .pipe(new Linear(256, latentDim))
 }
 
-const encoder = createEncoder(784, 64);
+const encoder = createEncoder(784, 64)
 // Type: PipedModule<readonly [number, 784], readonly [number, 64]>
 ```
 
@@ -233,8 +230,8 @@ const encoder = createEncoder(784, 64);
 
 ```typescript
 class SequentialBuilder<In, Out, D> {
-  add<NextOut>(module: Module<Out, NextOut, D>): SequentialBuilder<In, NextOut, D>;
-  build(): Sequential<In, Out, D>;
+  add<NextOut>(module: Module<Out, NextOut, D>): SequentialBuilder<In, NextOut, D>
+  build(): Sequential<In, Out, D>
 }
 ```
 
@@ -254,10 +251,10 @@ pipe<NextOut>(next: Module<OutShape, NextOut, D>): PipedModule<...>
 
 ```typescript
 abstract class Module {
-  abstract forward(input: Tensor): Tensor;
+  abstract forward(input: Tensor): Tensor
 
   __call__(input: Tensor): Tensor {
-    return this.forward(input); // Template method
+    return this.forward(input) // Template method
   }
 }
 ```
@@ -278,11 +275,11 @@ parameters(): Parameter[]  // Recursively collects from all sub-modules
 ```typescript
 class Linear extends Module {
   constructor() {
-    this.weight = initWeight();
-    this.bias = initBias();
+    this.weight = initWeight()
+    this.bias = initBias()
 
-    this.registerParameter("weight", this.weight);
-    this.registerParameter("bias", this.bias);
+    this.registerParameter('weight', this.weight)
+    this.registerParameter('bias', this.bias)
   }
 }
 ```
@@ -291,10 +288,10 @@ class Linear extends Module {
 
 ```typescript
 // Get all parameters (flat array)
-const params = model.parameters();
+const params = model.parameters()
 
 // Get named parameters (hierarchical)
-const named = model.namedParameters();
+const named = model.namedParameters()
 // Map {
 //   '0.weight': Parameter,
 //   '0.bias': Parameter,
@@ -308,9 +305,9 @@ const named = model.namedParameters();
 Modules track training state, which affects layers like Dropout and BatchNorm:
 
 ```typescript
-model.train(); // Enable training mode
-model.eval(); // Enable evaluation mode
-model.train(false); // Explicitly disable training
+model.train() // Enable training mode
+model.eval() // Enable evaluation mode
+model.train(false) // Explicitly disable training
 
 // Propagates to all sub-modules automatically
 ```
@@ -355,36 +352,33 @@ const classifier = new Linear(784, 256)
   .pipe(new Linear(256, 128))
   .pipe(new ReLU())
   .pipe(new Linear(128, 10))
-  .pipe(new Softmax(-1));
+  .pipe(new Softmax(-1))
 ```
 
 ### Example 2: Autoencoder
 
 ```typescript
-const encoder = new Linear(784, 512).pipe(new ReLU()).pipe(new Linear(512, 128));
+const encoder = new Linear(784, 512).pipe(new ReLU()).pipe(new Linear(512, 128))
 
-const decoder = new Linear(128, 512)
-  .pipe(new ReLU())
-  .pipe(new Linear(512, 784))
-  .pipe(new Sigmoid());
+const decoder = new Linear(128, 512).pipe(new ReLU()).pipe(new Linear(512, 784)).pipe(new Sigmoid())
 
-const autoencoder = encoder.pipe(decoder);
+const autoencoder = encoder.pipe(decoder)
 ```
 
 ### Example 3: Custom Module with Functional API
 
 ```typescript
 class ResidualBlock extends Module<readonly [number, 128], readonly [number, 128]> {
-  fc1 = new Linear(128, 128);
-  fc2 = new Linear(128, 128);
+  fc1 = new Linear(128, 128)
+  fc2 = new Linear(128, 128)
 
   forward(x: Tensor<readonly [number, 128]>) {
-    let residual = x;
-    let out = this.fc1.forward(x);
-    out = F.relu(out);
-    out = this.fc2.forward(out);
-    out = F.relu(out.add(residual)); // Skip connection
-    return out;
+    let residual = x
+    let out = this.fc1.forward(x)
+    out = F.relu(out)
+    out = this.fc2.forward(out)
+    out = F.relu(out.add(residual)) // Skip connection
+    return out
   }
 }
 ```
@@ -394,8 +388,8 @@ class ResidualBlock extends Module<readonly [number, 128], readonly [number, 128
 ### 1. Device Management
 
 ```typescript
-module.to("cuda"); // Move to CUDA device
-module.to("cpu"); // Move to CPU
+module.to('cuda') // Move to CUDA device
+module.to('cpu') // Move to CPU
 ```
 
 ### 2. Actual Tensor Operations
@@ -409,9 +403,9 @@ Currently uses placeholders. Need to implement:
 ### 3. Gradient Computation
 
 ```typescript
-loss.backward(); // Compute gradients
-model.zeroGrad(); // Zero all gradients
-optimizer.step(); // Update parameters
+loss.backward() // Compute gradients
+model.zeroGrad() // Zero all gradients
+optimizer.step() // Update parameters
 ```
 
 ### 4. More Layer Types
@@ -429,13 +423,13 @@ Use TypeScript's type system to verify shape inference:
 
 ```typescript
 namespace TypeTests {
-  const model = new Linear(10, 20).pipe(new ReLU());
-  type InputType = Parameters<typeof model.forward>[0];
-  type OutputType = ReturnType<typeof model.forward>;
+  const model = new Linear(10, 20).pipe(new ReLU())
+  type InputType = Parameters<typeof model.forward>[0]
+  type OutputType = ReturnType<typeof model.forward>
 
   // These types should compile correctly
-  const input: InputType = {} as Tensor<readonly [number, 10]>;
-  const output: OutputType = {} as Tensor<readonly [number, 20]>;
+  const input: InputType = {} as Tensor<readonly [number, 10]>
+  const output: OutputType = {} as Tensor<readonly [number, 20]>
 }
 ```
 

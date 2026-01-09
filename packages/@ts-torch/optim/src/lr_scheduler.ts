@@ -5,7 +5,7 @@
  * during training, which can improve convergence and final model performance.
  */
 
-import { Optimizer } from "./optimizer.js";
+import { Optimizer } from './optimizer.js'
 
 /**
  * Base class for learning rate schedulers
@@ -13,20 +13,20 @@ import { Optimizer } from "./optimizer.js";
  * All schedulers should inherit from this class and implement the getLr method.
  */
 export abstract class LRScheduler {
-  protected optimizer: Optimizer;
-  protected lastEpoch: number;
-  protected baseLrs: number[];
+  protected optimizer: Optimizer
+  protected lastEpoch: number
+  protected baseLrs: number[]
 
   constructor(optimizer: Optimizer, lastEpoch = -1) {
-    this.optimizer = optimizer;
-    this.lastEpoch = lastEpoch;
+    this.optimizer = optimizer
+    this.lastEpoch = lastEpoch
 
     // Store initial learning rates for each parameter group
-    this.baseLrs = optimizer["paramGroups"].map((group) => group.lr ?? optimizer["defaults"].lr);
+    this.baseLrs = optimizer['paramGroups'].map((group) => group.lr ?? optimizer['defaults'].lr)
 
     if (lastEpoch === -1) {
       // Initialize learning rates
-      this.step();
+      this.step()
     }
   }
 
@@ -34,22 +34,22 @@ export abstract class LRScheduler {
    * Compute learning rate for the current epoch
    * @returns Array of learning rates for each parameter group
    */
-  protected abstract getLr(): number[];
+  protected abstract getLr(): number[]
 
   /**
    * Perform a single step of the scheduler
    * Updates the learning rate for all parameter groups
    */
   step(): void {
-    this.lastEpoch += 1;
-    const lrs = this.getLr();
+    this.lastEpoch += 1
+    const lrs = this.getLr()
 
-    const paramGroups = this.optimizer["paramGroups"];
+    const paramGroups = this.optimizer['paramGroups']
     for (let i = 0; i < paramGroups.length; i++) {
-      const group = paramGroups[i];
-      const lr = lrs[i];
+      const group = paramGroups[i]
+      const lr = lrs[i]
       if (group && lr !== undefined) {
-        group.lr = lr;
+        group.lr = lr
       }
     }
   }
@@ -58,14 +58,14 @@ export abstract class LRScheduler {
    * Get the current learning rates
    */
   getCurrentLr(): number[] {
-    return this.optimizer["paramGroups"].map((group) => group.lr ?? this.optimizer["defaults"].lr);
+    return this.optimizer['paramGroups'].map((group) => group.lr ?? this.optimizer['defaults'].lr)
   }
 
   /**
    * Get the last epoch number
    */
   getLastEpoch(): number {
-    return this.lastEpoch;
+    return this.lastEpoch
   }
 }
 
@@ -91,8 +91,8 @@ export abstract class LRScheduler {
  * ```
  */
 export class StepLR extends LRScheduler {
-  private stepSize: number;
-  private gamma: number;
+  private stepSize: number
+  private gamma: number
 
   /**
    * @param optimizer - Wrapped optimizer
@@ -102,20 +102,20 @@ export class StepLR extends LRScheduler {
    */
   constructor(optimizer: Optimizer, stepSize: number, gamma = 0.1, lastEpoch = -1) {
     if (stepSize <= 0) {
-      throw new Error("Step size must be positive");
+      throw new Error('Step size must be positive')
     }
     if (gamma <= 0 || gamma > 1) {
-      throw new Error("Gamma must be in (0, 1]");
+      throw new Error('Gamma must be in (0, 1]')
     }
 
-    super(optimizer, lastEpoch);
-    this.stepSize = stepSize;
-    this.gamma = gamma;
+    super(optimizer, lastEpoch)
+    this.stepSize = stepSize
+    this.gamma = gamma
   }
 
   protected getLr(): number[] {
-    const multiplier = Math.pow(this.gamma, Math.floor(this.lastEpoch / this.stepSize));
-    return this.baseLrs.map((baseLr) => baseLr * multiplier);
+    const multiplier = Math.pow(this.gamma, Math.floor(this.lastEpoch / this.stepSize))
+    return this.baseLrs.map((baseLr) => baseLr * multiplier)
   }
 }
 
@@ -140,8 +140,8 @@ export class StepLR extends LRScheduler {
  * ```
  */
 export class MultiStepLR extends LRScheduler {
-  private milestones: Set<number>;
-  private gamma: number;
+  private milestones: Set<number>
+  private gamma: number
 
   /**
    * @param optimizer - Wrapped optimizer
@@ -151,22 +151,22 @@ export class MultiStepLR extends LRScheduler {
    */
   constructor(optimizer: Optimizer, milestones: number[], gamma = 0.1, lastEpoch = -1) {
     if (gamma <= 0 || gamma > 1) {
-      throw new Error("Gamma must be in (0, 1]");
+      throw new Error('Gamma must be in (0, 1]')
     }
 
-    super(optimizer, lastEpoch);
-    this.milestones = new Set(milestones.sort((a, b) => a - b));
-    this.gamma = gamma;
+    super(optimizer, lastEpoch)
+    this.milestones = new Set(milestones.sort((a, b) => a - b))
+    this.gamma = gamma
   }
 
   protected getLr(): number[] {
-    let multiplier = 1.0;
+    let multiplier = 1.0
     for (let i = 1; i <= this.lastEpoch; i++) {
       if (this.milestones.has(i)) {
-        multiplier *= this.gamma;
+        multiplier *= this.gamma
       }
     }
-    return this.baseLrs.map((baseLr) => baseLr * multiplier);
+    return this.baseLrs.map((baseLr) => baseLr * multiplier)
   }
 }
 
@@ -189,7 +189,7 @@ export class MultiStepLR extends LRScheduler {
  * ```
  */
 export class ExponentialLR extends LRScheduler {
-  private gamma: number;
+  private gamma: number
 
   /**
    * @param optimizer - Wrapped optimizer
@@ -198,16 +198,16 @@ export class ExponentialLR extends LRScheduler {
    */
   constructor(optimizer: Optimizer, gamma: number, lastEpoch = -1) {
     if (gamma <= 0 || gamma > 1) {
-      throw new Error("Gamma must be in (0, 1]");
+      throw new Error('Gamma must be in (0, 1]')
     }
 
-    super(optimizer, lastEpoch);
-    this.gamma = gamma;
+    super(optimizer, lastEpoch)
+    this.gamma = gamma
   }
 
   protected getLr(): number[] {
-    const multiplier = Math.pow(this.gamma, this.lastEpoch);
-    return this.baseLrs.map((baseLr) => baseLr * multiplier);
+    const multiplier = Math.pow(this.gamma, this.lastEpoch)
+    return this.baseLrs.map((baseLr) => baseLr * multiplier)
   }
 }
 
@@ -231,8 +231,8 @@ export class ExponentialLR extends LRScheduler {
  * ```
  */
 export class CosineAnnealingLR extends LRScheduler {
-  private tMax: number;
-  private etaMin: number;
+  private tMax: number
+  private etaMin: number
 
   /**
    * @param optimizer - Wrapped optimizer
@@ -242,30 +242,27 @@ export class CosineAnnealingLR extends LRScheduler {
    */
   constructor(optimizer: Optimizer, tMax: number, etaMin = 0, lastEpoch = -1) {
     if (tMax <= 0) {
-      throw new Error("T_max must be positive");
+      throw new Error('T_max must be positive')
     }
     if (etaMin < 0) {
-      throw new Error("eta_min must be non-negative");
+      throw new Error('eta_min must be non-negative')
     }
 
-    super(optimizer, lastEpoch);
-    this.tMax = tMax;
-    this.etaMin = etaMin;
+    super(optimizer, lastEpoch)
+    this.tMax = tMax
+    this.etaMin = etaMin
   }
 
   protected getLr(): number[] {
     if (this.lastEpoch === 0) {
-      return this.baseLrs;
+      return this.baseLrs
     }
 
     const cosineAnnealing = (baseLr: number): number => {
-      return (
-        this.etaMin +
-        ((baseLr - this.etaMin) * (1 + Math.cos((Math.PI * this.lastEpoch) / this.tMax))) / 2
-      );
-    };
+      return this.etaMin + ((baseLr - this.etaMin) * (1 + Math.cos((Math.PI * this.lastEpoch) / this.tMax))) / 2
+    }
 
-    return this.baseLrs.map(cosineAnnealing);
+    return this.baseLrs.map(cosineAnnealing)
   }
 }
 
@@ -288,10 +285,10 @@ export class CosineAnnealingLR extends LRScheduler {
  * ```
  */
 export class CosineAnnealingWarmRestarts extends LRScheduler {
-  private tMult: number;
-  private etaMin: number;
-  private tCur: number;
-  private tI: number;
+  private tMult: number
+  private etaMin: number
+  private tCur: number
+  private tI: number
 
   /**
    * @param optimizer - Wrapped optimizer
@@ -302,48 +299,46 @@ export class CosineAnnealingWarmRestarts extends LRScheduler {
    */
   constructor(optimizer: Optimizer, t0: number, tMult = 1, etaMin = 0, lastEpoch = -1) {
     if (t0 <= 0) {
-      throw new Error("T_0 must be positive");
+      throw new Error('T_0 must be positive')
     }
     if (tMult < 1) {
-      throw new Error("T_mult must be >= 1");
+      throw new Error('T_mult must be >= 1')
     }
     if (etaMin < 0) {
-      throw new Error("eta_min must be non-negative");
+      throw new Error('eta_min must be non-negative')
     }
 
-    super(optimizer, lastEpoch);
-    this.tMult = tMult;
-    this.etaMin = etaMin;
-    this.tCur = 0;
-    this.tI = t0;
+    super(optimizer, lastEpoch)
+    this.tMult = tMult
+    this.etaMin = etaMin
+    this.tCur = 0
+    this.tI = t0
   }
 
   protected getLr(): number[] {
     const cosineAnnealing = (baseLr: number): number => {
-      return (
-        this.etaMin + ((baseLr - this.etaMin) * (1 + Math.cos((Math.PI * this.tCur) / this.tI))) / 2
-      );
-    };
+      return this.etaMin + ((baseLr - this.etaMin) * (1 + Math.cos((Math.PI * this.tCur) / this.tI))) / 2
+    }
 
-    return this.baseLrs.map(cosineAnnealing);
+    return this.baseLrs.map(cosineAnnealing)
   }
 
   override step(): void {
-    this.lastEpoch += 1;
-    this.tCur += 1;
+    this.lastEpoch += 1
+    this.tCur += 1
 
     if (this.tCur >= this.tI) {
-      this.tCur = 0;
-      this.tI = this.tI * this.tMult;
+      this.tCur = 0
+      this.tI = this.tI * this.tMult
     }
 
-    const lrs = this.getLr();
-    const paramGroups = this.optimizer["paramGroups"];
+    const lrs = this.getLr()
+    const paramGroups = this.optimizer['paramGroups']
     for (let i = 0; i < paramGroups.length; i++) {
-      const group = paramGroups[i];
-      const lr = lrs[i];
+      const group = paramGroups[i]
+      const lr = lrs[i]
       if (group && lr !== undefined) {
-        group.lr = lr;
+        group.lr = lr
       }
     }
   }
@@ -373,18 +368,18 @@ export class CosineAnnealingWarmRestarts extends LRScheduler {
  * ```
  */
 export class ReduceLROnPlateau extends LRScheduler {
-  private mode: "min" | "max";
-  private factor: number;
-  private patience: number;
-  private threshold: number;
-  private thresholdMode: "rel" | "abs";
-  private cooldown: number;
-  private minLr: number | number[];
-  private eps: number;
+  private mode: 'min' | 'max'
+  private factor: number
+  private patience: number
+  private threshold: number
+  private thresholdMode: 'rel' | 'abs'
+  private cooldown: number
+  private minLr: number | number[]
+  private eps: number
 
-  private numBadEpochs: number;
-  private cooldownCounter: number;
-  private best: number | null;
+  private numBadEpochs: number
+  private cooldownCounter: number
+  private best: number | null
 
   /**
    * @param optimizer - Wrapped optimizer
@@ -393,43 +388,43 @@ export class ReduceLROnPlateau extends LRScheduler {
    */
   constructor(
     optimizer: Optimizer,
-    mode: "min" | "max" = "min",
+    mode: 'min' | 'max' = 'min',
     options?: {
-      factor?: number;
-      patience?: number;
-      threshold?: number;
-      thresholdMode?: "rel" | "abs";
-      cooldown?: number;
-      minLr?: number | number[];
-      eps?: number;
+      factor?: number
+      patience?: number
+      threshold?: number
+      thresholdMode?: 'rel' | 'abs'
+      cooldown?: number
+      minLr?: number | number[]
+      eps?: number
     },
   ) {
-    super(optimizer, -1);
+    super(optimizer, -1)
 
-    this.mode = mode;
-    this.factor = options?.factor ?? 0.1;
-    this.patience = options?.patience ?? 10;
-    this.threshold = options?.threshold ?? 1e-4;
-    this.thresholdMode = options?.thresholdMode ?? "rel";
-    this.cooldown = options?.cooldown ?? 0;
-    this.minLr = options?.minLr ?? 0;
-    this.eps = options?.eps ?? 1e-8;
+    this.mode = mode
+    this.factor = options?.factor ?? 0.1
+    this.patience = options?.patience ?? 10
+    this.threshold = options?.threshold ?? 1e-4
+    this.thresholdMode = options?.thresholdMode ?? 'rel'
+    this.cooldown = options?.cooldown ?? 0
+    this.minLr = options?.minLr ?? 0
+    this.eps = options?.eps ?? 1e-8
 
     if (this.factor >= 1.0) {
-      throw new Error("Factor should be < 1.0");
+      throw new Error('Factor should be < 1.0')
     }
     if (this.patience < 0) {
-      throw new Error("Patience should be non-negative");
+      throw new Error('Patience should be non-negative')
     }
 
-    this.numBadEpochs = 0;
-    this.cooldownCounter = 0;
-    this.best = null;
+    this.numBadEpochs = 0
+    this.cooldownCounter = 0
+    this.best = null
   }
 
   protected getLr(): number[] {
     // This is never called for ReduceLROnPlateau since we override step()
-    return this.getCurrentLr();
+    return this.getCurrentLr()
   }
 
   /**
@@ -438,72 +433,66 @@ export class ReduceLROnPlateau extends LRScheduler {
    */
   override step(metrics?: number): void {
     if (metrics === undefined) {
-      throw new Error("ReduceLROnPlateau requires a metric value");
+      throw new Error('ReduceLROnPlateau requires a metric value')
     }
 
-    const current = metrics;
+    const current = metrics
 
     if (this.best === null) {
-      this.best = current;
+      this.best = current
     } else if (this.isImproved(current)) {
-      this.best = current;
-      this.numBadEpochs = 0;
+      this.best = current
+      this.numBadEpochs = 0
     } else {
-      this.numBadEpochs += 1;
+      this.numBadEpochs += 1
     }
 
     if (this.cooldownCounter > 0) {
-      this.cooldownCounter -= 1;
-      this.numBadEpochs = 0;
+      this.cooldownCounter -= 1
+      this.numBadEpochs = 0
     }
 
     if (this.numBadEpochs > this.patience) {
-      this.reduceLr();
-      this.cooldownCounter = this.cooldown;
-      this.numBadEpochs = 0;
+      this.reduceLr()
+      this.cooldownCounter = this.cooldown
+      this.numBadEpochs = 0
     }
 
-    this.lastEpoch += 1;
+    this.lastEpoch += 1
   }
 
   private isImproved(current: number): boolean {
-    if (this.best === null) return true;
+    if (this.best === null) return true
 
-    if (this.mode === "min") {
-      const threshold =
-        this.thresholdMode === "rel"
-          ? this.best * (1 - this.threshold)
-          : this.best - this.threshold;
-      return current < threshold;
+    if (this.mode === 'min') {
+      const threshold = this.thresholdMode === 'rel' ? this.best * (1 - this.threshold) : this.best - this.threshold
+      return current < threshold
     } else {
-      const threshold =
-        this.thresholdMode === "rel"
-          ? this.best * (1 + this.threshold)
-          : this.best + this.threshold;
-      return current > threshold;
+      const threshold = this.thresholdMode === 'rel' ? this.best * (1 + this.threshold) : this.best + this.threshold
+      return current > threshold
     }
   }
 
   private reduceLr(): void {
-    const paramGroups = this.optimizer["paramGroups"];
+    const paramGroups = this.optimizer['paramGroups']
     for (let i = 0; i < paramGroups.length; i++) {
-      const group = paramGroups[i];
-      if (!group) continue;
+      const group = paramGroups[i]
+      if (!group) continue
 
-      const oldLr = group.lr ?? this.optimizer["defaults"].lr;
-      const newLr = Math.max(oldLr * this.factor, this.getMinLr(i));
+      const oldLr = group.lr ?? this.optimizer['defaults'].lr
+      const newLr = Math.max(oldLr * this.factor, this.getMinLr(i))
 
       if (oldLr - newLr > this.eps) {
-        group.lr = newLr;
+        group.lr = newLr
       }
     }
   }
 
   private getMinLr(index: number): number {
-    if (typeof this.minLr === "number") {
-      return this.minLr;
+    if (typeof this.minLr === 'number') {
+      return this.minLr
     }
-    return this.minLr[index] ?? 0;
+    return this.minLr[index] ?? 0
   }
 }
 
@@ -525,7 +514,7 @@ export class ReduceLROnPlateau extends LRScheduler {
  * ```
  */
 export class LinearWarmup extends LRScheduler {
-  private warmupSteps: number;
+  private warmupSteps: number
 
   /**
    * @param optimizer - Wrapped optimizer
@@ -534,19 +523,19 @@ export class LinearWarmup extends LRScheduler {
    */
   constructor(optimizer: Optimizer, warmupSteps: number, lastEpoch = -1) {
     if (warmupSteps <= 0) {
-      throw new Error("Warmup steps must be positive");
+      throw new Error('Warmup steps must be positive')
     }
 
-    super(optimizer, lastEpoch);
-    this.warmupSteps = warmupSteps;
+    super(optimizer, lastEpoch)
+    this.warmupSteps = warmupSteps
   }
 
   protected getLr(): number[] {
     if (this.lastEpoch >= this.warmupSteps) {
-      return this.baseLrs;
+      return this.baseLrs
     }
 
-    const multiplier = this.lastEpoch / this.warmupSteps;
-    return this.baseLrs.map((baseLr) => baseLr * multiplier);
+    const multiplier = this.lastEpoch / this.warmupSteps
+    return this.baseLrs.map((baseLr) => baseLr * multiplier)
   }
 }

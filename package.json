@@ -19,10 +19,12 @@
     "check": "bun run lint:check && bun run format:check && bun run check-types"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.16",
     "oxfmt": "^0.23.0",
     "oxlint": "^1.38.0",
     "turbo": "^2.7.3",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^4.0.16"
   },
   "engines": {
     "node": ">=18"
