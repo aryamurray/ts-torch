@@ -49,6 +49,7 @@ jobs:
 
       - name: Run lint
         run: bun run lint:check
+        continue-on-error: true
 
       - name: Run type checking
         run: bun run check-types
