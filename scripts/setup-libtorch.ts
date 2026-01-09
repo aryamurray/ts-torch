@@ -17,7 +17,7 @@ let filename: string;
 if (platform === "win32") {
   filename = `libtorch-win-shared-with-deps-${LIBTORCH_VERSION}%2Bcpu.zip`;
 } else if (platform === "linux") {
-  filename = `libtorch-cxx11-abi-shared-with-deps-${LIBTORCH_VERSION}+cpu.zip`;
+  filename = `libtorch-cxx11-abi-shared-with-deps-${LIBTORCH_VERSION}%2Bcpu.zip`;
 } else if (platform === "darwin") {
   // macOS - check for ARM64 (Apple Silicon)
   if (arch === "arm64") {
@@ -30,8 +30,11 @@ if (platform === "win32") {
   process.exit(1);
 }
 
+// For local file path, use the non-encoded version (replace %2B with +)
+const localFilename = filename.replace("%2B", "+");
+
 const downloadUrl = `${BASE_URL}/${filename}`;
-const zipPath = path.join(LIBTORCH_DIR, filename);
+const zipPath = path.join(LIBTORCH_DIR, localFilename);
 
 async function setup() {
   try {
@@ -64,7 +67,7 @@ async function setup() {
       }
 
       // Clean up zip file
-      execSync(`rm "${zipPath}"`, { shell: true });
+      execSync(`rm -f "${zipPath}"`, { shell: true });
     } else {
       console.log("LibTorch already extracted, skipping download...");
     }
