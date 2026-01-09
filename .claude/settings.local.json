@@ -36,7 +36,9 @@
       "Bash(git rm:*)",
       "Bash(PATH=\"$PATH:C:/Users/Arya/Downloads/libtorch-win-shared-with-deps-2.5.1+cpu/libtorch/lib:C:/Users/Arya/Documents/Code/ts-tools/packages/@ts-torch/core/native/build/Release\" bun run:*)",
       "Bash(TS_TORCH_LIB=\"C:\\\\Users\\\\Arya\\\\Documents\\\\Code\\\\ts-tools\\\\packages\\\\@ts-torch-platform\\\\win32-x64\\\\lib\\\\ts_torch.dll\" bun run:*)",
-      "Bash(./build.bat --release)"
+      "Bash(./build.bat --release)",
+      "WebFetch(domain:turborepo.com)",
+      "WebFetch(domain:turbo.build)"
     ]
   }
 }
