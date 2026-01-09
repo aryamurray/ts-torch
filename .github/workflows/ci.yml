@@ -39,6 +39,25 @@ jobs:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
+      - name: Cache LibTorch
+        uses: actions/cache@v4
+        with:
+          path: libtorch
+          key: ${{ runner.os }}-libtorch-2.5.1-cpu
+          restore-keys: |
+            ${{ runner.os }}-libtorch-
+
+      - name: Cache native build
+        uses: actions/cache@v4
+        with:
+          path: packages/@ts-torch/core/native/build
+          key: ${{ runner.os }}-native-build-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-native-build-
+
+      - name: Setup LibTorch and build native library
+        run: bun run setup
+
       - name: Cache Turbo build artifacts
         uses: actions/cache@v4
         with:

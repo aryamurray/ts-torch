@@ -2,7 +2,7 @@
  * Tests for tensor pool optimization
  */
 
-import { describe, test, expect, beforeEach } from 'bun:test'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { TensorPool, type PoolableTensor } from '../pool'
 
 // Mock tensor for testing
@@ -22,12 +22,12 @@ describe('TensorPool', () => {
   })
 
   describe('acquire and release', () => {
-    test('returns null when pool is empty', () => {
+    it('returns null when pool is empty', () => {
       const tensor = pool.acquire([10, 10], 'float32')
       expect(tensor).toBeNull()
     })
 
-    test('returns tensor after release', () => {
+    it('returns tensor after release', () => {
       const original = new MockPoolableTensor([10, 10], 'float32')
       pool.release(original)
 
@@ -35,7 +35,7 @@ describe('TensorPool', () => {
       expect(acquired).toBe(original)
     })
 
-    test('matches shape exactly', () => {
+    it('matches shape exactly', () => {
       const t1 = new MockPoolableTensor([10, 10], 'float32')
       const t2 = new MockPoolableTensor([10, 20], 'float32')
 
@@ -46,7 +46,7 @@ describe('TensorPool', () => {
       expect(acquired).toBe(t2)
     })
 
-    test('matches dtype exactly', () => {
+    it('matches dtype exactly', () => {
       const t1 = new MockPoolableTensor([10, 10], 'float32')
       const t2 = new MockPoolableTensor([10, 10], 'float64')
 
@@ -57,7 +57,7 @@ describe('TensorPool', () => {
       expect(acquired).toBe(t2)
     })
 
-    test('handles different shapes independently', () => {
+    it('handles different shapes independently', () => {
       const t1 = new MockPoolableTensor([5, 5], 'float32')
       const t2 = new MockPoolableTensor([10, 10], 'float32')
       const t3 = new MockPoolableTensor([20, 20], 'float32')
@@ -71,7 +71,7 @@ describe('TensorPool', () => {
       expect(pool.acquire([20, 20], 'float32')).toBe(t3)
     })
 
-    test('LIFO ordering (stack)', () => {
+    it('LIFO ordering (stack)', () => {
       const tensors = [
         new MockPoolableTensor([10, 10], 'float32'),
         new MockPoolableTensor([10, 10], 'float32'),
@@ -90,7 +90,7 @@ describe('TensorPool', () => {
   })
 
   describe('maxPoolSize', () => {
-    test('respects max pool size', () => {
+    it('respects max pool size', () => {
       const smallPool = new TensorPool(2)
       const tensors = [
         new MockPoolableTensor([10, 10], 'float32'),
@@ -106,7 +106,7 @@ describe('TensorPool', () => {
       expect(stats.size).toBe(2) // Only 2 cached
     })
 
-    test('keeps most recently released when full', () => {
+    it('keeps most recently released when full', () => {
       const smallPool = new TensorPool(2)
       const t1 = new MockPoolableTensor([10, 10], 'float32')
       const t2 = new MockPoolableTensor([10, 10], 'float32')
@@ -125,7 +125,7 @@ describe('TensorPool', () => {
   })
 
   describe('stats', () => {
-    test('initial stats are empty', () => {
+    it('initial stats are empty', () => {
       const stats = pool.stats()
       expect(stats.size).toBe(0)
       expect(stats.hitCount).toBe(0)
@@ -133,7 +133,7 @@ describe('TensorPool', () => {
       expect(stats.hitRate).toBe(0)
     })
 
-    test('tracks hits and misses', () => {
+    it('tracks hits and misses', () => {
       const tensor = new MockPoolableTensor([10, 10], 'float32')
       pool.release(tensor)
 
@@ -147,7 +147,7 @@ describe('TensorPool', () => {
       expect(stats.hitRate).toBeCloseTo(1 / 3)
     })
 
-    test('calculates hit rate correctly', () => {
+    it('calculates hit rate correctly', () => {
       const tensors = [new MockPoolableTensor([10, 10], 'float32'), new MockPoolableTensor([10, 10], 'float32')]
 
       pool.release(tensors[0])
@@ -161,7 +161,7 @@ describe('TensorPool', () => {
       expect(stats.hitRate).toBeCloseTo(2 / 3)
     })
 
-    test('tracks pool sizes per key', () => {
+    it('tracks pool sizes per key', () => {
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.release(new MockPoolableTensor([20, 20], 'float64'))
@@ -173,7 +173,7 @@ describe('TensorPool', () => {
   })
 
   describe('clear', () => {
-    test('removes all cached tensors', () => {
+    it('removes all cached tensors', () => {
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.release(new MockPoolableTensor([20, 20], 'float64'))
 
@@ -185,7 +185,7 @@ describe('TensorPool', () => {
       expect(pool.acquire([10, 10], 'float32')).toBeNull()
     })
 
-    test('resets statistics', () => {
+    it('resets statistics', () => {
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.acquire([10, 10], 'float32')
       pool.acquire([10, 10], 'float32')
@@ -199,7 +199,7 @@ describe('TensorPool', () => {
   })
 
   describe('clearKey', () => {
-    test('clears specific key only', () => {
+    it('clears specific key only', () => {
       const t1 = new MockPoolableTensor([10, 10], 'float32')
       const t2 = new MockPoolableTensor([20, 20], 'float32')
 
@@ -214,11 +214,11 @@ describe('TensorPool', () => {
   })
 
   describe('getKeySize', () => {
-    test('returns 0 for empty key', () => {
+    it('returns 0 for empty key', () => {
       expect(pool.getKeySize([10, 10], 'float32')).toBe(0)
     })
 
-    test('returns correct count for key', () => {
+    it('returns correct count for key', () => {
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.release(new MockPoolableTensor([20, 20], 'float32'))
@@ -229,11 +229,11 @@ describe('TensorPool', () => {
   })
 
   describe('getKeys', () => {
-    test('returns empty array initially', () => {
+    it('returns empty array initially', () => {
       expect(pool.getKeys()).toEqual([])
     })
 
-    test('returns all unique keys', () => {
+    it('returns all unique keys', () => {
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.release(new MockPoolableTensor([20, 20], 'float64'))
@@ -246,7 +246,7 @@ describe('TensorPool', () => {
   })
 
   describe('prune', () => {
-    test('reduces pool size to target', () => {
+    it('reduces pool size to target', () => {
       for (let i = 0; i < 10; i++) {
         pool.release(new MockPoolableTensor([10, 10], 'float32'))
       }
@@ -258,7 +258,7 @@ describe('TensorPool', () => {
       expect(pool.stats().size).toBe(5)
     })
 
-    test('does nothing if already under target', () => {
+    it('does nothing if already under target', () => {
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
 
@@ -267,7 +267,7 @@ describe('TensorPool', () => {
       expect(pool.stats().size).toBe(2)
     })
 
-    test('defaults to half size when no target given', () => {
+    it('defaults to half size when no target given', () => {
       for (let i = 0; i < 10; i++) {
         pool.release(new MockPoolableTensor([10, 10], 'float32'))
       }
@@ -277,7 +277,7 @@ describe('TensorPool', () => {
       expect(pool.stats().size).toBe(5)
     })
 
-    test('removes empty pools after pruning', () => {
+    it('removes empty pools after pruning', () => {
       pool.release(new MockPoolableTensor([10, 10], 'float32'))
       pool.release(new MockPoolableTensor([20, 20], 'float64'))
 
@@ -288,7 +288,7 @@ describe('TensorPool', () => {
   })
 
   describe('Real-world scenarios', () => {
-    test('training loop pattern', () => {
+    it('training loop pattern', () => {
       // Simulate a training loop reusing tensors
       const results: (PoolableTensor | null)[] = []
 
@@ -303,7 +303,7 @@ describe('TensorPool', () => {
       expect(stats.hitRate).toBeGreaterThan(0.9) // High hit rate expected
     })
 
-    test('mixed shapes and dtypes', () => {
+    it('mixed shapes and dtypes', () => {
       const shapes: Array<readonly number[]> = [
         [10, 10],
         [20, 20],
@@ -331,7 +331,7 @@ describe('TensorPool', () => {
       }
     })
 
-    test('memory pressure management', () => {
+    it('memory pressure management', () => {
       // Fill pool
       for (let i = 0; i < 1000; i++) {
         pool.release(new MockPoolableTensor([10, 10], 'float32'))

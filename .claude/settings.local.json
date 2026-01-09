@@ -38,7 +38,8 @@
       "Bash(TS_TORCH_LIB=\"C:\\\\Users\\\\Arya\\\\Documents\\\\Code\\\\ts-tools\\\\packages\\\\@ts-torch-platform\\\\win32-x64\\\\lib\\\\ts_torch.dll\" bun run:*)",
       "Bash(./build.bat --release)",
       "WebFetch(domain:turborepo.com)",
-      "WebFetch(domain:turbo.build)"
+      "WebFetch(domain:turbo.build)",
+      "WebFetch(domain:download.pytorch.org)"
     ]
   }
 }

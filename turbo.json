@@ -21,6 +21,29 @@
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "src/**/*.ts", "**/*.test.ts", "__tests__/**/*.ts", "vitest.config.ts"],
+      "outputs": ["coverage/**"],
+      "env": ["TS_TORCH_LIB"],
+      "cache": true
+    },
+    "test:unit": {
+      "dependsOn": [],
+      "inputs": ["$TURBO_DEFAULT$", "src/**/*.ts", "**/*.unit.test.ts"],
+      "cache": true
+    },
+    "test:integration": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "src/**/*.ts", "**/*.integration.test.ts"],
+      "env": ["TS_TORCH_LIB"],
+      "cache": false
+    },
+    "test:coverage": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "cache": false
     }
   }
 }

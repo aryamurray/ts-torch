@@ -2,7 +2,7 @@
  * Tests for scoped memory management
  */
 
-import { describe, test, expect, beforeEach } from 'bun:test'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   run,
   runAsync,
@@ -37,17 +37,17 @@ class MockTensor implements ScopedTensor {
 
 describe('Scope Management', () => {
   describe('inScope', () => {
-    test('returns false outside scope', () => {
+    it('returns false outside scope', () => {
       expect(inScope()).toBe(false)
     })
 
-    test('returns true inside scope', () => {
+    it('returns true inside scope', () => {
       run(() => {
         expect(inScope()).toBe(true)
       })
     })
 
-    test('returns false after scope exits', () => {
+    it('returns false after scope exits', () => {
       run(() => {
         expect(inScope()).toBe(true)
       })
@@ -56,17 +56,17 @@ describe('Scope Management', () => {
   })
 
   describe('scopeDepth', () => {
-    test('returns 0 outside scope', () => {
+    it('returns 0 outside scope', () => {
       expect(scopeDepth()).toBe(0)
     })
 
-    test('returns 1 in single scope', () => {
+    it('returns 1 in single scope', () => {
       run(() => {
         expect(scopeDepth()).toBe(1)
       })
     })
 
-    test('tracks nested scopes correctly', () => {
+    it('tracks nested scopes correctly', () => {
       run(() => {
         expect(scopeDepth()).toBe(1)
         run(() => {
@@ -83,18 +83,18 @@ describe('Scope Management', () => {
   })
 
   describe('currentScopeId', () => {
-    test('returns -1 outside scope', () => {
+    it('returns -1 outside scope', () => {
       expect(currentScopeId()).toBe(-1)
     })
 
-    test('returns valid ID inside scope', () => {
+    it('returns valid ID inside scope', () => {
       run(() => {
         const id = currentScopeId()
         expect(id).toBeGreaterThanOrEqual(0)
       })
     })
 
-    test('different scopes have different IDs', () => {
+    it('different scopes have different IDs', () => {
       const ids: number[] = []
       run(() => {
         ids.push(currentScopeId())
@@ -107,14 +107,14 @@ describe('Scope Management', () => {
   })
 
   describe('run', () => {
-    test('executes function and returns result', () => {
+    it('executes function and returns result', () => {
       const result = run(() => {
         return 42
       })
       expect(result).toBe(42)
     })
 
-    test('preserves return type', () => {
+    it('preserves return type', () => {
       const obj = run(() => {
         return { value: 100, nested: { key: 'test' } }
       })
@@ -122,7 +122,7 @@ describe('Scope Management', () => {
       expect(obj.nested.key).toBe('test')
     })
 
-    test('handles exceptions', () => {
+    it('handles exceptions', () => {
       expect(() => {
         run(() => {
           throw new Error('Test error')
@@ -130,7 +130,7 @@ describe('Scope Management', () => {
       }).toThrow('Test error')
     })
 
-    test('cleans up scope after exception', () => {
+    it('cleans up scope after exception', () => {
       expect(() => {
         run(() => {
           throw new Error('Test error')
@@ -143,7 +143,7 @@ describe('Scope Management', () => {
   })
 
   describe('runAsync', () => {
-    test('executes async function and returns result', async () => {
+    it('executes async function and returns result', async () => {
       const result = await runAsync(async () => {
         await new Promise((resolve) => setTimeout(resolve, 10))
         return 42
@@ -151,7 +151,7 @@ describe('Scope Management', () => {
       expect(result).toBe(42)
     })
 
-    test('maintains scope during async operations', async () => {
+    it('maintains scope during async operations', async () => {
       const checks: boolean[] = []
       await runAsync(async () => {
         checks.push(inScope())
@@ -162,7 +162,7 @@ describe('Scope Management', () => {
       expect(inScope()).toBe(false)
     })
 
-    test('handles async exceptions', async () => {
+    it('handles async exceptions', async () => {
       await expect(
         runAsync(async () => {
           await new Promise((resolve) => setTimeout(resolve, 10))
@@ -175,12 +175,12 @@ describe('Scope Management', () => {
   })
 
   describe('registerTensor', () => {
-    test('does nothing outside scope', () => {
+    it('does nothing outside scope', () => {
       const tensor = new MockTensor(1)
       expect(() => registerTensor(tensor)).not.toThrow()
     })
 
-    test('tracks tensor inside scope', () => {
+    it('tracks tensor inside scope', () => {
       run(() => {
         const tensor = new MockTensor(1)
         registerTensor(tensor)
@@ -188,7 +188,7 @@ describe('Scope Management', () => {
       })
     })
 
-    test('tracks multiple tensors', () => {
+    it('tracks multiple tensors', () => {
       run(() => {
         for (let i = 0; i < 5; i++) {
           const tensor = new MockTensor(i)
@@ -198,7 +198,7 @@ describe('Scope Management', () => {
       })
     })
 
-    test('nested scopes track tensors separately', () => {
+    it('nested scopes track tensors separately', () => {
       run(() => {
         registerTensor(new MockTensor(1))
         expect(scopeTensorCount()).toBe(1)
@@ -215,12 +215,12 @@ describe('Scope Management', () => {
   })
 
   describe('escapeTensor', () => {
-    test('throws outside scope', () => {
+    it('throws outside scope', () => {
       const tensor = new MockTensor(1)
       expect(() => escapeTensor(tensor)).toThrow('not currently in a scope')
     })
 
-    test('marks tensor as escaped', () => {
+    it('marks tensor as escaped', () => {
       run(() => {
         const tensor = new MockTensor(1)
         registerTensor(tensor)
@@ -231,7 +231,7 @@ describe('Scope Management', () => {
       })
     })
 
-    test('returns the same tensor for chaining', () => {
+    it('returns the same tensor for chaining', () => {
       run(() => {
         const tensor = new MockTensor(1)
         registerTensor(tensor)
@@ -242,11 +242,11 @@ describe('Scope Management', () => {
   })
 
   describe('scopeTensorCount', () => {
-    test('returns 0 outside scope', () => {
+    it('returns 0 outside scope', () => {
       expect(scopeTensorCount()).toBe(0)
     })
 
-    test('counts registered tensors', () => {
+    it('counts registered tensors', () => {
       run(() => {
         expect(scopeTensorCount()).toBe(0)
         registerTensor(new MockTensor(1))
@@ -256,7 +256,7 @@ describe('Scope Management', () => {
       })
     })
 
-    test('resets after scope exit', () => {
+    it('resets after scope exit', () => {
       run(() => {
         registerTensor(new MockTensor(1))
         registerTensor(new MockTensor(2))
@@ -267,7 +267,7 @@ describe('Scope Management', () => {
   })
 
   describe('Integration scenarios', () => {
-    test('simple scope with escape', () => {
+    it('simple scope with escape', () => {
       let escapedTensor: MockTensor | null = null
 
       run(() => {
@@ -291,7 +291,7 @@ describe('Scope Management', () => {
       expect(escapedTensor!.escaped).toBe(true)
     })
 
-    test('nested scopes with selective escaping', () => {
+    it('nested scopes with selective escaping', () => {
       const results: MockTensor[] = []
 
       run(() => {
@@ -315,7 +315,7 @@ describe('Scope Management', () => {
       expect(results[1]!.escaped).toBe(true)
     })
 
-    test('async scope with tensor lifecycle', async () => {
+    it('async scope with tensor lifecycle', async () => {
       const tensor = await runAsync(async () => {
         const t = new MockTensor(1)
         registerTensor(t)

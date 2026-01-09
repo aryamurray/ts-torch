@@ -3,12 +3,12 @@
  * Note: These tests will fail if native library is not built
  */
 
-import { describe, test, expect } from 'bun:test'
+import { describe, it, expect } from 'vitest'
 import { getPlatformPackage, getLibraryPath, getLib, closeLib } from '../loader.js'
 
 describe('FFI Loader', () => {
   describe('getPlatformPackage', () => {
-    test('should return valid platform package info', () => {
+    it('should return valid platform package info', () => {
       const { packageName, libraryName } = getPlatformPackage()
 
       expect(packageName).toMatch(/^@ts-torch\/(darwin|linux|win32)-(arm64|x64)$/)
@@ -16,7 +16,7 @@ describe('FFI Loader', () => {
       expect(typeof libraryName).toBe('string')
     })
 
-    test('should match current platform', () => {
+    it('should match current platform', () => {
       const { packageName } = getPlatformPackage()
       const platform = process.platform
 
@@ -25,7 +25,7 @@ describe('FFI Loader', () => {
   })
 
   describe('getLibraryPath', () => {
-    test('should respect TS_TORCH_LIB environment variable', () => {
+    it('should respect TS_TORCH_LIB environment variable', () => {
       const originalEnv = process.env.TS_TORCH_LIB
 
       try {
@@ -46,7 +46,7 @@ describe('FFI Loader', () => {
       }
     })
 
-    test('should return absolute path', () => {
+    it('should return absolute path', () => {
       try {
         const path = getLibraryPath()
         expect(path).toBeTruthy()
@@ -63,7 +63,7 @@ describe('FFI Loader', () => {
   })
 
   describe('getLib', () => {
-    test('should cache library instance', () => {
+    it('should cache library instance', () => {
       try {
         const lib1 = getLib()
         const lib2 = getLib()
@@ -76,7 +76,7 @@ describe('FFI Loader', () => {
       }
     })
 
-    test('should have all required symbols', () => {
+    it('should have all required symbols', () => {
       try {
         const lib = getLib()
 
@@ -91,7 +91,7 @@ describe('FFI Loader', () => {
       }
     })
 
-    test('should throw descriptive error if library not found', () => {
+    it('should throw descriptive error if library not found', () => {
       // Clear cache first
       closeLib()
 
@@ -110,7 +110,7 @@ describe('FFI Loader', () => {
   })
 
   describe('closeLib', () => {
-    test('should cleanup library instance', () => {
+    it('should cleanup library instance', () => {
       try {
         getLib() // Load library
         closeLib() // Close library
@@ -124,7 +124,7 @@ describe('FFI Loader', () => {
       }
     })
 
-    test('should be safe to call multiple times', () => {
+    it('should be safe to call multiple times', () => {
       expect(() => {
         closeLib()
         closeLib()

@@ -2,7 +2,7 @@
  * Tests for error handling utilities
  */
 
-import { describe, test, expect } from 'bun:test'
+import { describe, it, expect } from 'vitest'
 import {
   TorchError,
   ErrorCode,
@@ -18,19 +18,19 @@ import { ptr } from 'bun:ffi'
 
 describe('FFI Error Handling', () => {
   describe('ERROR_STRUCT_SIZE', () => {
-    test('should be 260 bytes (4 + 256)', () => {
+    it('should be 260 bytes (4 + 256)', () => {
       expect(ERROR_STRUCT_SIZE).toBe(260)
     })
   })
 
   describe('TorchError', () => {
-    test('should extend Error', () => {
+    it('should extend Error', () => {
       const err = new TorchError(ErrorCode.INVALID_SHAPE, 'test')
       expect(err).toBeInstanceOf(Error)
       expect(err).toBeInstanceOf(TorchError)
     })
 
-    test('should store error code and message', () => {
+    it('should store error code and message', () => {
       const err = new TorchError(ErrorCode.NULL_POINTER, 'null ptr')
       expect(err.code).toBe(ErrorCode.NULL_POINTER)
       expect(err.nativeMessage).toBe('null ptr')
@@ -38,18 +38,18 @@ describe('FFI Error Handling', () => {
       expect(err.message).toContain('null ptr')
     })
 
-    test('should have correct name', () => {
+    it('should have correct name', () => {
       const err = new TorchError(ErrorCode.OK, '')
       expect(err.name).toBe('TorchError')
     })
 
-    test('is() should check error code', () => {
+    it('is() should check error code', () => {
       const err = new TorchError(ErrorCode.CUDA_ERROR, 'cuda failed')
       expect(err.is(ErrorCode.CUDA_ERROR)).toBe(true)
       expect(err.is(ErrorCode.NULL_POINTER)).toBe(false)
     })
 
-    test('toJSON() should serialize error', () => {
+    it('toJSON() should serialize error', () => {
       const err = new TorchError(ErrorCode.DIMENSION_MISMATCH, 'shape error')
       const json = err.toJSON()
 
@@ -62,20 +62,20 @@ describe('FFI Error Handling', () => {
   })
 
   describe('createError', () => {
-    test('should allocate error buffer', () => {
+    it('should allocate error buffer', () => {
       const err = createError()
       expect(err).toBeTruthy()
       expect(typeof err).toBe('object')
     })
 
-    test('should initialize with code 0 (OK)', () => {
+    it('should initialize with code 0 (OK)', () => {
       const err = createError()
       expect(() => checkError(err)).not.toThrow()
     })
   })
 
   describe('checkError', () => {
-    test('should not throw for OK error', () => {
+    it('should not throw for OK error', () => {
       const buffer = new ArrayBuffer(ERROR_STRUCT_SIZE)
       const view = new DataView(buffer)
       view.setInt32(0, ErrorCode.OK, true)
@@ -84,7 +84,7 @@ describe('FFI Error Handling', () => {
       expect(() => checkError(errorPtr)).not.toThrow()
     })
 
-    test('should throw TorchError for non-zero code', () => {
+    it('should throw TorchError for non-zero code', () => {
       const buffer = new ArrayBuffer(ERROR_STRUCT_SIZE)
       const view = new DataView(buffer)
 
@@ -111,7 +111,7 @@ describe('FFI Error Handling', () => {
       }
     })
 
-    test('should handle empty error message', () => {
+    it('should handle empty error message', () => {
       const buffer = new ArrayBuffer(ERROR_STRUCT_SIZE)
       const view = new DataView(buffer)
       view.setInt32(0, ErrorCode.UNKNOWN, true)
@@ -130,7 +130,7 @@ describe('FFI Error Handling', () => {
   })
 
   describe('withError', () => {
-    test('should automatically check error', () => {
+    it('should automatically check error', () => {
       // Function that succeeds
       const result = withError((err) => {
         // Return success (don't modify error struct)
@@ -140,7 +140,7 @@ describe('FFI Error Handling', () => {
       expect(result).toBe(42)
     })
 
-    test('should throw if error is set', () => {
+    it('should throw if error is set', () => {
       expect(() => {
         withError((err) => {
           // Simulate error
@@ -153,7 +153,7 @@ describe('FFI Error Handling', () => {
       }).toThrow(TorchError)
     })
 
-    test('should return function result', () => {
+    it('should return function result', () => {
       const obj = { value: 123 }
       const result = withError(() => obj)
       expect(result).toBe(obj)
@@ -161,20 +161,20 @@ describe('FFI Error Handling', () => {
   })
 
   describe('checkNull', () => {
-    test('should throw for null pointer', () => {
+    it('should throw for null pointer', () => {
       expect(() => checkNull(null as any)).toThrow(TorchError)
       expect(() => checkNull(0 as any)).toThrow(TorchError)
       expect(() => checkNull(0n as any)).toThrow(TorchError)
     })
 
-    test('should not throw for valid pointer', () => {
+    it('should not throw for valid pointer', () => {
       const buffer = new ArrayBuffer(8)
       const validPtr = ptr(buffer)
 
       expect(() => checkNull(validPtr)).not.toThrow()
     })
 
-    test('should use custom message', () => {
+    it('should use custom message', () => {
       try {
         checkNull(null as any, 'Custom error')
       } catch (err) {
@@ -185,48 +185,48 @@ describe('FFI Error Handling', () => {
   })
 
   describe('validateShape', () => {
-    test('should accept valid shapes', () => {
+    it('should accept valid shapes', () => {
       expect(() => validateShape([1, 2, 3])).not.toThrow()
       expect(() => validateShape([0])).not.toThrow()
       expect(() => validateShape([1n, 2n, 3n])).not.toThrow()
     })
 
-    test('should reject empty array', () => {
+    it('should reject empty array', () => {
       expect(() => validateShape([])).toThrow(TorchError)
     })
 
-    test('should reject non-array', () => {
+    it('should reject non-array', () => {
       expect(() => validateShape(null as any)).toThrow(TorchError)
       expect(() => validateShape(undefined as any)).toThrow(TorchError)
       expect(() => validateShape(42 as any)).toThrow(TorchError)
     })
 
-    test('should reject negative dimensions', () => {
+    it('should reject negative dimensions', () => {
       expect(() => validateShape([1, -2, 3])).toThrow(TorchError)
       expect(() => validateShape([-1n])).toThrow(TorchError)
     })
 
-    test('should reject non-integer dimensions', () => {
+    it('should reject non-integer dimensions', () => {
       expect(() => validateShape([1.5, 2])).toThrow(TorchError)
       expect(() => validateShape([NaN])).toThrow(TorchError)
     })
   })
 
   describe('validateDtype', () => {
-    test('should accept valid dtypes', () => {
+    it('should accept valid dtypes', () => {
       expect(() => validateDtype(0)).not.toThrow() // f32
       expect(() => validateDtype(1)).not.toThrow() // f64
       expect(() => validateDtype(2)).not.toThrow() // i32
       expect(() => validateDtype(3)).not.toThrow() // i64
     })
 
-    test('should reject invalid dtype values', () => {
+    it('should reject invalid dtype values', () => {
       expect(() => validateDtype(-1)).toThrow(TorchError)
       expect(() => validateDtype(4)).toThrow(TorchError)
       expect(() => validateDtype(99)).toThrow(TorchError)
     })
 
-    test('should reject non-integer dtype', () => {
+    it('should reject non-integer dtype', () => {
       expect(() => validateDtype(1.5)).toThrow(TorchError)
       expect(() => validateDtype(NaN)).toThrow(TorchError)
     })

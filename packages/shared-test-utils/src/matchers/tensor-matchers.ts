@@ -1,0 +1,194 @@
+import { expect } from 'vitest';
+import type { Tensor } from '@ts-torch/core';
+
+/**
+ * Custom Vitest matchers for tensor assertions
+ */
+
+declare module 'vitest' {
+  interface Assertion<T = unknown> {
+    /**
+     * Assert that a tensor has the expected shape
+     */
+    toHaveShape(expected: readonly number[]): T;
+
+    /**
+     * Assert that a tensor's values are close to expected values
+     */
+    toBeCloseTo(expected: number[], tolerance?: number): T;
+
+    /**
+     * Assert that all tensor values are finite
+     */
+    toBeFinite(): T;
+
+    /**
+     * Assert that a tensor has the expected dtype
+     */
+    toHaveDtype(expected: string): T;
+
+    /**
+     * Assert that a tensor requires gradients
+     */
+    toRequireGrad(): T;
+
+    /**
+     * Assert that a tensor has a gradient attached
+     */
+    toHaveGrad(): T;
+
+    /**
+     * Assert that two tensors are equal (shape and values)
+     */
+    toEqualTensor(expected: Tensor, tolerance?: number): T;
+  }
+
+  interface AsymmetricMatchersContaining {
+    toHaveShape(expected: readonly number[]): unknown;
+    toBeCloseTo(expected: number[], tolerance?: number): unknown;
+    toBeFinite(): unknown;
+    toHaveDtype(expected: string): unknown;
+    toRequireGrad(): unknown;
+    toHaveGrad(): unknown;
+    toEqualTensor(expected: Tensor, tolerance?: number): unknown;
+  }
+}
+
+function arraysEqual(a: readonly number[], b: readonly number[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((val, idx) => val === b[idx]);
+}
+
+function arraysClose(
+  a: number[],
+  b: number[],
+  tolerance: number = 1e-5
+): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((val, idx) => Math.abs(val - b[idx]) <= tolerance);
+}
+
+export const tensorMatchers = {
+  toHaveShape(received: Tensor, expected: readonly number[]) {
+    const pass = arraysEqual(received.shape, expected);
+
+    return {
+      pass,
+      message: () =>
+        pass
+          ? `Expected tensor not to have shape [${expected.join(', ')}], but it does`
+          : `Expected tensor to have shape [${expected.join(', ')}], but got [${received.shape.join(', ')}]`,
+      actual: received.shape,
+      expected,
+    };
+  },
+
+  toBeCloseTo(received: Tensor, expected: number[], tolerance: number = 1e-5) {
+    const actual = received.toArray();
+    const pass = arraysClose(actual, expected, tolerance);
+
+    return {
+      pass,
+      message: () =>
+        pass
+          ? `Expected tensor values not to be close to [${expected.join(', ')}] within tolerance ${tolerance}, but they are`
+          : `Expected tensor values to be close to [${expected.join(', ')}] within tolerance ${tolerance}, but got [${actual.join(', ')}]`,
+      actual,
+      expected,
+    };
+  },
+
+  toBeFinite(received: Tensor) {
+    const values = received.toArray();
+    const pass = values.every((val) => Number.isFinite(val));
+
+    const nonFiniteValues = values.filter((val) => !Number.isFinite(val));
+
+    return {
+      pass,
+      message: () =>
+        pass
+          ? `Expected tensor to contain non-finite values, but all values are finite`
+          : `Expected all tensor values to be finite, but found: [${nonFiniteValues.join(', ')}]`,
+      actual: values,
+    };
+  },
+
+  toHaveDtype(received: Tensor, expected: string) {
+    const actual = received.dtype.name;
+    const pass = actual === expected;
+
+    return {
+      pass,
+      message: () =>
+        pass
+          ? `Expected tensor not to have dtype "${expected}", but it does`
+          : `Expected tensor to have dtype "${expected}", but got "${actual}"`,
+      actual,
+      expected,
+    };
+  },
+
+  toRequireGrad(received: Tensor) {
+    const pass = received.requiresGrad === true;
+
+    return {
+      pass,
+      message: () =>
+        pass
+          ? `Expected tensor not to require gradients, but it does`
+          : `Expected tensor to require gradients, but requiresGrad is ${received.requiresGrad}`,
+      actual: received.requiresGrad,
+      expected: true,
+    };
+  },
+
+  toHaveGrad(received: Tensor) {
+    const pass = received.grad !== null && received.grad !== undefined;
+
+    return {
+      pass,
+      message: () =>
+        pass
+          ? `Expected tensor not to have a gradient, but it does`
+          : `Expected tensor to have a gradient, but grad is ${received.grad}`,
+      actual: received.grad,
+    };
+  },
+
+  toEqualTensor(received: Tensor, expected: Tensor, tolerance: number = 1e-5) {
+    const shapeMatch = arraysEqual(received.shape, expected.shape);
+
+    if (!shapeMatch) {
+      return {
+        pass: false,
+        message: () =>
+          `Expected tensors to have equal shapes, but got [${received.shape.join(', ')}] and [${expected.shape.join(', ')}]`,
+        actual: received.shape,
+        expected: expected.shape,
+      };
+    }
+
+    const actualValues = received.toArray();
+    const expectedValues = expected.toArray();
+    const valuesMatch = arraysClose(actualValues, expectedValues, tolerance);
+
+    return {
+      pass: shapeMatch && valuesMatch,
+      message: () =>
+        valuesMatch
+          ? `Expected tensors not to be equal, but they are`
+          : `Expected tensor values to be close within tolerance ${tolerance}, but got:\nActual:   [${actualValues.join(', ')}]\nExpected: [${expectedValues.join(', ')}]`,
+      actual: actualValues,
+      expected: expectedValues,
+    };
+  },
+};
+
+/**
+ * Setup tensor matchers for Vitest
+ * Call this in your test setup file or at the beginning of test suites
+ */
+export function setupTensorMatchers(): void {
+  expect.extend(tensorMatchers);
+}
