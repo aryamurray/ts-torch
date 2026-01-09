@@ -2,6 +2,9 @@
   "name": "@ts-torch-platform/loader",
   "version": "0.1.0",
   "description": "Platform-specific binary loader for ts-torch",
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -13,29 +16,26 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "check-types": "tsc --noEmit",
     "lint": "eslint src"
   },
-  "optionalDependencies": {
-    "@ts-torch-platform/win32-x64": "workspace:*",
-    "@ts-torch-platform/darwin-x64": "workspace:*",
-    "@ts-torch-platform/darwin-arm64": "workspace:*",
-    "@ts-torch-platform/linux-x64": "workspace:*",
-    "@ts-torch-platform/linux-arm64": "workspace:*"
-  },
   "devDependencies": {
     "typescript": "5.9.2"
   },
+  "optionalDependencies": {
+    "@ts-torch-platform/darwin-arm64": "workspace:*",
+    "@ts-torch-platform/darwin-x64": "workspace:*",
+    "@ts-torch-platform/linux-arm64": "workspace:*",
+    "@ts-torch-platform/linux-x64": "workspace:*",
+    "@ts-torch-platform/win32-x64": "workspace:*"
+  },
   "engines": {
     "node": ">=18"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

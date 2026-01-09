@@ -2,7 +2,7 @@
  * Text classification datasets
  */
 
-import { BaseDataset } from '../dataset.js';
+import { BaseDataset } from "../dataset.js";
 
 /**
  * Simple text classification dataset
@@ -10,12 +10,12 @@ import { BaseDataset } from '../dataset.js';
 export class TextClassificationDataset extends BaseDataset<[string, number]> {
   constructor(
     private texts: string[],
-    private labels: number[]
+    private labels: number[],
   ) {
     super();
 
     if (texts.length !== labels.length) {
-      throw new Error('Texts and labels must have the same length');
+      throw new Error("Texts and labels must have the same length");
     }
   }
 
@@ -38,11 +38,7 @@ export class TextClassificationDataset extends BaseDataset<[string, number]> {
 export class CSVTextDataset extends BaseDataset<[string, number]> {
   private data: Array<[string, number]> = [];
 
-  constructor(
-    _csvPath: string,
-    _textColumn: string = 'text',
-    _labelColumn: string = 'label'
-  ) {
+  constructor(_csvPath: string, _textColumn: string = "text", _labelColumn: string = "label") {
     super();
   }
 

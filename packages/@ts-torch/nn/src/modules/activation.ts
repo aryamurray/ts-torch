@@ -4,8 +4,8 @@
  * Activation functions maintain input shape, making them easy to compose.
  */
 
-import { Module, type Tensor, type float32 } from '../module.js';
-import type { Shape, DType } from '@ts-torch/core';
+import { Module, type Tensor, type float32 } from "../module.js";
+import type { Shape, DType } from "@ts-torch/core";
 
 /**
  * Rectified Linear Unit activation: ReLU(x) = max(0, x)
@@ -27,10 +27,11 @@ import type { Shape, DType } from '@ts-torch/core';
  *   .pipe(new Linear(128, 10));
  * ```
  */
-export class ReLU<
-  S extends Shape = Shape,
-  D extends DType<string> = float32
-> extends Module<S, S, D> {
+export class ReLU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
+  S,
+  S,
+  D
+> {
   /**
    * Create a new ReLU activation
    *
@@ -75,10 +76,11 @@ export class ReLU<
  * const probs = sigmoid.forward(logits); // Type: Tensor<readonly [32, 10]>
  * ```
  */
-export class Sigmoid<
-  S extends Shape = Shape,
-  D extends DType<string> = float32
-> extends Module<S, S, D> {
+export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
+  S,
+  S,
+  D
+> {
   /**
    * Forward pass: σ(x) = 1 / (1 + e^(-x))
    *
@@ -94,7 +96,7 @@ export class Sigmoid<
   }
 
   override toString(): string {
-    return 'Sigmoid()';
+    return "Sigmoid()";
   }
 }
 
@@ -114,10 +116,11 @@ export class Sigmoid<
  * const output = tanh.forward(input); // Type: Tensor<readonly [32, 64]>
  * ```
  */
-export class Tanh<
-  S extends Shape = Shape,
-  D extends DType<string> = float32
-> extends Module<S, S, D> {
+export class Tanh<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
+  S,
+  S,
+  D
+> {
   /**
    * Forward pass: tanh(x)
    *
@@ -132,7 +135,7 @@ export class Tanh<
   }
 
   override toString(): string {
-    return 'Tanh()';
+    return "Tanh()";
   }
 }
 
@@ -154,10 +157,11 @@ export class Tanh<
  * // Each row sums to 1
  * ```
  */
-export class Softmax<
-  S extends Shape = Shape,
-  D extends DType<string> = float32
-> extends Module<S, S, D> {
+export class Softmax<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
+  S,
+  S,
+  D
+> {
   /**
    * Create a new Softmax activation
    *
@@ -206,10 +210,11 @@ export class Softmax<
  * const output = leaky.forward(input); // Type: Tensor<readonly [32, 128]>
  * ```
  */
-export class LeakyReLU<
-  S extends Shape = Shape,
-  D extends DType<string> = float32
-> extends Module<S, S, D> {
+export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
+  S,
+  S,
+  D
+> {
   /**
    * Create a new Leaky ReLU activation
    *
@@ -218,7 +223,7 @@ export class LeakyReLU<
    */
   constructor(
     public readonly negativeSlope: number = 0.01,
-    public readonly inplace: boolean = false
+    public readonly inplace: boolean = false,
   ) {
     super();
   }
@@ -261,10 +266,11 @@ export class LeakyReLU<
  * const output = gelu.forward(input); // Type: Tensor<readonly [32, 768]>
  * ```
  */
-export class GELU<
-  S extends Shape = Shape,
-  D extends DType<string> = float32
-> extends Module<S, S, D> {
+export class GELU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
+  S,
+  S,
+  D
+> {
   /**
    * Forward pass: GELU(x)
    *
@@ -284,6 +290,6 @@ export class GELU<
   }
 
   override toString(): string {
-    return 'GELU()';
+    return "GELU()";
   }
 }

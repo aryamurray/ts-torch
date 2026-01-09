@@ -26,5 +26,13 @@
     "incremental": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/examples", "src/**/*.test.ts", "src/**/__tests__", "src/ffi/example.ts", "src/memory/verify.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/examples",
+    "src/**/*.test.ts",
+    "src/**/__tests__",
+    "src/ffi/example.ts",
+    "src/memory/verify.ts"
+  ]
 }

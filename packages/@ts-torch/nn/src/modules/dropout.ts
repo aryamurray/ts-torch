@@ -2,7 +2,7 @@
  * Dropout layers
  */
 
-import { Module, type Tensor } from '../module.js';
+import { Module, type Tensor } from "../module.js";
 
 /**
  * Dropout layer
@@ -10,7 +10,7 @@ import { Module, type Tensor } from '../module.js';
 export class Dropout extends Module {
   constructor(
     public p: number = 0.5,
-    public inplace: boolean = false
+    public inplace: boolean = false,
   ) {
     super();
 
@@ -27,7 +27,7 @@ export class Dropout extends Module {
     // TODO: Implement dropout
     // During training, randomly zero elements with probability p
     // and scale remaining elements by 1/(1-p)
-    throw new Error('Dropout.forward not yet implemented');
+    throw new Error("Dropout.forward not yet implemented");
   }
 
   override toString(): string {

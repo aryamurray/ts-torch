@@ -29,10 +29,10 @@ import type {
 /**
  * Define concrete tensor types with literal shapes
  */
-type ImageTensor = TensorType<[3, 224, 224], "float32">;  // CHW format
-type BatchedImages = TensorType<[32, 3, 224, 224], "float32">;  // BCHW format
-type EmbeddingMatrix = TensorType<[50000, 768], "float16">;  // vocab_size x hidden_dim
-type Scalar = TensorType<[], "float64">;  // 0-dimensional tensor
+type ImageTensor = TensorType<[3, 224, 224], "float32">; // CHW format
+type BatchedImages = TensorType<[32, 3, 224, 224], "float32">; // BCHW format
+type EmbeddingMatrix = TensorType<[50000, 768], "float16">; // vocab_size x hidden_dim
+type Scalar = TensorType<[], "float64">; // 0-dimensional tensor
 
 // ============================================================================
 // Example 2: Matrix Multiplication
@@ -45,7 +45,7 @@ type Scalar = TensorType<[], "float64">;  // 0-dimensional tensor
 // 2D x 2D matrix multiplication
 type Matrix1 = [100, 50];
 type Matrix2 = [50, 20];
-type MatMulResult = MatMulShape<Matrix1, Matrix2>;  // [100, 20] ✓
+type MatMulResult = MatMulShape<Matrix1, Matrix2>; // [100, 20] ✓
 
 // This would be a compile error (incompatible dimensions):
 // type InvalidMatMul = MatMulShape<[100, 50], [60, 20]>;  // never ✗
@@ -53,12 +53,12 @@ type MatMulResult = MatMulShape<Matrix1, Matrix2>;  // [100, 20] ✓
 // Batched matrix multiplication
 type BatchedMat1 = [8, 100, 50];
 type BatchedMat2 = [50, 20];
-type BatchedResult = MatMulShape<BatchedMat1, BatchedMat2>;  // [8, 100, 20] ✓
+type BatchedResult = MatMulShape<BatchedMat1, BatchedMat2>; // [8, 100, 20] ✓
 
 // Batched with matching batch dimensions
 type Batched1 = [8, 16, 100, 50];
 type Batched2 = [8, 16, 50, 20];
-type BatchedResult2 = MatMulShape<Batched1, Batched2>;  // [8, 16, 100, 20] ✓
+type BatchedResult2 = MatMulShape<Batched1, Batched2>; // [8, 16, 100, 20] ✓
 
 // ============================================================================
 // Example 3: Broadcasting
@@ -69,9 +69,9 @@ type BatchedResult2 = MatMulShape<Batched1, Batched2>;  // [8, 16, 100, 20] ✓
  */
 
 // Compatible shapes broadcast correctly
-type Broadcast1 = BroadcastShape<[1, 3, 4], [2, 1, 4]>;  // [2, 3, 4] ✓
-type Broadcast2 = BroadcastShape<[5, 1], [3, 4]>;  // [5, 3, 4] ✓
-type Broadcast3 = BroadcastShape<[], [3, 4]>;  // [3, 4] ✓ (scalar broadcasts to any shape)
+type Broadcast1 = BroadcastShape<[1, 3, 4], [2, 1, 4]>; // [2, 3, 4] ✓
+type Broadcast2 = BroadcastShape<[5, 1], [3, 4]>; // [5, 3, 4] ✓
+type Broadcast3 = BroadcastShape<[], [3, 4]>; // [3, 4] ✓ (scalar broadcasts to any shape)
 
 // Incompatible shapes return never:
 // type InvalidBroadcast = BroadcastShape<[3, 4], [5, 6]>;  // never ✗
@@ -84,13 +84,13 @@ type Broadcast3 = BroadcastShape<[], [3, 4]>;  // [3, 4] ✓ (scalar broadcasts 
  * Transpose swaps two dimensions
  */
 type Original = [2, 3, 4];
-type Transposed = TransposeShape<Original, 0, 2>;  // [4, 3, 2] ✓
+type Transposed = TransposeShape<Original, 0, 2>; // [4, 3, 2] ✓
 
 /**
  * Permute reorders all dimensions
  */
-type NCHW = [32, 3, 224, 224];  // Batch, Channels, Height, Width
-type NHWC = PermuteShape<NCHW, [0, 2, 3, 1]>;  // [32, 224, 224, 3] ✓
+type NCHW = [32, 3, 224, 224]; // Batch, Channels, Height, Width
+type NHWC = PermuteShape<NCHW, [0, 2, 3, 1]>; // [32, 224, 224, 3] ✓
 
 // ============================================================================
 // Example 5: Reshape with Validation
@@ -99,9 +99,9 @@ type NHWC = PermuteShape<NCHW, [0, 2, 3, 1]>;  // [32, 224, 224, 3] ✓
 /**
  * Reshape validates that element count is preserved
  */
-type Shape1 = [2, 3, 4];  // 24 elements
-type Shape2 = [6, 4];     // 24 elements
-type ValidReshape = ReshapeValid<Shape1, Shape2>;  // [6, 4] ✓
+type Shape1 = [2, 3, 4]; // 24 elements
+type Shape2 = [6, 4]; // 24 elements
+type ValidReshape = ReshapeValid<Shape1, Shape2>; // [6, 4] ✓
 
 // Invalid reshape (different element counts):
 // type InvalidReshape = ReshapeValid<[2, 3, 4], [5, 5]>;  // never ✗
@@ -132,7 +132,7 @@ type BaseShape = [3, 4];
  */
 type Tensor1 = [2, 3, 4];
 type Tensor2 = [2, 5, 4];
-type Concatenated = ConcatShape<Tensor1, Tensor2, 1>;  // [2, 8, 4] ✓
+type Concatenated = ConcatShape<Tensor1, Tensor2, 1>; // [2, 8, 4] ✓
 
 // Invalid concat (mismatched dimensions):
 // type InvalidConcat = ConcatShape<[2, 3, 4], [3, 3, 4], 1>;  // never ✗
@@ -145,9 +145,9 @@ type Concatenated = ConcatShape<Tensor1, Tensor2, 1>;  // [2, 8, 4] ✓
  * Reduce along a dimension
  */
 type ToReduce = [2, 3, 4];
-type ReducedKeepDim = ReduceShape<ToReduce, 1, true>;  // [2, 1, 4] ✓
+type ReducedKeepDim = ReduceShape<ToReduce, 1, true>; // [2, 1, 4] ✓
 // Note: ReduceShape with KeepDim=false uses RemoveDim which may be complex
-type SimpleReduce = [2, 4];  // Result of reducing dim 1 without keeping
+type SimpleReduce = [2, 4]; // Result of reducing dim 1 without keeping
 
 // ============================================================================
 // Example 9: Dynamic Dimensions with Dim<Label>
@@ -173,7 +173,7 @@ type AttentionWeights = TensorType<[BatchDim, 12, SeqLenDim, SeqLenDim], "float3
  * Expand a size-1 dimension to a larger size
  */
 type ToExpand = [1, 3, 4];
-type Expanded = ExpandShape<ToExpand, 0, 8>;  // [8, 3, 4] ✓
+type Expanded = ExpandShape<ToExpand, 0, 8>; // [8, 3, 4] ✓
 
 // Cannot expand non-1 dimensions:
 // type InvalidExpand = ExpandShape<[2, 3, 4], 0, 8>;  // never ✗
@@ -185,9 +185,9 @@ type Expanded = ExpandShape<ToExpand, 0, 8>;  // [8, 3, 4] ✓
 /**
  * Compute total number of elements at compile time
  */
-type Count1 = NumElements<[2, 3, 4]>;  // 24
-type Count2 = NumElements<[]>;  // 1 (scalar)
-type Count3 = NumElements<[10]>;  // 10
+type Count1 = NumElements<[2, 3, 4]>; // 24
+type Count2 = NumElements<[]>; // 1 (scalar)
+type Count3 = NumElements<[10]>; // 10
 
 // ============================================================================
 // Example 12: Common Neural Network Layer Shapes
@@ -199,12 +199,12 @@ type Count3 = NumElements<[10]>;  // 10
 
 // Linear layer: [batch, in_features] -> [batch, out_features]
 type LinearInput = [Dim<"batch">, 512];
-type LinearWeight = [512, 256];  // [in_features, out_features]
-type LinearOutput = MatMulShape<LinearInput, LinearWeight>;  // [batch, 256] ✓
+type LinearWeight = [512, 256]; // [in_features, out_features]
+type LinearOutput = MatMulShape<LinearInput, LinearWeight>; // [batch, 256] ✓
 
 // Convolutional layer output (simplified)
-type ConvInput = [32, 3, 224, 224];  // BCHW
-type ConvOutput = [32, 64, 112, 112];  // After conv with stride=2
+type ConvInput = [32, 3, 224, 224]; // BCHW
+type ConvOutput = [32, 64, 112, 112]; // After conv with stride=2
 
 // Multi-head attention
 type QShape = [Dim<"batch">, Dim<"seq">, 768];
@@ -213,7 +213,7 @@ type VShape = [Dim<"batch">, Dim<"seq">, 768];
 
 // Split into heads: [batch, seq, 768] -> [batch, num_heads, seq, head_dim]
 type NumHeads = 12;
-type HeadDim = 64;  // 768 / 12
+type HeadDim = 64; // 768 / 12
 type QHeads = [Dim<"batch">, NumHeads, Dim<"seq">, HeadDim];
 
 // Attention scores: [batch, heads, seq, head_dim] x [batch, heads, head_dim, seq]
@@ -228,16 +228,16 @@ type QHeads = [Dim<"batch">, NumHeads, Dim<"seq">, HeadDim];
  */
 
 // Check if shapes can be broadcast
-type CanBroadcast1 = BroadcastShape<[1, 3], [2, 3]>;  // [2, 3] ✓
-type CanBroadcast2 = BroadcastShape<[3], [4]>;  // never ✗
+type CanBroadcast1 = BroadcastShape<[1, 3], [2, 3]>; // [2, 3] ✓
+type CanBroadcast2 = BroadcastShape<[3], [4]>; // never ✗
 
 // Check if matmul is valid
-type CanMatMul1 = MatMulShape<[10, 20], [20, 30]>;  // [10, 30] ✓
-type CanMatMul2 = MatMulShape<[10, 20], [30, 40]>;  // never ✗
+type CanMatMul1 = MatMulShape<[10, 20], [20, 30]>; // [10, 30] ✓
+type CanMatMul2 = MatMulShape<[10, 20], [30, 40]>; // never ✗
 
 // Check if reshape is valid
-type CanReshape1 = ReshapeValid<[2, 3, 4], [24]>;  // [24] ✓
-type CanReshape2 = ReshapeValid<[2, 3, 4], [25]>;  // never ✗
+type CanReshape1 = ReshapeValid<[2, 3, 4], [24]>; // [24] ✓
+type CanReshape2 = ReshapeValid<[2, 3, 4], [25]>; // never ✗
 
 // ============================================================================
 // Example 14: Type-Safe Tensor Operations Pipeline
@@ -249,13 +249,13 @@ type CanReshape2 = ReshapeValid<[2, 3, 4], [25]>;  // never ✗
  */
 
 // Start with an image batch
-type Step1 = [32, 3, 224, 224];  // Input images
+type Step1 = [32, 3, 224, 224]; // Input images
 
 // Flatten spatial dimensions
-type Step3 = ReshapeValid<Step1, [32, 3, 50176]>;  // 224*224 = 50176
+type Step3 = ReshapeValid<Step1, [32, 3, 50176]>; // 224*224 = 50176
 
 // Transpose works on simpler shapes
-type SimpleTranspose = PermuteShape<[2, 3, 4], [2, 0, 1]>;  // [4, 2, 3]
+type SimpleTranspose = PermuteShape<[2, 3, 4], [2, 0, 1]>; // [4, 2, 3]
 
 /**
  * The type system ensures each step is valid at compile time!
@@ -271,7 +271,7 @@ type SimpleTranspose = PermuteShape<[2, 3, 4], [2, 0, 1]>;  // [4, 2, 3]
  */
 type ImageInput = [Dim<"batch">, 3, 224, 224];
 type PatchSize = 16;
-type NumPatches = 196;  // (224/16)^2
+type NumPatches = 196; // (224/16)^2
 type EmbedDim = 768;
 
 // Flatten patches: [B, 3, 224, 224] -> [B, 196, 768]
@@ -281,13 +281,13 @@ type PatchEmbedding = [Dim<"batch">, NumPatches, EmbedDim];
  * BERT-style transformer
  */
 type BertInput = [Dim<"batch">, Dim<"seq_len">, 768];
-type BertOutput = [Dim<"batch">, Dim<"seq_len">, 768];  // Same shape
+type BertOutput = [Dim<"batch">, Dim<"seq_len">, 768]; // Same shape
 
 /**
  * CNN classifier
  */
 type CNNInput = [Dim<"batch">, 3, 224, 224];
-type CNNFeatures = [Dim<"batch">, 2048];  // After global average pooling
+type CNNFeatures = [Dim<"batch">, 2048]; // After global average pooling
 type NumClasses = 1000;
 type CNNLogits = [Dim<"batch">, NumClasses];
 

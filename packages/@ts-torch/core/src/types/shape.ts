@@ -49,19 +49,17 @@ export type Dim<Label extends string = string> = number & {
  * type Invalid = ValidDim<number>; // never
  * ```
  */
-export type ValidDim<D extends number> =
-  D extends Dim<string> ? D :
-  number extends D ? never :
-  D;
+export type ValidDim<D extends number> = D extends Dim<string> ? D : number extends D ? never : D;
 
 /**
  * Extract dimension labels from a shape
  */
-export type ExtractDimLabels<S extends Shape> =
-  S extends readonly [infer Head, ...infer Tail] ?
-    Head extends Dim<infer Label> ?
-      Label | (Tail extends Shape ? ExtractDimLabels<Tail> : never)
-    : Tail extends Shape ? ExtractDimLabels<Tail> : never
+export type ExtractDimLabels<S extends Shape> = S extends readonly [infer Head, ...infer Tail]
+  ? Head extends Dim<infer Label>
+    ? Label | (Tail extends Shape ? ExtractDimLabels<Tail> : never)
+    : Tail extends Shape
+      ? ExtractDimLabels<Tail>
+      : never
   : never;
 
 /**
@@ -70,10 +68,10 @@ export type ExtractDimLabels<S extends Shape> =
  *
  * @internal
  */
-type MultiplyTuple<
-  T extends readonly number[],
-  Acc extends number = 1
-> = T extends readonly [infer Head extends number, ...infer Tail extends readonly number[]]
+type MultiplyTuple<T extends readonly number[], Acc extends number = 1> = T extends readonly [
+  infer Head extends number,
+  ...infer Tail extends readonly number[],
+]
   ? MultiplyTuple<Tail, Multiply<Acc, Head>>
   : Acc;
 
@@ -83,16 +81,21 @@ type MultiplyTuple<
  *
  * @internal
  */
-type Multiply<A extends number, B extends number> =
-  A extends 0 ? 0 :
-  B extends 0 ? 0 :
-  A extends 1 ? B :
-  B extends 1 ? A :
-  // For non-literal numbers, return number
-  number extends A ? number :
-  number extends B ? number :
-  // Otherwise compute multiplication for literals
-  MultiplyLiterals<A, B>;
+type Multiply<A extends number, B extends number> = A extends 0
+  ? 0
+  : B extends 0
+    ? 0
+    : A extends 1
+      ? B
+      : B extends 1
+        ? A
+        : // For non-literal numbers, return number
+          number extends A
+          ? number
+          : number extends B
+            ? number
+            : // Otherwise compute multiplication for literals
+              MultiplyLiterals<A, B>;
 
 /**
  * Multiplication lookup for common literal values
@@ -100,15 +103,20 @@ type Multiply<A extends number, B extends number> =
  *
  * @internal
  */
-type MultiplyLiterals<A extends number, B extends number> =
-  [A, B] extends [2, 2] ? 4 :
-  [A, B] extends [2, 3] | [3, 2] ? 6 :
-  [A, B] extends [2, 4] | [4, 2] ? 8 :
-  [A, B] extends [3, 3] ? 9 :
-  [A, B] extends [3, 4] | [4, 3] ? 12 :
-  [A, B] extends [4, 4] ? 16 :
-  // Add more common cases as needed
-  number; // Fallback for computed values
+type MultiplyLiterals<A extends number, B extends number> = [A, B] extends [2, 2]
+  ? 4
+  : [A, B] extends [2, 3] | [3, 2]
+    ? 6
+    : [A, B] extends [2, 4] | [4, 2]
+      ? 8
+      : [A, B] extends [3, 3]
+        ? 9
+        : [A, B] extends [3, 4] | [4, 3]
+          ? 12
+          : [A, B] extends [4, 4]
+            ? 16
+            : // Add more common cases as needed
+              number; // Fallback for computed values
 
 /**
  * Computes total number of elements in a tensor shape
@@ -122,8 +130,7 @@ type MultiplyLiterals<A extends number, B extends number> =
  * type Count3 = NumElements<[10, 20]>; // 200
  * ```
  */
-export type NumElements<S extends Shape> =
-  S extends readonly [] ? 1 : MultiplyTuple<S>;
+export type NumElements<S extends Shape> = S extends readonly [] ? 1 : MultiplyTuple<S>;
 
 /**
  * Validates that a shape contains no plain 'number' types
@@ -139,9 +146,7 @@ export type NumElements<S extends Shape> =
  * ```
  */
 export type ValidateShape<S extends Shape> = {
-  [K in keyof S]: S[K] extends Dim<string> ? S[K] :
-                  S[K] extends number ? S[K] :
-                  never;
+  [K in keyof S]: S[K] extends Dim<string> ? S[K] : S[K] extends number ? S[K] : never;
 };
 
 /**
@@ -150,8 +155,11 @@ export type ValidateShape<S extends Shape> = {
  * @template S1 - First shape
  * @template S2 - Second shape
  */
-export type ShapeEqual<S1 extends Shape, S2 extends Shape> =
-  S1 extends S2 ? S2 extends S1 ? true : false : false;
+export type ShapeEqual<S1 extends Shape, S2 extends Shape> = S1 extends S2
+  ? S2 extends S1
+    ? true
+    : false
+  : false;
 
 /**
  * Get the rank (number of dimensions) of a shape
@@ -172,8 +180,7 @@ export type Rank<S extends Shape> = S["length"];
  * @template S - The shape
  * @template I - The dimension index
  */
-export type GetDim<S extends Shape, I extends number> =
-  I extends keyof S ? S[I] : never;
+export type GetDim<S extends Shape, I extends number> = I extends keyof S ? S[I] : never;
 
 /**
  * Set dimension at index I to value V
@@ -184,13 +191,11 @@ export type GetDim<S extends Shape, I extends number> =
  *
  * @internal
  */
-export type SetDim<
-  S extends Shape,
-  I extends number,
-  V extends number
-> = {
-  [K in keyof S]: K extends `${I}` ? V : S[K]
-} extends infer R extends readonly number[] ? R : never;
+export type SetDim<S extends Shape, I extends number, V extends number> = {
+  [K in keyof S]: K extends `${I}` ? V : S[K];
+} extends infer R extends readonly number[]
+  ? R
+  : never;
 
 /**
  * Reverse a shape tuple
@@ -198,10 +203,12 @@ export type SetDim<
  * @template S - The shape to reverse
  * @internal
  */
-export type Reverse<S extends Shape> =
-  S extends readonly [...infer Init extends readonly number[], infer Last extends number]
-    ? readonly [Last, ...Reverse<Init>]
-    : readonly [];
+export type Reverse<S extends Shape> = S extends readonly [
+  ...infer Init extends readonly number[],
+  infer Last extends number,
+]
+  ? readonly [Last, ...Reverse<Init>]
+  : readonly [];
 
 /**
  * Concatenate two shape tuples
@@ -210,8 +217,7 @@ export type Reverse<S extends Shape> =
  * @template S2 - Second shape
  * @internal
  */
-export type Concat<S1 extends Shape, S2 extends Shape> =
-  readonly [...S1, ...S2];
+export type Concat<S1 extends Shape, S2 extends Shape> = readonly [...S1, ...S2];
 
 /**
  * Slice a shape from index Start to End
@@ -224,12 +230,14 @@ export type Concat<S1 extends Shape, S2 extends Shape> =
 export type Slice<
   S extends Shape,
   Start extends number = 0,
-  End extends number = Rank<S>
+  End extends number = Rank<S>,
 > = S extends readonly [...infer Prefix, ...infer Suffix]
   ? Prefix extends { length: Start }
     ? Suffix extends readonly [...infer Result, ...infer _Rest]
       ? Result extends { length: End extends number ? End : never }
-        ? Result extends Shape ? Result : never
+        ? Result extends Shape
+          ? Result
+          : never
         : never
       : never
     : never
@@ -242,21 +250,23 @@ export type Slice<
  * @template I - The dimension index to remove
  * @internal
  */
-export type RemoveDim<S extends Shape, I extends number> =
-  S extends readonly [...infer Prefix extends readonly number[], infer At extends number, ...infer Suffix extends readonly number[]]
-    ? Prefix["length"] extends I
-      ? readonly [...Prefix, ...Suffix]
-      : Tail<Prefix> extends readonly number[]
-        ? readonly [Prefix[0], ...RemoveDim<readonly [...Tail<Prefix>, At, ...Suffix], I>]
-        : S
-    : S;
+export type RemoveDim<S extends Shape, I extends number> = S extends readonly [
+  ...infer Prefix extends readonly number[],
+  infer At extends number,
+  ...infer Suffix extends readonly number[],
+]
+  ? Prefix["length"] extends I
+    ? readonly [...Prefix, ...Suffix]
+    : Tail<Prefix> extends readonly number[]
+      ? readonly [Prefix[0], ...RemoveDim<readonly [...Tail<Prefix>, At, ...Suffix], I>]
+      : S
+  : S;
 
 /**
  * Get tail of tuple
  * @internal
  */
-type Tail<T extends readonly any[]> =
-  T extends readonly [any, ...infer Rest] ? Rest : readonly [];
+type Tail<T extends readonly any[]> = T extends readonly [any, ...infer Rest] ? Rest : readonly [];
 
 /**
  * Insert dimension V at index I
@@ -266,11 +276,10 @@ type Tail<T extends readonly any[]> =
  * @template V - The value to insert
  * @internal
  */
-export type InsertDim<
-  S extends Shape,
-  I extends number,
-  V extends number
-> = S extends readonly [...infer Prefix extends readonly number[], ...infer Suffix extends readonly number[]]
+export type InsertDim<S extends Shape, I extends number, V extends number> = S extends readonly [
+  ...infer Prefix extends readonly number[],
+  ...infer Suffix extends readonly number[],
+]
   ? Prefix["length"] extends I
     ? readonly [...Prefix, V, ...Suffix]
     : readonly [Prefix[0], ...InsertDim<Tail<Prefix>, I, V>]

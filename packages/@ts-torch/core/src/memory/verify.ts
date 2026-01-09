@@ -8,14 +8,9 @@ import type { Shape } from "../types/shape.js";
 import type { DTypeName } from "../types/dtype.js";
 
 // Import types to verify they compile
-import type {
-  ScopedTensor,
-} from "./scope.js";
+import type { ScopedTensor } from "./scope.js";
 
-import type {
-  PoolableTensor,
-  PoolStats,
-} from "./pool.js";
+import type { PoolableTensor, PoolStats } from "./pool.js";
 
 // Verify function signatures
 import {
@@ -29,10 +24,7 @@ import {
   scopeTensorCount,
 } from "./scope.js";
 
-import {
-  TensorPool,
-  globalTensorPool,
-} from "./pool.js";
+import { TensorPool, globalTensorPool } from "./pool.js";
 
 // Type tests
 type AssertTrue<T extends true> = T;
@@ -43,7 +35,9 @@ type AssertExtends<T, U> = T extends U ? true : false;
 type RunType = typeof run;
 type RunAsyncType = typeof runAsync;
 type _TestRun = AssertTrue<AssertExtends<RunType, <T>(fn: () => T) => T>>;
-type _TestRunAsync = AssertTrue<AssertExtends<RunAsyncType, <T>(fn: () => Promise<T>) => Promise<T>>>;
+type _TestRunAsync = AssertTrue<
+  AssertExtends<RunAsyncType, <T>(fn: () => Promise<T>) => Promise<T>>
+>;
 
 // Test utility function types
 type InScopeType = typeof inScope;
@@ -53,12 +47,18 @@ type _TestScopeDepth = AssertTrue<AssertExtends<ScopeDepthType, () => number>>;
 
 // Test ScopedTensor interface
 type _TestScopedTensor = AssertTrue<
-  AssertExtends<ScopedTensor, { readonly handle: Pointer; readonly escaped: boolean; markEscaped(): void }>
+  AssertExtends<
+    ScopedTensor,
+    { readonly handle: Pointer; readonly escaped: boolean; markEscaped(): void }
+  >
 >;
 
 // Test PoolableTensor interface
 type _TestPoolableTensor = AssertTrue<
-  AssertExtends<PoolableTensor, { readonly shape: Shape; readonly dtype: DTypeName; readonly handle: unknown }>
+  AssertExtends<
+    PoolableTensor,
+    { readonly shape: Shape; readonly dtype: DTypeName; readonly handle: unknown }
+  >
 >;
 
 // Test PoolStats interface
@@ -77,16 +77,17 @@ type _TestPoolStats = AssertTrue<
 
 // Test TensorPool methods exist
 type _TestPoolAcquire = AssertTrue<
-  AssertExtends<TensorPool["acquire"], <S extends Shape, D extends DTypeName>(shape: S, dtype: D) => PoolableTensor | null>
+  AssertExtends<
+    TensorPool["acquire"],
+    <S extends Shape, D extends DTypeName>(shape: S, dtype: D) => PoolableTensor | null
+  >
 >;
 
 type _TestPoolRelease = AssertTrue<
   AssertExtends<TensorPool["release"], (tensor: PoolableTensor) => void>
 >;
 
-type _TestPoolStats = AssertTrue<
-  AssertExtends<TensorPool["stats"], () => PoolStats>
->;
+type _TestPoolStats = AssertTrue<AssertExtends<TensorPool["stats"], () => PoolStats>>;
 
 // Mock implementations for compile-time testing
 class MockTensor implements ScopedTensor {

@@ -150,10 +150,8 @@ export function tensorPoolExample() {
     run(() => {
       // Try to acquire from pool, create if not available
       // const grad = pool.acquire([256, 256], "float32") ?? torch.zeros([256, 256]);
-
       // Use gradient...
       // optimizer.step(grad);
-
       // Return to pool for reuse
       // pool.release(grad);
     });
@@ -233,9 +231,7 @@ export function globalPoolExample() {
     run(() => {
       // Try global pool first
       // const temp = globalTensorPool.acquire([10, 10], "float32") ?? torch.zeros([10, 10]);
-
       // Use tensor...
-
       // Return to global pool
       // globalTensorPool.release(temp);
     });
@@ -262,10 +258,8 @@ export function mixedMemoryManagementExample() {
       // const input = torch.randn([100, 100]);
       // const output = weights.matmul(input);
       // const loss = output.sum();
-
       // Update weights (escaped from scope)
       // weights.sub_(loss.grad());
-
       // input, output, loss are freed here
     });
   }

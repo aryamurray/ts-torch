@@ -5,6 +5,7 @@ C shim layer that wraps the LibTorch C++ API for FFI (Foreign Function Interface
 ## Overview
 
 This library provides a C API wrapper around LibTorch, enabling:
+
 - Zero-copy tensor operations via FFI
 - Automatic memory management through scope-based RAII
 - Full gradient computation support (autograd)
@@ -54,6 +55,7 @@ This library provides a C API wrapper around LibTorch, enabling:
 ### Download LibTorch
 
 #### Linux/macOS
+
 ```bash
 # CPU version
 wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-latest.zip
@@ -65,6 +67,7 @@ unzip libtorch-cxx11-abi-shared-with-deps-latest.zip
 ```
 
 #### Windows
+
 ```powershell
 # Download from https://pytorch.org/get-started/locally/
 # Select: Windows, LibTorch, C++/Java, CPU or CUDA
@@ -74,6 +77,7 @@ unzip libtorch-cxx11-abi-shared-with-deps-latest.zip
 ### Build Instructions
 
 #### Linux/macOS
+
 ```bash
 cd packages/@ts-torch/core/native
 mkdir build
@@ -90,6 +94,7 @@ sudo cmake --install .
 ```
 
 #### Windows (Visual Studio)
+
 ```powershell
 cd packages\@ts-torch\core\native
 mkdir build
@@ -105,6 +110,7 @@ cmake --build . --config Release -j
 ```
 
 #### Windows (MinGW)
+
 ```bash
 cd packages/@ts-torch/core/native
 mkdir build
@@ -121,6 +127,7 @@ cmake --build . -j
 - `CMAKE_INSTALL_PREFIX`: Installation prefix (default: /usr/local)
 
 Example with custom install prefix:
+
 ```bash
 cmake -DCMAKE_PREFIX_PATH=/path/to/libtorch \
       -DCMAKE_INSTALL_PREFIX=/opt/ts-torch \

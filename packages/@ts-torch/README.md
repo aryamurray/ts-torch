@@ -11,18 +11,22 @@ ts-torch brings the power of PyTorch to the TypeScript ecosystem with a familiar
 ### Core Packages
 
 #### [@ts-torch/core](./core)
+
 Core tensor operations and FFI bindings to native PyTorch libraries.
 
 **Features:**
+
 - Tensor creation and manipulation
 - FFI bindings to native operations
 - Memory management and pooling
 - Advanced TypeScript type system for compile-time shape checking
 
 #### [@ts-torch/nn](./nn)
+
 Neural network modules and layers.
 
 **Features:**
+
 - Module base class and Sequential container
 - Linear (fully connected) layers
 - Activation functions (ReLU, Sigmoid, Tanh, Softmax)
@@ -32,9 +36,11 @@ Neural network modules and layers.
 - Regularization (Dropout)
 
 #### [@ts-torch/optim](./optim)
+
 Optimization algorithms for neural network training.
 
 **Features:**
+
 - SGD (with momentum and Nesterov)
 - Adam
 - AdamW (decoupled weight decay)
@@ -42,9 +48,11 @@ Optimization algorithms for neural network training.
 - Extensible optimizer base class
 
 #### [@ts-torch/datasets](./datasets)
+
 Dataset loaders and utilities.
 
 **Features:**
+
 - Base dataset classes and interfaces
 - DataLoader with batching and shuffling
 - Data transformations (normalization, augmentation)
@@ -55,11 +63,13 @@ Dataset loaders and utilities.
 ### Platform Packages
 
 #### [@ts-torch-platform/loader](../@ts-torch-platform/loader)
+
 Platform detection and binary loading.
 
 Automatically detects the current platform and loads the appropriate native binaries.
 
 #### [@ts-torch-platform/win32-x64](../@ts-torch-platform/win32-x64)
+
 Native binaries for Windows x64.
 
 Pre-compiled native binaries for Windows x64 systems.
@@ -76,13 +86,16 @@ bun add @ts-torch/core @ts-torch/nn @ts-torch/optim @ts-torch/datasets
 ## Quick Start
 
 ```typescript
-import { tensor, zeros, ones } from '@ts-torch/core';
-import { Sequential, Linear, ReLU, Dropout } from '@ts-torch/nn';
-import { Adam } from '@ts-torch/optim';
-import { DataLoader, TensorDataset } from '@ts-torch/datasets';
+import { tensor, zeros, ones } from "@ts-torch/core";
+import { Sequential, Linear, ReLU, Dropout } from "@ts-torch/nn";
+import { Adam } from "@ts-torch/optim";
+import { DataLoader, TensorDataset } from "@ts-torch/datasets";
 
 // Create tensors
-const x = tensor([[1, 2, 3], [4, 5, 6]]);
+const x = tensor([
+  [1, 2, 3],
+  [4, 5, 6],
+]);
 const z = zeros([3, 3]);
 
 // Build a neural network
@@ -90,7 +103,7 @@ const model = new Sequential(
   new Linear(784, 256),
   new ReLU(),
   new Dropout(0.5),
-  new Linear(256, 10)
+  new Linear(256, 10),
 );
 
 // Create an optimizer
@@ -100,7 +113,7 @@ const optimizer = new Adam(model.parameters(), { lr: 0.001 });
 const dataset = new TensorDataset([trainData, trainLabels]);
 const loader = new DataLoader(dataset, {
   batchSize: 32,
-  shuffle: true
+  shuffle: true,
 });
 
 // Training loop
@@ -123,7 +136,7 @@ const testOutput = model.forward(testInput);
 ts-torch includes an advanced TypeScript type system for compile-time shape and dtype checking:
 
 ```typescript
-import type { TensorType, MatMulShape } from '@ts-torch/core/types';
+import type { TensorType, MatMulShape } from "@ts-torch/core/types";
 
 // Define tensor types
 type Matrix = TensorType<[100, 50], "float32">;
@@ -196,6 +209,7 @@ bun run build
 - TypeScript 5.9.2
 
 For native binary compilation:
+
 - CMake >= 3.15
 - C++ compiler (MSVC on Windows, GCC/Clang on Linux/macOS)
 - PyTorch C++ libraries (libtorch)

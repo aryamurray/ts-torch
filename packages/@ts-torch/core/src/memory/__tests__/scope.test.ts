@@ -167,7 +167,7 @@ describe("Scope Management", () => {
         runAsync(async () => {
           await new Promise((resolve) => setTimeout(resolve, 10));
           throw new Error("Async error");
-        })
+        }),
       ).rejects.toThrow("Async error");
 
       expect(inScope()).toBe(false);

@@ -66,6 +66,7 @@ typedef struct ts_Scope* ts_ScopeHandle;
 **Purpose**: Hide C++ implementation details behind type-safe pointers.
 
 **Implementation**:
+
 ```cpp
 struct ts_Tensor {
     torch::Tensor tensor;
@@ -74,6 +75,7 @@ struct ts_Tensor {
 ```
 
 **Benefits**:
+
 - ABI stability (C++ std::vector layout doesn't matter to C caller)
 - Type safety (can't accidentally pass wrong handle type)
 - Forward compatibility (can change internal layout without breaking API)
@@ -88,12 +90,14 @@ typedef struct {
 ```
 
 **Design Rationale**:
+
 - No exceptions across FFI boundary (C doesn't have exceptions)
 - Fixed-size struct for easy FFI marshalling
 - Per-call error parameter for thread safety
 - Non-zero code indicates error occurred
 
 **Usage Pattern**:
+
 ```c
 ts_Error error = {0};
 ts_TensorHandle tensor = ts_tensor_zeros(shape, 2, ..., &error);
@@ -106,6 +110,7 @@ if (ts_error_occurred(&error)) {
 ### 3. Memory Management
 
 #### Manual Management
+
 ```c
 ts_TensorHandle tensor = ts_tensor_zeros(...);
 // Use tensor
@@ -113,6 +118,7 @@ ts_tensor_delete(tensor);  // Manual cleanup
 ```
 
 #### Scope-Based RAII
+
 ```c
 ts_ScopeHandle scope = ts_scope_begin();
 
@@ -126,6 +132,7 @@ ts_scope_end(scope);  // Deletes a, b, c but not result
 ```
 
 **Implementation**:
+
 ```cpp
 thread_local std::vector<std::unique_ptr<ts_Scope>> g_scope_stack;
 
@@ -136,6 +143,7 @@ struct ts_Scope {
 ```
 
 **Benefits**:
+
 - Prevents memory leaks in complex operations
 - Optional (can still use manual management)
 - Thread-safe (thread-local storage)
@@ -159,6 +167,7 @@ typedef enum {
 ```
 
 **Mapping to LibTorch**:
+
 ```cpp
 torch::ScalarType dtype_to_scalar_type(ts_DType dtype) {
     switch (dtype) {
@@ -180,6 +189,7 @@ typedef enum {
 ```
 
 **Device Operations**:
+
 - `ts_cuda_is_available()` - Runtime CUDA detection
 - `ts_cuda_device_count()` - Query number of GPUs
 - `ts_tensor_to_device()` - Move tensor between devices
@@ -188,15 +198,18 @@ typedef enum {
 ## API Categories
 
 ### Tensor Creation
+
 - `ts_tensor_zeros`, `ts_tensor_ones`, `ts_tensor_randn`
 - `ts_tensor_empty`, `ts_tensor_from_buffer`
 
 ### Tensor Properties
+
 - `ts_tensor_ndim`, `ts_tensor_shape`, `ts_tensor_size`
 - `ts_tensor_dtype`, `ts_tensor_numel`
 - `ts_tensor_device_type`, `ts_tensor_device_index`
 
 ### Tensor Operations
+
 - **Arithmetic**: `ts_tensor_add`, `ts_tensor_sub`, `ts_tensor_mul`, `ts_tensor_div`
 - **Linear Algebra**: `ts_tensor_matmul`, `ts_tensor_transpose`
 - **Shape**: `ts_tensor_reshape`
@@ -205,6 +218,7 @@ typedef enum {
 - **Comparison**: `ts_tensor_eq`, `ts_tensor_ne`, `ts_tensor_lt`, `ts_tensor_le`, `ts_tensor_gt`, `ts_tensor_ge`
 
 ### Autograd
+
 - `ts_tensor_backward()` - Compute gradients
 - `ts_tensor_grad()` - Get gradient tensor
 - `ts_tensor_set_requires_grad()` - Enable gradient tracking
@@ -212,6 +226,7 @@ typedef enum {
 - `ts_tensor_is_leaf()` - Check if leaf node in computation graph
 
 ### Memory Management
+
 - `ts_tensor_delete()` - Manual cleanup
 - `ts_tensor_clone()` - Deep copy
 - `ts_tensor_detach()` - Detach from autograd graph
@@ -221,15 +236,18 @@ typedef enum {
 ## Thread Safety
 
 ### Thread-Safe Components
+
 - Error handling (per-call error parameter)
 - LibTorch operations (internally thread-safe)
 - Scope stack (thread-local storage)
 
 ### Not Thread-Safe
+
 - Concurrent access to same tensor (requires external synchronization)
 - Concurrent modification of tensor data
 
 ### Best Practices
+
 ```c
 // Each thread has its own scope stack
 void worker_thread() {
@@ -252,6 +270,7 @@ void thread_a() {
 ## Performance Considerations
 
 ### Zero-Copy Operations
+
 ```c
 // Direct memory access (no copy)
 void* ptr = ts_tensor_data_ptr(tensor, &error);
@@ -263,16 +282,19 @@ ts_tensor_copy_to_buffer(tensor, buffer, sizeof(buffer), &error);
 ```
 
 ### Async CUDA Operations
+
 - CUDA operations are asynchronous by default
 - Use CUDA streams (future enhancement) for explicit control
 - CPU-GPU transfers may be synchronous (depends on flags)
 
 ### Memory Layout
+
 - Tensors are row-major (C-contiguous) by default
 - Use `contiguous()` in C++ layer to ensure layout
 - Direct data access requires contiguous memory
 
 ### Optimization Tips
+
 1. **Minimize Device Transfers**: Keep tensors on GPU when possible
 2. **Use In-Place Operations**: Future enhancement for `ts_tensor_add_`
 3. **Batch Operations**: Process multiple samples together
@@ -282,6 +304,7 @@ ts_tensor_copy_to_buffer(tensor, buffer, sizeof(buffer), &error);
 ## Error Handling Patterns
 
 ### Basic Pattern
+
 ```c
 ts_Error error = {0};
 ts_TensorHandle tensor = ts_tensor_zeros(..., &error);
@@ -292,6 +315,7 @@ if (ts_error_occurred(&error)) {
 ```
 
 ### Cleanup on Error
+
 ```c
 ts_Error error = {0};
 ts_TensorHandle a = NULL, b = NULL, c = NULL;
@@ -313,6 +337,7 @@ cleanup:
 ```
 
 ### Scope-Based (Recommended)
+
 ```c
 ts_Error error = {0};
 ts_ScopeHandle scope = ts_scope_begin();
@@ -333,6 +358,7 @@ return result;
 ## Build System
 
 ### CMake Structure
+
 ```
 native/
 ├── CMakeLists.txt           # Main build configuration
@@ -351,11 +377,13 @@ native/
 ```
 
 ### Dependencies
+
 - CMake 3.18+
 - C++17 compiler
 - LibTorch (downloaded separately)
 
 ### Output Artifacts
+
 - **Linux**: `libts_torch.so`
 - **macOS**: `libts_torch.dylib`
 - **Windows**: `ts_torch.dll`, `ts_torch.lib`
@@ -363,6 +391,7 @@ native/
 ## Future Enhancements
 
 ### API Extensions
+
 - [ ] Module API (`ts_module_*` functions)
 - [ ] Optimizer API (`ts_optimizer_*` functions)
 - [ ] Custom operators
@@ -371,18 +400,21 @@ native/
 - [ ] Quantization support
 
 ### Performance
+
 - [ ] CUDA stream management
 - [ ] In-place operations (`ts_tensor_add_`, etc.)
 - [ ] Memory pool management
 - [ ] Async operations with callbacks
 
 ### Developer Experience
+
 - [ ] Better error messages with stack traces
 - [ ] Debug mode with tensor validation
 - [ ] Performance profiling hooks
 - [ ] Memory leak detection tools
 
 ### Platforms
+
 - [ ] WebAssembly build
 - [ ] Mobile (Android/iOS) support
 - [ ] ARM optimizations
@@ -390,12 +422,13 @@ native/
 ## Integration with TypeScript
 
 ### Future Node.js Addon
+
 ```typescript
 // TypeScript wrapper will use node-ffi-napi or N-API
-import { Library } from 'ffi-napi';
+import { Library } from "ffi-napi";
 
-const libts_torch = Library('libts_torch', {
-  'ts_tensor_zeros': ['pointer', ['pointer', 'size_t', 'int', 'int', 'int', 'pointer']],
+const libts_torch = Library("libts_torch", {
+  ts_tensor_zeros: ["pointer", ["pointer", "size_t", "int", "int", "int", "pointer"]],
   // ... other functions
 });
 
@@ -410,7 +443,7 @@ class Tensor {
       dtype,
       DeviceType.CPU,
       0,
-      error
+      error,
     );
   }
 
@@ -419,6 +452,7 @@ class Tensor {
 ```
 
 ### Design Goals for TS Wrapper
+
 1. **Type Safety**: Full TypeScript types with generics
 2. **Memory Safety**: Automatic disposal with finalizers
 3. **API Parity**: Match PyTorch API where possible

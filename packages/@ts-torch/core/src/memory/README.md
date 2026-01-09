@@ -12,15 +12,15 @@ The memory management system provides two key features:
 ## Quick Start
 
 ```typescript
-import { run } from '@ts-torch/core/memory';
-import { zeros, ones } from '@ts-torch/core';
+import { run } from "@ts-torch/core/memory";
+import { zeros, ones } from "@ts-torch/core";
 
 // All tensors auto-freed when scope exits
 const result = run(() => {
-  const a = zeros([100, 100]);  // Auto-freed
-  const b = ones([100, 100]);   // Auto-freed
-  const c = a.add(b);           // Auto-freed
-  return c.escape();            // Escaped - not freed
+  const a = zeros([100, 100]); // Auto-freed
+  const b = ones([100, 100]); // Auto-freed
+  const c = a.add(b); // Auto-freed
+  return c.escape(); // Escaped - not freed
 });
 // a, b are freed; result persists
 ```
@@ -34,12 +34,15 @@ const result = run(() => {
 Execute a function with scoped memory management. All tensors created within the scope are automatically freed when it exits.
 
 **Parameters:**
+
 - `fn` - Function to execute within the scope
 
 **Returns:**
+
 - Result of the function
 
 **Example:**
+
 ```typescript
 const tensor = run(() => {
   const x = zeros([10, 10]);
@@ -54,6 +57,7 @@ const tensor = run(() => {
 Async version of `run()` for async operations.
 
 **Example:**
+
 ```typescript
 const result = await runAsync(async () => {
   const data = await fetchData();
@@ -68,9 +72,11 @@ const result = await runAsync(async () => {
 Escape a tensor from the current scope to prevent it from being freed.
 
 **Throws:**
+
 - Error if not currently in a scope
 
 **Example:**
+
 ```typescript
 run(() => {
   const temp = zeros([10, 10]);
@@ -85,6 +91,7 @@ run(() => {
 Check if currently inside a scope.
 
 **Example:**
+
 ```typescript
 console.log(inScope()); // false
 run(() => {
@@ -97,6 +104,7 @@ run(() => {
 Get current scope depth (0 if not in a scope).
 
 **Example:**
+
 ```typescript
 run(() => {
   console.log(scopeDepth()); // 1
@@ -111,6 +119,7 @@ run(() => {
 Get number of tensors tracked in current scope.
 
 **Example:**
+
 ```typescript
 run(() => {
   zeros([10, 10]);
@@ -126,6 +135,7 @@ run(() => {
 Pool for reusing tensor allocations.
 
 **Constructor:**
+
 ```typescript
 new TensorPool(maxPoolSize?: number)
 ```
@@ -137,9 +147,11 @@ new TensorPool(maxPoolSize?: number)
 Acquire a tensor from the pool if available.
 
 **Returns:**
+
 - Pooled tensor or `null` if none available
 
 **Example:**
+
 ```typescript
 const pool = new TensorPool();
 const tensor = pool.acquire([10, 10], "float32") ?? zeros([10, 10]);
@@ -150,6 +162,7 @@ const tensor = pool.acquire([10, 10], "float32") ?? zeros([10, 10]);
 Release a tensor back to the pool for reuse.
 
 **Example:**
+
 ```typescript
 pool.release(tensor);
 ```
@@ -159,12 +172,13 @@ pool.release(tensor);
 Get pool statistics including hit rate.
 
 **Returns:**
+
 ```typescript
 {
-  size: number;           // Total cached tensors
-  hitCount: number;       // Number of hits
-  missCount: number;      // Number of misses
-  hitRate: number;        // Hit rate (0-1)
+  size: number; // Total cached tensors
+  hitCount: number; // Number of hits
+  missCount: number; // Number of misses
+  hitRate: number; // Hit rate (0-1)
   pools: Map<string, number>; // Per-key sizes
 }
 ```
@@ -182,6 +196,7 @@ Clear tensors for a specific (shape, dtype) key.
 Reduce pool size to target (default: half current size).
 
 **Example:**
+
 ```typescript
 if (pool.stats().size > 1000) {
   pool.prune(500); // Reduce to 500 tensors
@@ -193,8 +208,9 @@ if (pool.stats().size > 1000) {
 Global tensor pool instance for convenience.
 
 **Example:**
+
 ```typescript
-import { globalTensorPool } from '@ts-torch/core/memory';
+import { globalTensorPool } from "@ts-torch/core/memory";
 
 const tensor = globalTensorPool.acquire([10, 10], "float32") ?? zeros([10, 10]);
 globalTensorPool.release(tensor);
@@ -226,7 +242,7 @@ for (let epoch = 0; epoch < 10; epoch++) {
 ### Inference
 
 ```typescript
-const results = inputs.map(input => {
+const results = inputs.map((input) => {
   return run(() => {
     const processed = preprocess(input);
     const output = model.forward(processed);
@@ -304,6 +320,7 @@ interface ScopeContext {
 ```
 
 When entering a scope:
+
 1. Call native `ts_scope_begin()` to get scope ID
 2. Create JS scope context
 3. Execute user function
@@ -379,11 +396,11 @@ setInterval(() => {
 ### Check scope state
 
 ```typescript
-import { inScope, scopeDepth, scopeTensorCount } from '@ts-torch/core/memory';
+import { inScope, scopeDepth, scopeTensorCount } from "@ts-torch/core/memory";
 
-console.log('In scope:', inScope());
-console.log('Scope depth:', scopeDepth());
-console.log('Tensors tracked:', scopeTensorCount());
+console.log("In scope:", inScope());
+console.log("Scope depth:", scopeDepth());
+console.log("Tensors tracked:", scopeTensorCount());
 ```
 
 ### Monitor pool performance

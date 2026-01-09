@@ -21,20 +21,18 @@ export const DebugMode = {
 export function validateShapesMatch(
   a: readonly number[],
   b: readonly number[],
-  operation: string
+  operation: string,
 ): void {
   if (!DebugMode.enabled) return;
 
   if (a.length !== b.length) {
     throw new TypeError(
-      `Shape mismatch in ${operation}: tensors have different ranks (${a.length} vs ${b.length})`
+      `Shape mismatch in ${operation}: tensors have different ranks (${a.length} vs ${b.length})`,
     );
   }
   for (let i = 0; i < a.length; i++) {
     if (a[i] !== b[i]) {
-      throw new TypeError(
-        `Shape mismatch in ${operation} at dimension ${i}: ${a[i]} vs ${b[i]}`
-      );
+      throw new TypeError(`Shape mismatch in ${operation} at dimension ${i}: ${a[i]} vs ${b[i]}`);
     }
   }
 }
@@ -42,10 +40,7 @@ export function validateShapesMatch(
 /**
  * Validate matmul shapes (inner dims match).
  */
-export function validateMatmulShapes(
-  a: readonly number[],
-  b: readonly number[]
-): void {
+export function validateMatmulShapes(a: readonly number[], b: readonly number[]): void {
   if (!DebugMode.enabled) return;
 
   if (a.length < 1 || b.length < 1) {
@@ -56,7 +51,7 @@ export function validateMatmulShapes(
   if (k1 !== k2) {
     throw new TypeError(
       `matmul dimension mismatch: inner dimensions must match (${k1} vs ${k2}). ` +
-      `Got shapes [${a.join(", ")}] @ [${b.join(", ")}]`
+        `Got shapes [${a.join(", ")}] @ [${b.join(", ")}]`,
     );
   }
 }
@@ -64,17 +59,14 @@ export function validateMatmulShapes(
 /**
  * Validate reshape preserves element count.
  */
-export function validateReshape(
-  from: readonly number[],
-  to: readonly number[]
-): void {
+export function validateReshape(from: readonly number[], to: readonly number[]): void {
   if (!DebugMode.enabled) return;
 
   const fromElements = from.reduce((a, b) => a * b, 1);
   const toElements = to.reduce((a, b) => a * b, 1);
   if (fromElements !== toElements) {
     throw new TypeError(
-      `Cannot reshape tensor of ${fromElements} elements to shape [${to.join(", ")}] (${toElements} elements)`
+      `Cannot reshape tensor of ${fromElements} elements to shape [${to.join(", ")}] (${toElements} elements)`,
     );
   }
 }
@@ -82,17 +74,13 @@ export function validateReshape(
 /**
  * Validate dimension index is in range.
  */
-export function validateDim(
-  shape: readonly number[],
-  dim: number,
-  operation: string
-): void {
+export function validateDim(shape: readonly number[], dim: number, operation: string): void {
   if (!DebugMode.enabled) return;
 
   const ndim = shape.length;
   if (dim < -ndim || dim >= ndim) {
     throw new RangeError(
-      `Invalid dimension ${dim} for ${operation} on tensor with ${ndim} dimensions`
+      `Invalid dimension ${dim} for ${operation} on tensor with ${ndim} dimensions`,
     );
   }
 }
@@ -105,19 +93,14 @@ export function validateScalar(shape: readonly number[]): void {
 
   const numel = shape.reduce((a, b) => a * b, 1);
   if (numel !== 1) {
-    throw new TypeError(
-      `item() only works on scalar tensors. Got tensor with ${numel} elements`
-    );
+    throw new TypeError(`item() only works on scalar tensors. Got tensor with ${numel} elements`);
   }
 }
 
 /**
  * Validate broadcast shapes are compatible.
  */
-export function validateBroadcast(
-  a: readonly number[],
-  b: readonly number[]
-): void {
+export function validateBroadcast(a: readonly number[], b: readonly number[]): void {
   if (!DebugMode.enabled) return;
 
   const maxRank = Math.max(a.length, b.length);
@@ -125,9 +108,7 @@ export function validateBroadcast(
     const dimA = a[a.length - 1 - i] ?? 1;
     const dimB = b[b.length - 1 - i] ?? 1;
     if (dimA !== dimB && dimA !== 1 && dimB !== 1) {
-      throw new TypeError(
-        `Cannot broadcast shapes [${a.join(", ")}] and [${b.join(", ")}]`
-      );
+      throw new TypeError(`Cannot broadcast shapes [${a.join(", ")}] and [${b.join(", ")}]`);
     }
   }
 }
@@ -135,7 +116,10 @@ export function validateBroadcast(
 /**
  * Validate tensor is not null/freed.
  */
-export function validateTensor(tensor: { _freed?: boolean } | null | undefined, operation: string): void {
+export function validateTensor(
+  tensor: { _freed?: boolean } | null | undefined,
+  operation: string,
+): void {
   if (!DebugMode.enabled) return;
 
   if (!tensor) {

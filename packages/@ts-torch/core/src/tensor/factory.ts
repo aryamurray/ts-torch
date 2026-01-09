@@ -29,13 +29,10 @@ import { withError, checkNull } from "../ffi/error.js";
  * // Type: Tensor<[2, 3], DType<"float32">>
  * ```
  */
-export function zeros<
-  S extends Shape,
-  D extends DType<string> = DType<"float32">
->(
+export function zeros<S extends Shape, D extends DType<string> = DType<"float32">>(
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
-  requiresGrad = false
+  requiresGrad = false,
 ): Tensor<S, D> {
   const lib = getLib();
 
@@ -44,13 +41,7 @@ export function zeros<
   const shapePtr = ptr(shapeArray);
 
   const handle = withError((err) =>
-    lib.symbols.ts_tensor_zeros(
-      shapePtr,
-      shape.length,
-      dtype.value,
-      requiresGrad,
-      err
-    )
+    lib.symbols.ts_tensor_zeros(shapePtr, shape.length, dtype.value, requiresGrad, err),
   );
 
   checkNull(handle, "Failed to create zeros tensor");
@@ -74,13 +65,10 @@ export function zeros<
  * // Type: Tensor<[2, 3], DType<"float32">>
  * ```
  */
-export function ones<
-  S extends Shape,
-  D extends DType<string> = DType<"float32">
->(
+export function ones<S extends Shape, D extends DType<string> = DType<"float32">>(
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
-  requiresGrad = false
+  requiresGrad = false,
 ): Tensor<S, D> {
   const lib = getLib();
 
@@ -88,13 +76,7 @@ export function ones<
   const shapePtr = ptr(shapeArray);
 
   const handle = withError((err) =>
-    lib.symbols.ts_tensor_ones(
-      shapePtr,
-      shape.length,
-      dtype.value,
-      requiresGrad,
-      err
-    )
+    lib.symbols.ts_tensor_ones(shapePtr, shape.length, dtype.value, requiresGrad, err),
   );
 
   checkNull(handle, "Failed to create ones tensor");
@@ -121,13 +103,10 @@ export function ones<
  * // Fast allocation, fill it yourself
  * ```
  */
-export function empty<
-  S extends Shape,
-  D extends DType<string> = DType<"float32">
->(
+export function empty<S extends Shape, D extends DType<string> = DType<"float32">>(
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
-  requiresGrad = false
+  requiresGrad = false,
 ): Tensor<S, D> {
   const lib = getLib();
 
@@ -135,13 +114,7 @@ export function empty<
   const shapePtr = ptr(shapeArray);
 
   const handle = withError((err) =>
-    lib.symbols.ts_tensor_empty(
-      shapePtr,
-      shape.length,
-      dtype.value,
-      requiresGrad,
-      err
-    )
+    lib.symbols.ts_tensor_empty(shapePtr, shape.length, dtype.value, requiresGrad, err),
   );
 
   checkNull(handle, "Failed to create empty tensor");
@@ -165,13 +138,10 @@ export function empty<
  * // Random initialization for neural networks
  * ```
  */
-export function randn<
-  S extends Shape,
-  D extends DType<string> = DType<"float32">
->(
+export function randn<S extends Shape, D extends DType<string> = DType<"float32">>(
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
-  requiresGrad = false
+  requiresGrad = false,
 ): Tensor<S, D> {
   const lib = getLib();
 
@@ -179,13 +149,7 @@ export function randn<
   const shapePtr = ptr(shapeArray);
 
   const handle = withError((err) =>
-    lib.symbols.ts_tensor_randn(
-      shapePtr,
-      shape.length,
-      dtype.value,
-      requiresGrad,
-      err
-    )
+    lib.symbols.ts_tensor_randn(shapePtr, shape.length, dtype.value, requiresGrad, err),
   );
 
   checkNull(handle, "Failed to create randn tensor");
@@ -214,14 +178,11 @@ export function randn<
  * // [[1, 2, 3], [4, 5, 6]]
  * ```
  */
-export function fromArray<
-  S extends Shape,
-  D extends DType<string> = DType<"float32">
->(
+export function fromArray<S extends Shape, D extends DType<string> = DType<"float32">>(
   data: number[] | Float32Array | Float64Array | Int32Array | BigInt64Array,
   shape: S,
   dtype: D = DTypeConstants.float32 as D,
-  requiresGrad = false
+  requiresGrad = false,
 ): Tensor<S, D> {
   const lib = getLib();
 
@@ -229,7 +190,7 @@ export function fromArray<
   const expectedSize = shape.reduce((acc, dim) => acc * dim, 1);
   if (data.length !== expectedSize) {
     throw new Error(
-      `Data length ${data.length} does not match shape [${shape.join(", ")}] (expected ${expectedSize})`
+      `Data length ${data.length} does not match shape [${shape.join(", ")}] (expected ${expectedSize})`,
     );
   }
 
@@ -267,8 +228,8 @@ export function fromArray<
       shape.length,
       dtype.value,
       requiresGrad,
-      err
-    )
+      err,
+    ),
   );
 
   checkNull(handle, "Failed to create tensor from array");
@@ -296,7 +257,7 @@ export function createArange<D extends DType<string> = DType<"float32">>(
   start: number,
   end: number,
   step = 1,
-  dtype: D = DTypeConstants.float32 as D
+  dtype: D = DTypeConstants.float32 as D,
 ): Tensor<readonly [number], D> {
   if (step === 0) {
     throw new Error("Step cannot be zero");
@@ -339,7 +300,7 @@ export function createArange<D extends DType<string> = DType<"float32">>(
 export function createTensorFromData<D extends DType<string> = DType<"float32">>(
   data: number | number[] | number[][] | number[][][] | number[][][][],
   dtype: D = DTypeConstants.float32 as D,
-  requiresGrad = false
+  requiresGrad = false,
 ): Tensor<readonly number[], D> {
   // Infer shape
   const shape = inferShape(data);

@@ -31,20 +31,14 @@
  */
 
 // Core module abstractions
-export {
-  Module,
-  Parameter,
-  PipedModule,
-  type Tensor,
-  type float32,
-} from './module.js';
+export { Module, Parameter, PipedModule, type Tensor, type float32 } from "./module.js";
 
 // Neural network modules
 export {
   // Linear layers
   Linear,
   type LinearOptions,
-} from './modules/linear.js';
+} from "./modules/linear.js";
 
 export {
   // Activation functions
@@ -54,23 +48,23 @@ export {
   Softmax,
   LeakyReLU,
   GELU,
-} from './modules/activation.js';
+} from "./modules/activation.js";
 
 export {
   // Container modules
   Sequential,
   SequentialBuilder,
   sequential,
-} from './modules/container.js';
+} from "./modules/container.js";
 
 // Re-export other modules (conv, pooling, etc.)
-export * from './modules/conv.js';
-export * from './modules/pooling.js';
-export * from './modules/normalization.js';
-export * from './modules/dropout.js';
+export * from "./modules/conv.js";
+export * from "./modules/pooling.js";
+export * from "./modules/normalization.js";
+export * from "./modules/dropout.js";
 
 // Functional API (stateless operations)
-export * as F from './functional.js';
+export * as F from "./functional.js";
 
 /**
  * Functional namespace (alternative import style)
@@ -83,4 +77,4 @@ export * as F from './functional.js';
  * const z = functional.softmax(y, -1);
  * ```
  */
-export * as functional from './functional.js';
+export * as functional from "./functional.js";

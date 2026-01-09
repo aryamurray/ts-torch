@@ -5,13 +5,13 @@
  * All loss functions support reduction options: 'mean', 'sum', or 'none'.
  */
 
-import type { Tensor } from '@ts-torch/core';
-import type { Shape, DType } from '@ts-torch/core';
+import type { Tensor } from "@ts-torch/core";
+import type { Shape, DType } from "@ts-torch/core";
 
 /**
  * Reduction strategy for loss functions
  */
-export type Reduction = 'mean' | 'sum' | 'none';
+export type Reduction = "mean" | "sum" | "none";
 
 /**
  * Common options for loss functions
@@ -49,61 +49,72 @@ export interface LossOptions {
  * const loss = crossEntropyLoss(logits, targets);  // scalar
  * ```
  */
-export function crossEntropyLoss<
-  B extends number,
-  C extends number,
-  D extends DType<string>
->(
+export function crossEntropyLoss<B extends number, C extends number, D extends DType<string>>(
   logits: Tensor<readonly [B, C], D>,
   targets: Tensor<readonly [B], D>,
-  options?: LossOptions
+  options?: LossOptions,
 ): Tensor<readonly [], D> | Tensor<readonly [B], D> {
-  const reduction = options?.reduction ?? 'mean';
+  const reduction = options?.reduction ?? "mean";
 
   // Compute log softmax: log(exp(x_i) / sum(exp(x_j)))
   // For numerical stability: log_softmax(x) = x - log(sum(exp(x)))
   let logSoftmax: Tensor;
 
-  if ('exp' in logits && 'sum' in logits && 'log' in logits && 'sub' in logits &&
-      typeof (logits as { exp?: Function }).exp === 'function' &&
-      typeof (logits as { sum?: Function }).sum === 'function' &&
-      typeof (logits as { log?: Function }).log === 'function' &&
-      typeof (logits as { sub?: Function }).sub === 'function') {
-
+  if (
+    "exp" in logits &&
+    "sum" in logits &&
+    "log" in logits &&
+    "sub" in logits &&
+    typeof (logits as { exp?: Function }).exp === "function" &&
+    typeof (logits as { sum?: Function }).sum === "function" &&
+    typeof (logits as { log?: Function }).log === "function" &&
+    typeof (logits as { sub?: Function }).sub === "function"
+  ) {
     // exp(logits)
-    const expLogits = ((logits as { exp: () => Tensor }).exp()) as Tensor;
+    const expLogits = (logits as { exp: () => Tensor }).exp() as Tensor;
 
     // sum(exp(logits), dim=1, keepdim=true)
-    const sumExp = ('sum' in expLogits && typeof (expLogits as { sum?: Function }).sum === 'function')
-      ? ((expLogits as { sum: (dim: number, keepdim?: boolean) => Tensor }).sum(1, true)) as Tensor
-      : expLogits;
+    const sumExp =
+      "sum" in expLogits && typeof (expLogits as { sum?: Function }).sum === "function"
+        ? ((expLogits as { sum: (dim: number, keepdim?: boolean) => Tensor }).sum(
+            1,
+            true,
+          ) as Tensor)
+        : expLogits;
 
     // log(sum(exp(logits)))
-    const logSumExp = ('log' in sumExp && typeof (sumExp as { log?: Function }).log === 'function')
-      ? ((sumExp as { log: () => Tensor }).log()) as Tensor
-      : sumExp;
+    const logSumExp =
+      "log" in sumExp && typeof (sumExp as { log?: Function }).log === "function"
+        ? ((sumExp as { log: () => Tensor }).log() as Tensor)
+        : sumExp;
 
     // logits - log(sum(exp(logits)))
     logSoftmax = (logits.sub as any)(logSumExp) as Tensor;
   } else {
-    throw new Error('Tensor operations (exp, sum, log, sub) not available');
+    throw new Error("Tensor operations (exp, sum, log, sub) not available");
   }
 
   // Gather log probabilities for target classes
   // loss[i] = -log_softmax[i, targets[i]]
   let nll: Tensor;
 
-  if ('gather' in logSoftmax && typeof (logSoftmax as { gather?: Function }).gather === 'function') {
+  if (
+    "gather" in logSoftmax &&
+    typeof (logSoftmax as { gather?: Function }).gather === "function"
+  ) {
     // Use gather operation to select target class log probs
-    nll = ((logSoftmax as { gather: (dim: number, index: Tensor) => Tensor }).gather(1, targets as Tensor)) as Tensor;
+    nll = (logSoftmax as { gather: (dim: number, index: Tensor) => Tensor }).gather(
+      1,
+      targets as Tensor,
+    ) as Tensor;
 
     // Negate to get negative log likelihood
-    if ('mul' in nll && typeof (nll as { mul?: Function }).mul === 'function') {
+    if ("mul" in nll && typeof (nll as { mul?: Function }).mul === "function") {
       nll = (nll.mul as any)(-1) as Tensor;
     }
   } else {
     // Fallback: manual indexing (less efficient)
-    throw new Error('Gather operation not available on Tensor');
+    throw new Error("Gather operation not available on Tensor");
   }
 
   // Apply reduction
@@ -134,24 +145,23 @@ export function crossEntropyLoss<
 export function mseLoss<S extends Shape, D extends DType<string>>(
   input: Tensor<S, D>,
   target: Tensor<S, D>,
-  options?: LossOptions
+  options?: LossOptions,
 ): Tensor<readonly [], D> | Tensor<S, D> {
-  const reduction = options?.reduction ?? 'mean';
+  const reduction = options?.reduction ?? "mean";
 
   // Compute (input - target)^2
   let squaredError: Tensor;
 
-  if ('sub' in input && 'pow' in input &&
-      typeof (input as { sub?: Function }).sub === 'function') {
+  if ("sub" in input && "pow" in input && typeof (input as { sub?: Function }).sub === "function") {
     const diff = (input.sub as any)(target) as Tensor;
 
-    if ('pow' in diff && typeof (diff as { pow?: Function }).pow === 'function') {
+    if ("pow" in diff && typeof (diff as { pow?: Function }).pow === "function") {
       squaredError = (diff.pow as any)(2) as Tensor;
     } else {
-      throw new Error('Pow operation not available on Tensor');
+      throw new Error("Pow operation not available on Tensor");
     }
   } else {
-    throw new Error('Sub operation not available on Tensor');
+    throw new Error("Sub operation not available on Tensor");
   }
 
   // Apply reduction
@@ -184,72 +194,89 @@ export function mseLoss<S extends Shape, D extends DType<string>>(
 export function binaryCrossEntropyLoss<S extends Shape, D extends DType<string>>(
   input: Tensor<S, D>,
   target: Tensor<S, D>,
-  options?: LossOptions
+  options?: LossOptions,
 ): Tensor<readonly [], D> | Tensor<S, D> {
-  const reduction = options?.reduction ?? 'mean';
+  const reduction = options?.reduction ?? "mean";
   const eps = 1e-8; // Small epsilon for numerical stability
 
   // Clamp input to [eps, 1 - eps] to avoid log(0)
   let clampedInput: Tensor = input as Tensor;
 
-  if ('clamp' in input && typeof (input as { clamp?: Function }).clamp === 'function') {
+  if ("clamp" in input && typeof (input as { clamp?: Function }).clamp === "function") {
     clampedInput = (input.clamp as any)(eps, 1 - eps) as Tensor;
   }
 
   // Compute -[target * log(input) + (1 - target) * log(1 - input)]
   let bce: Tensor;
 
-  if ('log' in clampedInput && 'mul' in clampedInput && 'sub' in clampedInput && 'add' in clampedInput &&
-      typeof (clampedInput as { log?: Function }).log === 'function' &&
-      typeof (clampedInput as { mul?: Function }).mul === 'function' &&
-      typeof (clampedInput as { sub?: Function }).sub === 'function' &&
-      typeof (clampedInput as { add?: Function }).add === 'function') {
-
+  if (
+    "log" in clampedInput &&
+    "mul" in clampedInput &&
+    "sub" in clampedInput &&
+    "add" in clampedInput &&
+    typeof (clampedInput as { log?: Function }).log === "function" &&
+    typeof (clampedInput as { mul?: Function }).mul === "function" &&
+    typeof (clampedInput as { sub?: Function }).sub === "function" &&
+    typeof (clampedInput as { add?: Function }).add === "function"
+  ) {
     // target * log(input)
-    const logInput = ((clampedInput as { log: () => Tensor }).log()) as Tensor;
-    const term1 = ('mul' in target && typeof (target as { mul?: Function }).mul === 'function')
-      ? (target.mul as any)(logInput) as Tensor
-      : logInput;
+    const logInput = (clampedInput as { log: () => Tensor }).log() as Tensor;
+    const term1 =
+      "mul" in target && typeof (target as { mul?: Function }).mul === "function"
+        ? ((target.mul as any)(logInput) as Tensor)
+        : logInput;
 
     // (1 - target)
     let oneMinusTarget: Tensor;
-    if ('mul' in target && 'sub' in target && typeof (target as { mul?: Function }).mul === 'function') {
+    if (
+      "mul" in target &&
+      "sub" in target &&
+      typeof (target as { mul?: Function }).mul === "function"
+    ) {
       const ones = (target.mul as any)(0) as Tensor;
-      oneMinusTarget = ('add' in ones && typeof (ones as { add?: Function }).add === 'function')
-        ? (ones.add as any)(1) as Tensor
-        : ones;
+      oneMinusTarget =
+        "add" in ones && typeof (ones as { add?: Function }).add === "function"
+          ? ((ones.add as any)(1) as Tensor)
+          : ones;
 
-      oneMinusTarget = ('sub' in oneMinusTarget && typeof (oneMinusTarget as { sub?: Function }).sub === 'function')
-        ? ((oneMinusTarget as { sub: (x: Tensor) => Tensor }).sub(target as Tensor)) as Tensor
-        : oneMinusTarget;
+      oneMinusTarget =
+        "sub" in oneMinusTarget && typeof (oneMinusTarget as { sub?: Function }).sub === "function"
+          ? ((oneMinusTarget as { sub: (x: Tensor) => Tensor }).sub(target as Tensor) as Tensor)
+          : oneMinusTarget;
     } else {
       oneMinusTarget = target as Tensor;
     }
 
     // log(1 - input)
     const oneMinusInput = (clampedInput.mul as any)(-1) as Tensor;
-    const oneMinusInputPlus1 = ('add' in oneMinusInput && typeof (oneMinusInput as { add?: Function }).add === 'function')
-      ? (oneMinusInput.add as any)(1) as Tensor
-      : oneMinusInput;
-    const logOneMinusInput = ('log' in oneMinusInputPlus1 && typeof (oneMinusInputPlus1 as { log?: Function }).log === 'function')
-      ? ((oneMinusInputPlus1 as { log: () => Tensor }).log()) as Tensor
-      : oneMinusInputPlus1;
+    const oneMinusInputPlus1 =
+      "add" in oneMinusInput && typeof (oneMinusInput as { add?: Function }).add === "function"
+        ? ((oneMinusInput.add as any)(1) as Tensor)
+        : oneMinusInput;
+    const logOneMinusInput =
+      "log" in oneMinusInputPlus1 &&
+      typeof (oneMinusInputPlus1 as { log?: Function }).log === "function"
+        ? ((oneMinusInputPlus1 as { log: () => Tensor }).log() as Tensor)
+        : oneMinusInputPlus1;
 
     // (1 - target) * log(1 - input)
-    const term2 = ('mul' in oneMinusTarget && typeof (oneMinusTarget as { mul?: Function }).mul === 'function')
-      ? ((oneMinusTarget as { mul: (x: Tensor) => Tensor }).mul(logOneMinusInput)) as Tensor
-      : logOneMinusInput;
+    const term2 =
+      "mul" in oneMinusTarget && typeof (oneMinusTarget as { mul?: Function }).mul === "function"
+        ? ((oneMinusTarget as { mul: (x: Tensor) => Tensor }).mul(logOneMinusInput) as Tensor)
+        : logOneMinusInput;
 
     // sum and negate
-    const sum = ('add' in term1 && typeof (term1 as { add?: Function }).add === 'function')
-      ? ((term1 as { add: (x: Tensor) => Tensor }).add(term2)) as Tensor
-      : term1;
+    const sum =
+      "add" in term1 && typeof (term1 as { add?: Function }).add === "function"
+        ? ((term1 as { add: (x: Tensor) => Tensor }).add(term2) as Tensor)
+        : term1;
 
-    bce = ('mul' in sum && typeof (sum as { mul?: Function }).mul === 'function')
-      ? (sum.mul as any)(-1) as Tensor
-      : sum;
+    bce =
+      "mul" in sum && typeof (sum as { mul?: Function }).mul === "function"
+        ? ((sum.mul as any)(-1) as Tensor)
+        : sum;
   } else {
-    throw new Error('Required tensor operations not available');
+    throw new Error("Required tensor operations not available");
   }
 
   // Apply reduction
@@ -282,23 +309,23 @@ export function binaryCrossEntropyLoss<S extends Shape, D extends DType<string>>
 export function l1Loss<S extends Shape, D extends DType<string>>(
   input: Tensor<S, D>,
   target: Tensor<S, D>,
-  options?: LossOptions
+  options?: LossOptions,
 ): Tensor<readonly [], D> | Tensor<S, D> {
-  const reduction = options?.reduction ?? 'mean';
+  const reduction = options?.reduction ?? "mean";
 
   // Compute |input - target|
   let absError: Tensor;
 
-  if ('sub' in input && typeof (input as { sub?: Function }).sub === 'function') {
-    const diff = (input.sub as any)(target) as Tensor & Record<'abs', unknown>;
+  if ("sub" in input && typeof (input as { sub?: Function }).sub === "function") {
+    const diff = (input.sub as any)(target) as Tensor & Record<"abs", unknown>;
 
-    if ('abs' in diff && typeof (diff as { abs?: Function }).abs === 'function') {
-      absError = ((diff as { abs: () => Tensor }).abs()) as Tensor;
+    if ("abs" in diff && typeof (diff as { abs?: Function }).abs === "function") {
+      absError = (diff as { abs: () => Tensor }).abs() as Tensor;
     } else {
-      throw new Error('Abs operation not available on Tensor');
+      throw new Error("Abs operation not available on Tensor");
     }
   } else {
-    throw new Error('Sub operation not available on Tensor');
+    throw new Error("Sub operation not available on Tensor");
   }
 
   // Apply reduction
@@ -329,24 +356,24 @@ export function l1Loss<S extends Shape, D extends DType<string>>(
 export function smoothL1Loss<S extends Shape, D extends DType<string>>(
   input: Tensor<S, D>,
   target: Tensor<S, D>,
-  options?: LossOptions & { beta?: number }
+  options?: LossOptions & { beta?: number },
 ): Tensor<readonly [], D> | Tensor<S, D> {
-  const reduction = options?.reduction ?? 'mean';
+  const reduction = options?.reduction ?? "mean";
   // const beta = options?.beta ?? 1.0; // Unused for now in simplified implementation
 
   // Compute |input - target|
   let diff: Tensor;
-  if ('sub' in input && typeof (input as { sub?: Function }).sub === 'function') {
+  if ("sub" in input && typeof (input as { sub?: Function }).sub === "function") {
     diff = (input.sub as any)(target) as Tensor;
   } else {
-    throw new Error('Sub operation not available on Tensor');
+    throw new Error("Sub operation not available on Tensor");
   }
 
   let absDiff: Tensor;
-  if ('abs' in diff && typeof (diff as { abs?: Function }).abs === 'function') {
-    absDiff = ((diff as { abs: () => Tensor }).abs()) as Tensor;
+  if ("abs" in diff && typeof (diff as { abs?: Function }).abs === "function") {
+    absDiff = (diff as { abs: () => Tensor }).abs() as Tensor;
   } else {
-    throw new Error('Abs operation not available on Tensor');
+    throw new Error("Abs operation not available on Tensor");
   }
 
   // For numerical simplicity, we return L1 loss
@@ -375,9 +402,9 @@ export function smoothL1Loss<S extends Shape, D extends DType<string>>(
 export function klDivLoss<S extends Shape, D extends DType<string>>(
   input: Tensor<S, D>,
   target: Tensor<S, D>,
-  options?: LossOptions
+  options?: LossOptions,
 ): Tensor<readonly [], D> | Tensor<S, D> {
-  const reduction = options?.reduction ?? 'mean';
+  const reduction = options?.reduction ?? "mean";
 
   // KL(P||Q) = sum(P * log(P/Q)) = sum(P * (log(P) - log(Q)))
   // input is log(Q), target is P
@@ -385,19 +412,23 @@ export function klDivLoss<S extends Shape, D extends DType<string>>(
 
   let kl: Tensor;
 
-  if ('log' in target && 'sub' in target && 'mul' in target &&
-      typeof (target as { log?: Function }).log === 'function' &&
-      typeof (target as { sub?: Function }).sub === 'function' &&
-      typeof (target as { mul?: Function }).mul === 'function') {
-
-    const logTarget = ((target as { log: () => Tensor }).log()) as Tensor;
-    const logDiff = ('sub' in logTarget && typeof (logTarget as { sub?: Function }).sub === 'function')
-      ? (logTarget.sub as any)(input) as Tensor
-      : logTarget;
+  if (
+    "log" in target &&
+    "sub" in target &&
+    "mul" in target &&
+    typeof (target as { log?: Function }).log === "function" &&
+    typeof (target as { sub?: Function }).sub === "function" &&
+    typeof (target as { mul?: Function }).mul === "function"
+  ) {
+    const logTarget = (target as { log: () => Tensor }).log() as Tensor;
+    const logDiff =
+      "sub" in logTarget && typeof (logTarget as { sub?: Function }).sub === "function"
+        ? ((logTarget.sub as any)(input) as Tensor)
+        : logTarget;
 
     kl = (target.mul as any)(logDiff) as Tensor;
   } else {
-    throw new Error('Required tensor operations not available');
+    throw new Error("Required tensor operations not available");
   }
 
   // Apply reduction
@@ -409,19 +440,19 @@ export function klDivLoss<S extends Shape, D extends DType<string>>(
  * @internal
  */
 function applyReduction(tensor: Tensor, reduction: Reduction): Tensor {
-  if (reduction === 'none') {
+  if (reduction === "none") {
     return tensor;
   }
 
-  if (reduction === 'sum') {
-    if ('sum' in tensor && typeof (tensor as { sum?: Function }).sum === 'function') {
-      return ((tensor as { sum: () => Tensor }).sum()) as Tensor;
+  if (reduction === "sum") {
+    if ("sum" in tensor && typeof (tensor as { sum?: Function }).sum === "function") {
+      return (tensor as { sum: () => Tensor }).sum() as Tensor;
     }
   }
 
-  if (reduction === 'mean') {
-    if ('mean' in tensor && typeof (tensor as { mean?: Function }).mean === 'function') {
-      return ((tensor as { mean: () => Tensor }).mean()) as Tensor;
+  if (reduction === "mean") {
+    if ("mean" in tensor && typeof (tensor as { mean?: Function }).mean === "function") {
+      return (tensor as { mean: () => Tensor }).mean() as Tensor;
     }
   }
 

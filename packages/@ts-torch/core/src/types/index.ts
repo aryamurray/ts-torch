@@ -23,13 +23,7 @@
  */
 
 // Data types
-export type {
-  DType,
-  DTypeName,
-  DTypeToTypedArray,
-  DTypeElement,
-  PromoteDType,
-} from "./dtype";
+export type { DType, DTypeName, DTypeToTypedArray, DTypeElement, PromoteDType } from "./dtype";
 
 export {
   DType as DTypeConstants,
@@ -84,8 +78,7 @@ import type { Shape as ShapeInternal } from "./shape";
  *
  * @template T - The TensorType
  */
-export type ElementType<T extends TensorType> =
-  DTypeElementInternal<T["dtype"]>;
+export type ElementType<T extends TensorType> = DTypeElementInternal<T["dtype"]>;
 
 /**
  * Utility type to extract the shape from a TensorType
@@ -109,7 +102,7 @@ export type ExtractDType<T extends TensorType> = T["dtype"];
  */
 export type IsBroadcastable<
   S1 extends ShapeInternal,
-  S2 extends ShapeInternal
+  S2 extends ShapeInternal,
 > = import("./tensor").BroadcastShape<S1, S2> extends never ? false : true;
 
 /**
@@ -120,7 +113,7 @@ export type IsBroadcastable<
  */
 export type IsMatMulCompatible<
   S1 extends ShapeInternal,
-  S2 extends ShapeInternal
+  S2 extends ShapeInternal,
 > = import("./tensor").MatMulShape<S1, S2> extends never ? false : true;
 
 /**
@@ -131,7 +124,7 @@ export type IsMatMulCompatible<
 /**
  * Tensor device type
  */
-export type Device = 'cpu' | 'cuda' | 'mps';
+export type Device = "cpu" | "cuda" | "mps";
 
 /**
  * Tensor stride information

@@ -56,9 +56,7 @@ export class TorchError extends Error {
 
   constructor(code: ErrorCode, nativeMessage: string) {
     const baseMessage = ERROR_MESSAGES[code] || ERROR_MESSAGES[ErrorCode.UNKNOWN];
-    const fullMessage = nativeMessage
-      ? `${baseMessage}: ${nativeMessage}`
-      : baseMessage;
+    const fullMessage = nativeMessage ? `${baseMessage}: ${nativeMessage}` : baseMessage;
 
     super(fullMessage);
     this.name = "TorchError";
@@ -126,11 +124,7 @@ export function checkError(errorPtr: Pointer): void {
   }
 
   // Read error message (next 256 bytes)
-  const messageBytes = new Uint8Array(
-    errorPtr as unknown as ArrayBuffer,
-    4,
-    256
-  );
+  const messageBytes = new Uint8Array(errorPtr as unknown as ArrayBuffer, 4, 256);
 
   // Find null terminator
   let messageLength = 0;
@@ -199,7 +193,7 @@ export function validateShape(shape: number[] | bigint[]): void {
     if (!Number.isInteger(dim) || dim < 0) {
       throw new TorchError(
         ErrorCode.INVALID_SHAPE,
-        `Shape dimension ${i} must be non-negative integer, got ${rawDim}`
+        `Shape dimension ${i} must be non-negative integer, got ${rawDim}`,
       );
     }
   }
@@ -214,7 +208,7 @@ export function validateDtype(dtype: number): void {
   if (!Number.isInteger(dtype) || dtype < 0 || dtype > 3) {
     throw new TorchError(
       ErrorCode.INVALID_DTYPE,
-      `Invalid dtype ${dtype}, must be 0 (f32), 1 (f64), 2 (i32), or 3 (i64)`
+      `Invalid dtype ${dtype}, must be 0 (f32), 1 (f64), 2 (i32), or 3 (i64)`,
     );
   }
 }

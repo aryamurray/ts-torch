@@ -5,11 +5,13 @@ This document describes the complete package structure for ts-torch within the T
 ## Created Packages
 
 ### 1. @ts-torch/core
+
 **Location**: `C:\Users\Arya\Documents\Code\ts-tools\packages\@ts-torch\core`
 
 Core tensor operations and FFI bindings.
 
 **Structure**:
+
 ```
 @ts-torch/core/
 ├── package.json              # Package manifest with @ts-torch-platform/loader dependency
@@ -28,6 +30,7 @@ Core tensor operations and FFI bindings.
 ```
 
 **Key Features**:
+
 - Tensor creation and manipulation
 - FFI bindings to native operations
 - Memory pooling and tracking
@@ -36,11 +39,13 @@ Core tensor operations and FFI bindings.
 ---
 
 ### 2. @ts-torch/nn
+
 **Location**: `C:\Users\Arya\Documents\Code\ts-tools\packages\@ts-torch\nn`
 
 Neural network modules and layers.
 
 **Structure**:
+
 ```
 @ts-torch/nn/
 ├── package.json              # Package manifest with @ts-torch/core dependency
@@ -60,6 +65,7 @@ Neural network modules and layers.
 ```
 
 **Key Features**:
+
 - Module base class with parameter management
 - Sequential container for composing layers
 - Common neural network layers
@@ -68,11 +74,13 @@ Neural network modules and layers.
 ---
 
 ### 3. @ts-torch/optim
+
 **Location**: `C:\Users\Arya\Documents\Code\ts-tools\packages\@ts-torch\optim`
 
 Optimization algorithms for neural network training.
 
 **Structure**:
+
 ```
 @ts-torch/optim/
 ├── package.json              # Package manifest with @ts-torch/core dependency
@@ -88,6 +96,7 @@ Optimization algorithms for neural network training.
 ```
 
 **Key Features**:
+
 - Base optimizer interface
 - SGD with momentum and Nesterov
 - Adam and AdamW implementations
@@ -97,11 +106,13 @@ Optimization algorithms for neural network training.
 ---
 
 ### 4. @ts-torch/datasets
+
 **Location**: `C:\Users\Arya\Documents\Code\ts-tools\packages\@ts-torch\datasets`
 
 Dataset loaders and utilities.
 
 **Structure**:
+
 ```
 @ts-torch/datasets/
 ├── package.json              # Package manifest with @ts-torch/core dependency
@@ -123,6 +134,7 @@ Dataset loaders and utilities.
 ```
 
 **Key Features**:
+
 - Base dataset interfaces
 - DataLoader with shuffling and batching
 - Common data transformations
@@ -133,11 +145,13 @@ Dataset loaders and utilities.
 ---
 
 ### 5. @ts-torch-platform/loader
+
 **Location**: `C:\Users\Arya\Documents\Code\ts-tools\packages\@ts-torch-platform\loader`
 
 Platform detection and native binary loading.
 
 **Structure**:
+
 ```
 @ts-torch-platform/loader/
 ├── package.json              # Package manifest with optional platform dependencies
@@ -148,12 +162,14 @@ Platform detection and native binary loading.
 ```
 
 **Key Features**:
+
 - Automatic platform detection
 - Native binary loading
 - Graceful fallback handling
 - Detailed error messages
 
 **Optional Dependencies**:
+
 - @ts-torch-platform/win32-x64
 - @ts-torch-platform/darwin-x64
 - @ts-torch-platform/darwin-arm64
@@ -163,11 +179,13 @@ Platform detection and native binary loading.
 ---
 
 ### 6. @ts-torch-platform/win32-x64
+
 **Location**: `C:\Users\Arya\Documents\Code\ts-tools\packages\@ts-torch-platform\win32-x64`
 
 Native binaries for Windows x64.
 
 **Structure**:
+
 ```
 @ts-torch-platform/win32-x64/
 ├── package.json              # Package manifest with os/cpu constraints
@@ -177,6 +195,7 @@ Native binaries for Windows x64.
 ```
 
 **Key Features**:
+
 - Platform-specific package (os: win32, cpu: x64)
 - Contains compiled native binaries
 - Build instructions in README
@@ -222,6 +241,7 @@ Native binaries for Windows x64.
 ### TypeScript Compiler Options
 
 All packages use consistent tsconfig.json with:
+
 - Strict type checking
 - No unused locals/parameters
 - No implicit returns
@@ -233,6 +253,7 @@ All packages use consistent tsconfig.json with:
 ### Package Scripts
 
 All packages include:
+
 - `build`: Compile TypeScript
 - `dev`: Watch mode compilation
 - `check-types`: Type checking without emit
@@ -247,17 +268,20 @@ All packages include:
 ## Next Steps
 
 1. **Install Dependencies**:
+
    ```bash
    cd C:\Users\Arya\Documents\Code\ts-tools
    bun install
    ```
 
 2. **Build All Packages**:
+
    ```bash
    bun run build
    ```
 
 3. **Development**:
+
    ```bash
    bun run dev  # Watch mode
    ```
@@ -270,6 +294,7 @@ All packages include:
 ## Implementation Status
 
 All packages are created with:
+
 - Complete package structure
 - TypeScript configuration
 - Placeholder implementations with TODOs
@@ -277,6 +302,7 @@ All packages are created with:
 - Documentation and README files
 
 The structure is ready for implementation of:
+
 - Native FFI bindings
 - Actual tensor operations
 - Complete neural network layers

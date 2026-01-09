@@ -2,9 +2,9 @@
  * MNIST dataset
  */
 
-import type { Tensor } from '@ts-torch/core';
-import { BaseDataset } from '../dataset.js';
-import type { Transform } from '../transforms.js';
+import type { Tensor } from "@ts-torch/core";
+import { BaseDataset } from "../dataset.js";
+import type { Transform } from "../transforms.js";
 
 /**
  * MNIST handwritten digits dataset
@@ -20,7 +20,7 @@ export class MNIST extends BaseDataset<[Tensor, number]> {
     _root: string,
     private train: boolean = true,
     _transform?: Transform<Tensor, Tensor>,
-    _download: boolean = false
+    _download: boolean = false,
   ) {
     super();
   }
@@ -35,7 +35,7 @@ export class MNIST extends BaseDataset<[Tensor, number]> {
 
   getItem(index: number): [Tensor, number] {
     if (!this.data) {
-      throw new Error('MNIST dataset not initialized. Call init() first.');
+      throw new Error("MNIST dataset not initialized. Call init() first.");
     }
 
     if (index < 0 || index >= this.length) {
@@ -49,7 +49,7 @@ export class MNIST extends BaseDataset<[Tensor, number]> {
     // }
     // return [image, this.targets[index]];
 
-    throw new Error('MNIST.getItem not yet implemented');
+    throw new Error("MNIST.getItem not yet implemented");
   }
 
   get length(): number {
@@ -57,6 +57,6 @@ export class MNIST extends BaseDataset<[Tensor, number]> {
   }
 
   get classes(): string[] {
-    return ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    return ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
   }
 }

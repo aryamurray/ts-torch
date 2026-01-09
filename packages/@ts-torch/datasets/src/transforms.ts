@@ -2,7 +2,7 @@
  * Data transformation utilities
  */
 
-import type { Tensor } from '@ts-torch/core';
+import type { Tensor } from "@ts-torch/core";
 
 /**
  * Base transform interface
@@ -30,10 +30,7 @@ export class Compose<T = Tensor> implements Transform<T, T> {
  * Normalize transform
  */
 export class Normalize implements Transform<Tensor, Tensor> {
-  constructor(
-    _mean: number | number[],
-    _std: number | number[]
-  ) {}
+  constructor(_mean: number | number[], _std: number | number[]) {}
 
   apply(tensor: Tensor): Tensor {
     // TODO: Implement normalization
@@ -59,7 +56,7 @@ export class Lambda<TInput = Tensor, TOutput = Tensor> implements Transform<TInp
 export class RandomHorizontalFlip implements Transform<Tensor, Tensor> {
   constructor(private p: number = 0.5) {
     if (p < 0 || p > 1) {
-      throw new Error('Probability must be between 0 and 1');
+      throw new Error("Probability must be between 0 and 1");
     }
   }
 
@@ -76,9 +73,7 @@ export class RandomHorizontalFlip implements Transform<Tensor, Tensor> {
  * Random crop transform
  */
 export class RandomCrop implements Transform<Tensor, Tensor> {
-  constructor(
-    _size: number | [number, number]
-  ) {}
+  constructor(_size: number | [number, number]) {}
 
   apply(tensor: Tensor): Tensor {
     // TODO: Implement random crop
@@ -92,7 +87,7 @@ export class RandomCrop implements Transform<Tensor, Tensor> {
 export class Resize implements Transform<Tensor, Tensor> {
   constructor(
     _size: number | [number, number],
-    _interpolation: 'nearest' | 'bilinear' = 'bilinear'
+    _interpolation: "nearest" | "bilinear" = "bilinear",
   ) {}
 
   apply(tensor: Tensor): Tensor {
@@ -105,9 +100,7 @@ export class Resize implements Transform<Tensor, Tensor> {
  * Center crop transform
  */
 export class CenterCrop implements Transform<Tensor, Tensor> {
-  constructor(
-    _size: number | [number, number]
-  ) {}
+  constructor(_size: number | [number, number]) {}
 
   apply(tensor: Tensor): Tensor {
     // TODO: Implement center crop
@@ -122,6 +115,6 @@ export class ToTensor implements Transform<number[] | number[][], Tensor> {
   apply(_data: number[] | number[][]): Tensor {
     // TODO: Convert array to tensor
     // return tensor(data)
-    throw new Error('ToTensor not yet implemented');
+    throw new Error("ToTensor not yet implemented");
   }
 }

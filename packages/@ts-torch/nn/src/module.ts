@@ -5,16 +5,13 @@
  * parameter management for training.
  */
 
-import type { Shape, DType, Device } from '@ts-torch/core';
+import type { Shape, DType, Device } from "@ts-torch/core";
 
 /**
  * Tensor interface matching core implementation
  * This is a minimal interface for type checking - actual implementation in @ts-torch/core
  */
-export interface Tensor<
-  S extends Shape = Shape,
-  D extends DType<string> = DType<any>
-> {
+export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType<any>> {
   readonly shape: S;
   readonly dtype: D;
 
@@ -38,13 +35,10 @@ export type float32 = DType<"float32">;
  * @template S - Tensor shape
  * @template D - Data type
  */
-export class Parameter<
-  S extends Shape = Shape,
-  D extends DType<string> = float32
-> {
+export class Parameter<S extends Shape = Shape, D extends DType<string> = float32> {
   constructor(
     public data: Tensor<S, D>,
-    public requiresGrad: boolean = true
+    public requiresGrad: boolean = true,
   ) {}
 }
 
@@ -77,7 +71,7 @@ export class Parameter<
 export abstract class Module<
   InShape extends Shape = Shape,
   OutShape extends Shape = Shape,
-  D extends DType<string> = float32
+  D extends DType<string> = float32,
 > {
   protected _training = true;
   protected _parameters: Map<string, Parameter<any, D>> = new Map();
@@ -124,7 +118,7 @@ export abstract class Module<
    * ```
    */
   pipe<NextOut extends Shape>(
-    next: Module<OutShape, NextOut, D>
+    next: Module<OutShape, NextOut, D>,
   ): PipedModule<InShape, OutShape, NextOut, D> {
     return new PipedModule<InShape, OutShape, NextOut, D>(this, next);
   }
@@ -261,15 +255,15 @@ export class PipedModule<
   In extends Shape,
   Mid extends Shape,
   Out extends Shape,
-  D extends DType<string> = float32
+  D extends DType<string> = float32,
 > extends Module<In, Out, D> {
   constructor(
     private first: Module<In, Mid, D>,
-    private second: Module<Mid, Out, D>
+    private second: Module<Mid, Out, D>,
   ) {
     super();
-    this.registerModule('0', this.first);
-    this.registerModule('1', this.second);
+    this.registerModule("0", this.first);
+    this.registerModule("1", this.second);
   }
 
   /**
@@ -288,7 +282,7 @@ export class PipedModule<
    * This allows: a.pipe(b).pipe(c).pipe(d)...
    */
   override pipe<NextOut extends Shape>(
-    next: Module<Out, NextOut, D>
+    next: Module<Out, NextOut, D>,
   ): PipedModule<In, Out, NextOut, D> {
     return new PipedModule<In, Out, NextOut, D>(this, next);
   }

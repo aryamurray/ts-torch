@@ -5,8 +5,8 @@
  * where W has shape [OutFeatures, InFeatures]
  */
 
-import { Module, Parameter, type Tensor, type float32 } from '../module.js';
-import type { DType } from '@ts-torch/core';
+import { Module, Parameter, type Tensor, type float32 } from "../module.js";
+import type { DType } from "@ts-torch/core";
 
 /**
  * Linear options interface
@@ -25,7 +25,7 @@ export interface LinearOptions<D extends DType<string> = float32> {
   /**
    * Weight initialization strategy (default: 'kaiming_uniform')
    */
-  init?: 'kaiming_uniform' | 'kaiming_normal' | 'xavier_uniform' | 'xavier_normal' | 'zeros';
+  init?: "kaiming_uniform" | "kaiming_normal" | "xavier_uniform" | "xavier_normal" | "zeros";
 }
 
 /**
@@ -59,12 +59,8 @@ export interface LinearOptions<D extends DType<string> = float32> {
 export class Linear<
   InFeatures extends number,
   OutFeatures extends number,
-  D extends DType<string> = float32
-> extends Module<
-  readonly [number, InFeatures],
-  readonly [number, OutFeatures],
-  D
-> {
+  D extends DType<string> = float32,
+> extends Module<readonly [number, InFeatures], readonly [number, OutFeatures], D> {
   /**
    * Weight matrix with shape [OutFeatures, InFeatures]
    * Transposed during forward pass for efficient computation
@@ -87,23 +83,20 @@ export class Linear<
   constructor(
     public readonly inFeatures: InFeatures,
     public readonly outFeatures: OutFeatures,
-    options: LinearOptions<D> = {}
+    options: LinearOptions<D> = {},
   ) {
     super();
 
-    const {
-      bias = true,
-      init = 'kaiming_uniform',
-    } = options;
+    const { bias = true, init = "kaiming_uniform" } = options;
 
     // Initialize weight with specified strategy
     this.weight = this.initWeight(init) as Parameter<readonly [OutFeatures, InFeatures], D>;
-    this.registerParameter('weight', this.weight);
+    this.registerParameter("weight", this.weight);
 
     // Initialize bias if enabled
     if (bias) {
       this.bias = this.initBias() as Parameter<readonly [OutFeatures], D>;
-      this.registerParameter('bias', this.bias);
+      this.registerParameter("bias", this.bias);
     } else {
       this.bias = null;
     }
@@ -115,7 +108,9 @@ export class Linear<
    * @param input - Input tensor with shape [Batch, InFeatures]
    * @returns Output tensor with shape [Batch, OutFeatures]
    */
-  forward(input: Tensor<readonly [number, InFeatures], D>): Tensor<readonly [number, OutFeatures], D> {
+  forward(
+    input: Tensor<readonly [number, InFeatures], D>,
+  ): Tensor<readonly [number, OutFeatures], D> {
     // Input: [Batch, InFeatures]
     // Weight: [OutFeatures, InFeatures] (transposed during matmul)
     // Result: [Batch, OutFeatures]
@@ -139,7 +134,7 @@ export class Linear<
    * @returns Initialized weight parameter
    */
   private initWeight(
-    init: 'kaiming_uniform' | 'kaiming_normal' | 'xavier_uniform' | 'xavier_normal' | 'zeros'
+    init: "kaiming_uniform" | "kaiming_normal" | "xavier_uniform" | "xavier_normal" | "zeros",
   ): Parameter<readonly [OutFeatures, InFeatures], D> {
     // TODO: Implement actual weight initialization
     // For now, return a placeholder
@@ -148,7 +143,7 @@ export class Linear<
     const shape = [this.outFeatures, this.inFeatures] as const;
 
     switch (init) {
-      case 'kaiming_uniform': {
+      case "kaiming_uniform": {
         // Kaiming/He initialization for ReLU activations
         // W ~ U(-√(6/fan_in), √(6/fan_in))
         // const bound = Math.sqrt(6.0 / this.inFeatures);
@@ -156,7 +151,7 @@ export class Linear<
         break;
       }
 
-      case 'kaiming_normal': {
+      case "kaiming_normal": {
         // Kaiming/He normal initialization
         // W ~ N(0, √(2/fan_in))
         // const std = Math.sqrt(2.0 / this.inFeatures);
@@ -164,7 +159,7 @@ export class Linear<
         break;
       }
 
-      case 'xavier_uniform': {
+      case "xavier_uniform": {
         // Xavier/Glorot uniform initialization for tanh/sigmoid
         // W ~ U(-√(6/(fan_in + fan_out)), √(6/(fan_in + fan_out)))
         // const bound = Math.sqrt(6.0 / (this.inFeatures + this.outFeatures));
@@ -172,7 +167,7 @@ export class Linear<
         break;
       }
 
-      case 'xavier_normal': {
+      case "xavier_normal": {
         // Xavier/Glorot normal initialization
         // W ~ N(0, √(2/(fan_in + fan_out)))
         // const std = Math.sqrt(2.0 / (this.inFeatures + this.outFeatures));
@@ -180,7 +175,7 @@ export class Linear<
         break;
       }
 
-      case 'zeros': {
+      case "zeros": {
         // Zero initialization (mainly for testing)
         // const weight = zeros(shape);
         break;

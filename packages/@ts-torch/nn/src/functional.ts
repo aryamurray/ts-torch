@@ -9,8 +9,8 @@
  * - Module: stateful, may have parameters, higher level abstraction
  */
 
-import type { Tensor, float32 } from './module.js';
-import type { Shape, DType } from '@ts-torch/core';
+import type { Tensor, float32 } from "./module.js";
+import type { Shape, DType } from "@ts-torch/core";
 
 /**
  * Apply ReLU activation: max(0, x)
@@ -26,10 +26,9 @@ import type { Shape, DType } from '@ts-torch/core';
  * const y = relu(x); // Type: Tensor<readonly [32, 128]>
  * ```
  */
-export function relu<
-  S extends Shape,
-  D extends DType<string> = float32
->(x: Tensor<S, D>): Tensor<S, D> {
+export function relu<S extends Shape, D extends DType<string> = float32>(
+  x: Tensor<S, D>,
+): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.relu();
   return x as any; // Placeholder
@@ -49,10 +48,9 @@ export function relu<
  * const probs = sigmoid(logits); // Type: Tensor<readonly [32, 10]>
  * ```
  */
-export function sigmoid<
-  S extends Shape,
-  D extends DType<string> = float32
->(x: Tensor<S, D>): Tensor<S, D> {
+export function sigmoid<S extends Shape, D extends DType<string> = float32>(
+  x: Tensor<S, D>,
+): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.sigmoid();
   return x as any; // Placeholder
@@ -72,10 +70,9 @@ export function sigmoid<
  * const y = tanh(x); // Type: Tensor<readonly [32, 64]>
  * ```
  */
-export function tanh<
-  S extends Shape,
-  D extends DType<string> = float32
->(x: Tensor<S, D>): Tensor<S, D> {
+export function tanh<S extends Shape, D extends DType<string> = float32>(
+  x: Tensor<S, D>,
+): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.tanh();
   return x as any; // Placeholder
@@ -97,10 +94,10 @@ export function tanh<
  * // Each row sums to 1
  * ```
  */
-export function softmax<
-  S extends Shape,
-  D extends DType<string> = float32
->(x: Tensor<S, D>, _dim: number = -1): Tensor<S, D> {
+export function softmax<S extends Shape, D extends DType<string> = float32>(
+  x: Tensor<S, D>,
+  _dim: number = -1,
+): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.softmax(dim);
   return x as any; // Placeholder
@@ -121,10 +118,10 @@ export function softmax<
  * const y = leakyRelu(x, 0.01); // Type: Tensor<readonly [32, 128]>
  * ```
  */
-export function leakyRelu<
-  S extends Shape,
-  D extends DType<string> = float32
->(x: Tensor<S, D>, _negativeSlope: number = 0.01): Tensor<S, D> {
+export function leakyRelu<S extends Shape, D extends DType<string> = float32>(
+  x: Tensor<S, D>,
+  _negativeSlope: number = 0.01,
+): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.leakyRelu(negativeSlope);
   return x as any; // Placeholder
@@ -144,10 +141,9 @@ export function leakyRelu<
  * const y = gelu(x); // Type: Tensor<readonly [32, 768]>
  * ```
  */
-export function gelu<
-  S extends Shape,
-  D extends DType<string> = float32
->(x: Tensor<S, D>): Tensor<S, D> {
+export function gelu<S extends Shape, D extends DType<string> = float32>(
+  x: Tensor<S, D>,
+): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.gelu();
   return x as any; // Placeholder
@@ -172,10 +168,11 @@ export function gelu<
  * const y = dropout(x, 0.5, true); // Type: Tensor<readonly [32, 128]>
  * ```
  */
-export function dropout<
-  S extends Shape,
-  D extends DType<string> = float32
->(x: Tensor<S, D>, p: number = 0.5, training: boolean = true): Tensor<S, D> {
+export function dropout<S extends Shape, D extends DType<string> = float32>(
+  x: Tensor<S, D>,
+  p: number = 0.5,
+  training: boolean = true,
+): Tensor<S, D> {
   if (!training || p === 0) {
     return x;
   }
@@ -216,11 +213,11 @@ export function linear<
   BatchShape extends readonly number[],
   InFeatures extends number,
   OutFeatures extends number,
-  D extends DType<string> = float32
+  D extends DType<string> = float32,
 >(
   input: Tensor<readonly [...BatchShape, InFeatures], D>,
   _weight: Tensor<readonly [OutFeatures, InFeatures], D>,
-  _bias?: Tensor<readonly [OutFeatures], D>
+  _bias?: Tensor<readonly [OutFeatures], D>,
 ): Tensor<readonly [...BatchShape, OutFeatures], D> {
   // TODO: Implement when Tensor ops are ready
   // let output = input.matmul(weight.transpose(-1, -2));
@@ -250,10 +247,10 @@ export function linear<
  * const logProbs = logSoftmax(logits, -1); // Type: Tensor<readonly [32, 10]>
  * ```
  */
-export function logSoftmax<
-  S extends Shape,
-  D extends DType<string> = float32
->(x: Tensor<S, D>, _dim: number = -1): Tensor<S, D> {
+export function logSoftmax<S extends Shape, D extends DType<string> = float32>(
+  x: Tensor<S, D>,
+  _dim: number = -1,
+): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.logSoftmax(dim);
   //
@@ -283,14 +280,11 @@ export function logSoftmax<
  * const normalized = normalize(x, 2, -1); // L2 normalize each row
  * ```
  */
-export function normalize<
-  S extends Shape,
-  D extends DType<string> = float32
->(
+export function normalize<S extends Shape, D extends DType<string> = float32>(
   x: Tensor<S, D>,
   _p: number = 2,
   _dim: number = -1,
-  _eps: number = 1e-12
+  _eps: number = 1e-12,
 ): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // const norm = x.norm(p, dim=dim, keepdim=true);
@@ -315,13 +309,10 @@ export function normalize<
  * const clamped = clamp(x, 0, 1); // Clamp to [0, 1]
  * ```
  */
-export function clamp<
-  S extends Shape,
-  D extends DType<string> = float32
->(
+export function clamp<S extends Shape, D extends DType<string> = float32>(
   x: Tensor<S, D>,
   _min: number | null = null,
-  _max: number | null = null
+  _max: number | null = null,
 ): Tensor<S, D> {
   // TODO: Implement when Tensor ops are ready
   // return x.clamp(min, max);

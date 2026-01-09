@@ -4,12 +4,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import {
-  getPlatformPackage,
-  getLibraryPath,
-  getLib,
-  closeLib,
-} from "../loader.js";
+import { getPlatformPackage, getLibraryPath, getLib, closeLib } from "../loader.js";
 
 describe("FFI Loader", () => {
   describe("getPlatformPackage", () => {
@@ -110,8 +105,8 @@ describe("FFI Loader", () => {
         // Should include helpful suggestions
         expect(
           message.includes("bun add") ||
-          message.includes("cargo build") ||
-          message.includes("TS_TORCH_LIB")
+            message.includes("cargo build") ||
+            message.includes("TS_TORCH_LIB"),
         ).toBe(true);
       }
     });

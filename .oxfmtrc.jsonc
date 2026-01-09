@@ -9,5 +9,5 @@
   // Print semicolons at the ends of statements
   "semi": true,
   // Line width before wrapping (oxfmt default is 100)
-  "printWidth": 100
+  "printWidth": 100,
 }

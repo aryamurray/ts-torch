@@ -25,7 +25,7 @@ types/
 ## Quick Start
 
 ```typescript
-import type { TensorType, MatMulShape, BroadcastShape } from '@ts-torch/core/types';
+import type { TensorType, MatMulShape, BroadcastShape } from "@ts-torch/core/types";
 
 // Define tensor types with literal shapes
 type Matrix = TensorType<[100, 50], "float32">;
@@ -45,7 +45,7 @@ type Invalid = MatMulShape<[100, 50], [60, 1]>; // never ✗
 The dtype system uses branded types for compile-time type safety:
 
 ```typescript
-import { DType, DTypeName, DTypeElement } from '@ts-torch/core/types';
+import { DType, DTypeName, DTypeElement } from "@ts-torch/core/types";
 
 // Concrete dtype values
 const dtype = DType.float32; // DType<"float32">
@@ -61,6 +61,7 @@ type Promoted = PromoteDType<"float32", "int32">; // "float32"
 ```
 
 **Supported dtypes:**
+
 - `float16` - 16-bit floating point (uses Uint16Array backing)
 - `float32` - 32-bit floating point
 - `float64` - 64-bit floating point
@@ -74,7 +75,7 @@ type Promoted = PromoteDType<"float32", "int32">; // "float32"
 Shapes are represented as readonly tuples of dimension sizes:
 
 ```typescript
-import type { Shape, Dim, NumElements, Rank } from '@ts-torch/core/types';
+import type { Shape, Dim, NumElements, Rank } from "@ts-torch/core/types";
 
 // Concrete shapes (all dimensions known at compile time)
 type ImageShape = Shape<[3, 224, 224]>; // CHW format
@@ -96,7 +97,7 @@ type NDim = Rank<[2, 3, 4]>; // 3
 The core `TensorType` combines shape and dtype:
 
 ```typescript
-import type { TensorType } from '@ts-torch/core/types';
+import type { TensorType } from "@ts-torch/core/types";
 
 interface TensorType<S extends Shape, D extends DTypeName> {
   readonly shape: S;
@@ -116,7 +117,7 @@ type Embeddings = TensorType<[50000, 768], "float16">;
 Computes the output shape of matrix multiplication with proper dimension checking:
 
 ```typescript
-import type { MatMulShape } from '@ts-torch/core/types';
+import type { MatMulShape } from "@ts-torch/core/types";
 
 // 2D x 2D
 type R1 = MatMulShape<[100, 50], [50, 20]>; // [100, 20] ✓
@@ -130,6 +131,7 @@ type Invalid = MatMulShape<[100, 50], [60, 20]>; // never ✗
 ```
 
 **Rules:**
+
 - Both tensors must be at least 2D
 - Inner dimensions (K) must match: `[..., M, K] x [..., K, N] -> [..., M, N]`
 - Batch dimensions must broadcast
@@ -139,7 +141,7 @@ type Invalid = MatMulShape<[100, 50], [60, 20]>; // never ✗
 Implements NumPy/PyTorch broadcasting semantics:
 
 ```typescript
-import type { BroadcastShape } from '@ts-torch/core/types';
+import type { BroadcastShape } from "@ts-torch/core/types";
 
 type R1 = BroadcastShape<[1, 3, 4], [2, 1, 4]>; // [2, 3, 4] ✓
 type R2 = BroadcastShape<[5, 1], [3, 4]>; // [5, 3, 4] ✓
@@ -150,6 +152,7 @@ type Invalid = BroadcastShape<[3, 4], [5, 6]>; // never ✗
 ```
 
 **Rules:**
+
 - Dimensions are aligned from the right
 - Each dimension pair must be equal or one must be 1
 - Result dimension is the maximum of the two
@@ -159,7 +162,7 @@ type Invalid = BroadcastShape<[3, 4], [5, 6]>; // never ✗
 Swaps two dimensions:
 
 ```typescript
-import type { TransposeShape } from '@ts-torch/core/types';
+import type { TransposeShape } from "@ts-torch/core/types";
 
 type R1 = TransposeShape<[2, 3, 4], 0, 2>; // [4, 3, 2] ✓
 type R2 = TransposeShape<[100, 50], 0, 1>; // [50, 100] ✓
@@ -170,7 +173,7 @@ type R2 = TransposeShape<[100, 50], 0, 1>; // [50, 100] ✓
 Reorders all dimensions according to a permutation:
 
 ```typescript
-import type { PermuteShape } from '@ts-torch/core/types';
+import type { PermuteShape } from "@ts-torch/core/types";
 
 // Convert NCHW to NHWC
 type NCHW = [32, 3, 224, 224];
@@ -182,7 +185,7 @@ type NHWC = PermuteShape<NCHW, [0, 2, 3, 1]>; // [32, 224, 224, 3] ✓
 Ensures element count is preserved during reshape:
 
 ```typescript
-import type { ReshapeValid } from '@ts-torch/core/types';
+import type { ReshapeValid } from "@ts-torch/core/types";
 
 type Valid = ReshapeValid<[2, 3, 4], [6, 4]>; // [6, 4] ✓ (24 elements)
 type Invalid = ReshapeValid<[2, 3, 4], [5, 5]>; // never ✗ (24 ≠ 25)
@@ -191,7 +194,7 @@ type Invalid = ReshapeValid<[2, 3, 4], [5, 5]>; // never ✗ (24 ≠ 25)
 ### SqueezeShape - Remove Size-1 Dimensions
 
 ```typescript
-import type { SqueezeShape } from '@ts-torch/core/types';
+import type { SqueezeShape } from "@ts-torch/core/types";
 
 type R1 = SqueezeShape<[1, 3, 1, 4], 0>; // [3, 1, 4] ✓
 type R2 = SqueezeShape<[1, 3, 1, 4], undefined>; // [3, 4] ✓ (all ones)
@@ -203,7 +206,7 @@ type Invalid = SqueezeShape<[2, 3, 4], 0>; // [2, 3, 4] (no change)
 ### UnsqueezeShape - Add Size-1 Dimension
 
 ```typescript
-import type { UnsqueezeShape } from '@ts-torch/core/types';
+import type { UnsqueezeShape } from "@ts-torch/core/types";
 
 type R1 = UnsqueezeShape<[3, 4], 0>; // [1, 3, 4] ✓
 type R2 = UnsqueezeShape<[3, 4], 1>; // [3, 1, 4] ✓
@@ -215,7 +218,7 @@ type R3 = UnsqueezeShape<[3, 4], 2>; // [3, 4, 1] ✓
 Concatenates tensors along a dimension:
 
 ```typescript
-import type { ConcatShape } from '@ts-torch/core/types';
+import type { ConcatShape } from "@ts-torch/core/types";
 
 type R1 = ConcatShape<[2, 3, 4], [2, 5, 4], 1>; // [2, 8, 4] ✓
 type R2 = ConcatShape<[10, 20], [30, 20], 0>; // [40, 20] ✓
@@ -229,7 +232,7 @@ type Invalid = ConcatShape<[2, 3, 4], [3, 3, 4], 1>; // never ✗
 Reduces along a dimension:
 
 ```typescript
-import type { ReduceShape } from '@ts-torch/core/types';
+import type { ReduceShape } from "@ts-torch/core/types";
 
 type R1 = ReduceShape<[2, 3, 4], 1, false>; // [2, 4] ✓
 type R2 = ReduceShape<[2, 3, 4], 1, true>; // [2, 1, 4] ✓ (keepdim)
@@ -238,7 +241,7 @@ type R2 = ReduceShape<[2, 3, 4], 1, true>; // [2, 1, 4] ✓ (keepdim)
 ### ExpandShape - Expand Size-1 Dimensions
 
 ```typescript
-import type { ExpandShape } from '@ts-torch/core/types';
+import type { ExpandShape } from "@ts-torch/core/types";
 
 type R1 = ExpandShape<[1, 3, 4], 0, 8>; // [8, 3, 4] ✓
 
@@ -251,7 +254,7 @@ type Invalid = ExpandShape<[2, 3, 4], 0, 8>; // never ✗
 Flattens a range of dimensions into a single dimension:
 
 ```typescript
-import type { FlattenShape } from '@ts-torch/core/types';
+import type { FlattenShape } from "@ts-torch/core/types";
 
 type R1 = FlattenShape<[2, 3, 4, 5], 1, 3>; // [2, 12, 5] ✓
 type R2 = FlattenShape<[2, 3, 4], 0, 3>; // [24] ✓
@@ -264,7 +267,7 @@ type R2 = FlattenShape<[2, 3, 4], 0, 3>; // [24] ✓
 Use `Dim<Label>` for dimensions determined at runtime:
 
 ```typescript
-import type { Dim, TensorType } from '@ts-torch/core/types';
+import type { Dim, TensorType } from "@ts-torch/core/types";
 
 type BatchDim = Dim<"batch">;
 type SeqLenDim = Dim<"seq_len">;
@@ -294,7 +297,7 @@ type HeadsShape = [Dim<"batch">, 12, Dim<"seq">, 64]; // 12 heads, 64 dim each
 ### Type Guards and Validation
 
 ```typescript
-import type { IsBroadcastable, IsMatMulCompatible } from '@ts-torch/core/types';
+import type { IsBroadcastable, IsMatMulCompatible } from "@ts-torch/core/types";
 
 // Check if shapes can broadcast
 type CanBroadcast = IsBroadcastable<[1, 3], [2, 3]>; // true
@@ -308,7 +311,7 @@ type CanMatMul = IsMatMulCompatible<[10, 20], [20, 30]>; // true
 The type system includes limited type-level arithmetic for shape inference:
 
 ```typescript
-import type { NumElements } from '@ts-torch/core/types';
+import type { NumElements } from "@ts-torch/core/types";
 
 type Count1 = NumElements<[2, 3, 4]>; // 24
 type Count2 = NumElements<[]>; // 1 (scalar)
@@ -316,6 +319,7 @@ type Count3 = NumElements<[10, 20]>; // 200
 ```
 
 **Limitations:**
+
 - Multiplication is computed for literal numbers up to reasonable sizes
 - For very large or computed values, falls back to `number` type
 - This is a TypeScript limitation, not a design choice
@@ -365,7 +369,7 @@ type IsValid = IsMatMulCompatible<S1, S2>;
 type AttentionOutput<
   Batch extends Dim<"batch">,
   SeqLen extends Dim<"seq_len">,
-  HiddenDim extends number
+  HiddenDim extends number,
 > = [Batch, SeqLen, HiddenDim];
 ```
 
@@ -379,6 +383,7 @@ type AttentionOutput<
 ## Examples
 
 See `examples.ts` for comprehensive examples including:
+
 - Basic tensor operations
 - Neural network layer shapes
 - Vision transformers
@@ -390,17 +395,15 @@ See `examples.ts` for comprehensive examples including:
 This type system is designed to work alongside runtime tensor implementations:
 
 ```typescript
-import type { TensorType, MatMulShape } from '@ts-torch/core/types';
-import { Tensor } from '@ts-torch/core';
+import type { TensorType, MatMulShape } from "@ts-torch/core/types";
+import { Tensor } from "@ts-torch/core";
 
 // Type-safe wrapper
 class TypedTensor<S extends Shape, D extends DTypeName> extends Tensor {
   declare readonly shape: S;
   declare readonly dtype: D;
 
-  matmul<S2 extends Shape>(
-    other: TypedTensor<S2, D>
-  ): TypedTensor<MatMulShape<S, S2>, D> {
+  matmul<S2 extends Shape>(other: TypedTensor<S2, D>): TypedTensor<MatMulShape<S, S2>, D> {
     // Runtime implementation
     return super.matmul(other) as any;
   }

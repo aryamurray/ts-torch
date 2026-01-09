@@ -26,12 +26,7 @@ export {
 
 // ==================== Tensor Pooling ====================
 
-export {
-  TensorPool,
-  globalTensorPool,
-  type PoolableTensor,
-  type PoolStats,
-} from "./pool.js";
+export { TensorPool, globalTensorPool, type PoolableTensor, type PoolStats } from "./pool.js";
 
 // ==================== ArrayBuffer Memory Pool ====================
 

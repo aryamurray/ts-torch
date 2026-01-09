@@ -3,6 +3,7 @@
 ## Overview
 
 This implementation provides a type-safe neural network module system for ts-torch with advanced TypeScript features including:
+
 - Compile-time shape checking
 - Type-safe .pipe() chaining
 - Advanced weight initialization (Kaiming/Xavier)
@@ -43,6 +44,7 @@ abstract class Module<
 ```
 
 Key methods:
+
 - `abstract forward(input: Tensor<InShape, D>): Tensor<OutShape, D>`
 - `__call__(input: Tensor<InShape, D>): Tensor<OutShape, D>` - Callable syntax
 - `pipe<NextOut>(next: Module<OutShape, NextOut, D>): PipedModule<...>` - Composable chaining
@@ -71,7 +73,7 @@ This allows compile-time verification that intermediate shapes match:
 
 ```typescript
 const model = new Linear(784, 128)
-  .pipe(new ReLU())           // Verified: 128 matches 128
+  .pipe(new ReLU()) // Verified: 128 matches 128
   .pipe(new Linear(128, 10)); // Verified: 128 matches 128
 ```
 
@@ -92,6 +94,7 @@ class Linear<
 ```
 
 Features:
+
 - Type-safe shape inference: `[Batch, InFeatures]` → `[Batch, OutFeatures]`
 - Multiple initialization strategies:
   - **Kaiming Uniform**: `W ~ U(-√(6/fan_in), √(6/fan_in))` for ReLU networks
@@ -126,18 +129,17 @@ This makes them trivially composable with any other layer.
 Two ways to create sequential models:
 
 **A. Direct construction:**
+
 ```typescript
-const model = new Sequential<
-  readonly [number, 784],
-  readonly [number, 10]
->(
+const model = new Sequential<readonly [number, 784], readonly [number, 10]>(
   new Linear(784, 128),
   new ReLU(),
-  new Linear(128, 10)
+  new Linear(128, 10),
 );
 ```
 
 **B. Builder pattern (better type inference):**
+
 ```typescript
 const model = sequential<readonly [number, 784]>()
   .add(new Linear(784, 128))
@@ -179,7 +181,7 @@ The type system catches shape mismatches at compile time:
 
 ```typescript
 const layer1 = new Linear(128, 64);
-const layer2 = new Linear(256, 10);  // Expects 256 inputs
+const layer2 = new Linear(256, 10); // Expects 256 inputs
 
 // TypeScript ERROR:
 const invalid = layer1.pipe(layer2);
@@ -212,7 +214,7 @@ Modules can be fully generic:
 ```typescript
 function createEncoder<InputDim extends number, LatentDim extends number>(
   inputDim: InputDim,
-  latentDim: LatentDim
+  latentDim: LatentDim,
 ) {
   return new Linear(inputDim, 512)
     .pipe(new ReLU())
@@ -231,8 +233,8 @@ const encoder = createEncoder(784, 64);
 
 ```typescript
 class SequentialBuilder<In, Out, D> {
-  add<NextOut>(module: Module<Out, NextOut, D>): SequentialBuilder<In, NextOut, D>
-  build(): Sequential<In, Out, D>
+  add<NextOut>(module: Module<Out, NextOut, D>): SequentialBuilder<In, NextOut, D>;
+  build(): Sequential<In, Out, D>;
 }
 ```
 
@@ -255,7 +257,7 @@ abstract class Module {
   abstract forward(input: Tensor): Tensor;
 
   __call__(input: Tensor): Tensor {
-    return this.forward(input);  // Template method
+    return this.forward(input); // Template method
   }
 }
 ```
@@ -279,8 +281,8 @@ class Linear extends Module {
     this.weight = initWeight();
     this.bias = initBias();
 
-    this.registerParameter('weight', this.weight);
-    this.registerParameter('bias', this.bias);
+    this.registerParameter("weight", this.weight);
+    this.registerParameter("bias", this.bias);
   }
 }
 ```
@@ -306,8 +308,8 @@ const named = model.namedParameters();
 Modules track training state, which affects layers like Dropout and BatchNorm:
 
 ```typescript
-model.train();      // Enable training mode
-model.eval();       // Enable evaluation mode
+model.train(); // Enable training mode
+model.eval(); // Enable evaluation mode
 model.train(false); // Explicitly disable training
 
 // Propagates to all sub-modules automatically
@@ -359,9 +361,7 @@ const classifier = new Linear(784, 256)
 ### Example 2: Autoencoder
 
 ```typescript
-const encoder = new Linear(784, 512)
-  .pipe(new ReLU())
-  .pipe(new Linear(512, 128));
+const encoder = new Linear(784, 512).pipe(new ReLU()).pipe(new Linear(512, 128));
 
 const decoder = new Linear(128, 512)
   .pipe(new ReLU())
@@ -374,10 +374,7 @@ const autoencoder = encoder.pipe(decoder);
 ### Example 3: Custom Module with Functional API
 
 ```typescript
-class ResidualBlock extends Module<
-  readonly [number, 128],
-  readonly [number, 128]
-> {
+class ResidualBlock extends Module<readonly [number, 128], readonly [number, 128]> {
   fc1 = new Linear(128, 128);
   fc2 = new Linear(128, 128);
 
@@ -386,7 +383,7 @@ class ResidualBlock extends Module<
     let out = this.fc1.forward(x);
     out = F.relu(out);
     out = this.fc2.forward(out);
-    out = F.relu(out.add(residual));  // Skip connection
+    out = F.relu(out.add(residual)); // Skip connection
     return out;
   }
 }
@@ -397,13 +394,14 @@ class ResidualBlock extends Module<
 ### 1. Device Management
 
 ```typescript
-module.to('cuda');  // Move to CUDA device
-module.to('cpu');   // Move to CPU
+module.to("cuda"); // Move to CUDA device
+module.to("cpu"); // Move to CPU
 ```
 
 ### 2. Actual Tensor Operations
 
 Currently uses placeholders. Need to implement:
+
 - Matrix multiplication for Linear layers
 - Element-wise operations for activations
 - Reduction operations for loss functions
@@ -411,9 +409,9 @@ Currently uses placeholders. Need to implement:
 ### 3. Gradient Computation
 
 ```typescript
-loss.backward();            // Compute gradients
-model.zeroGrad();          // Zero all gradients
-optimizer.step();          // Update parameters
+loss.backward(); // Compute gradients
+model.zeroGrad(); // Zero all gradients
+optimizer.step(); // Update parameters
 ```
 
 ### 4. More Layer Types

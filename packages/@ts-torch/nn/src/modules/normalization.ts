@@ -2,7 +2,7 @@
  * Normalization layers
  */
 
-import { Module, type Tensor } from '../module.js';
+import { Module, type Tensor } from "../module.js";
 
 /**
  * Batch normalization layer
@@ -13,7 +13,7 @@ export class BatchNorm2d extends Module {
     public eps: number = 1e-5,
     public momentum: number = 0.1,
     public affine: boolean = true,
-    public trackRunningStats: boolean = true
+    public trackRunningStats: boolean = true,
   ) {
     super();
     // TODO: Initialize running mean/var and learnable affine parameters
@@ -21,7 +21,7 @@ export class BatchNorm2d extends Module {
 
   forward(_input: Tensor): Tensor {
     // TODO: Implement batch normalization
-    throw new Error('BatchNorm2d.forward not yet implemented');
+    throw new Error("BatchNorm2d.forward not yet implemented");
   }
 
   override toString(): string {
@@ -36,7 +36,7 @@ export class LayerNorm extends Module {
   constructor(
     public normalizedShape: number | number[],
     public eps: number = 1e-5,
-    public elementwiseAffine: boolean = true
+    public elementwiseAffine: boolean = true,
   ) {
     super();
     // TODO: Initialize learnable affine parameters
@@ -44,7 +44,7 @@ export class LayerNorm extends Module {
 
   forward(_input: Tensor): Tensor {
     // TODO: Implement layer normalization
-    throw new Error('LayerNorm.forward not yet implemented');
+    throw new Error("LayerNorm.forward not yet implemented");
   }
 
   override toString(): string {

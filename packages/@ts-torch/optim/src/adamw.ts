@@ -2,8 +2,8 @@
  * AdamW optimizer
  */
 
-import type { Tensor } from '@ts-torch/core';
-import { Optimizer, type ParameterGroup, type OptimizerOptions } from './optimizer.js';
+import type { Tensor } from "@ts-torch/core";
+import { Optimizer, type ParameterGroup, type OptimizerOptions } from "./optimizer.js";
 
 /**
  * AdamW optimizer options
@@ -38,10 +38,7 @@ export interface AdamWOptions extends OptimizerOptions {
 export class AdamW extends Optimizer {
   declare defaults: AdamWOptions;
 
-  constructor(
-    params: Tensor[] | ParameterGroup[],
-    options: AdamWOptions
-  ) {
+  constructor(params: Tensor[] | ParameterGroup[], options: AdamWOptions) {
     const defaults: AdamWOptions = {
       lr: options.lr,
       betas: options.betas ?? [0.9, 0.999],
@@ -55,10 +52,12 @@ export class AdamW extends Optimizer {
 
   step(): void {
     for (const group of this.paramGroups) {
-      const lr = (group.lr ?? this.defaults.lr);
-      const [beta1, beta2] = (group.betas as [number, number] | undefined) ?? this.defaults.betas ?? [0.9, 0.999];
+      const lr = group.lr ?? this.defaults.lr;
+      const [beta1, beta2] = (group.betas as [number, number] | undefined) ??
+        this.defaults.betas ?? [0.9, 0.999];
       const eps = (group.eps as number | undefined) ?? this.defaults.eps ?? 1e-8;
-      const weightDecay = (group.weightDecay as number | undefined) ?? this.defaults.weightDecay ?? 0.01;
+      const weightDecay =
+        (group.weightDecay as number | undefined) ?? this.defaults.weightDecay ?? 0.01;
       const amsgrad = (group.amsgrad as boolean | undefined) ?? this.defaults.amsgrad ?? false;
 
       for (const param of group.params) {

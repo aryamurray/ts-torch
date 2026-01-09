@@ -87,10 +87,7 @@ export class TensorPool {
    * }
    * ```
    */
-  acquire<S extends Shape, D extends DTypeName>(
-    shape: S,
-    dtype: D
-  ): PoolableTensor | null {
+  acquire<S extends Shape, D extends DTypeName>(shape: S, dtype: D): PoolableTensor | null {
     const key = this.makeKey(shape, dtype);
     const pool = this.pools.get(key);
 

@@ -56,26 +56,23 @@ const invalid = layer1.pipe(layer2);
 ### Sequential Container
 
 ```typescript
-import { Sequential } from '@ts-torch/nn';
+import { Sequential } from "@ts-torch/nn";
 
 // Using Sequential with explicit types
-const model = new Sequential<
-  readonly [number, 784],
-  readonly [number, 10]
->(
+const model = new Sequential<readonly [number, 784], readonly [number, 10]>(
   new Linear(784, 256),
   new ReLU(),
   new Linear(256, 128),
   new ReLU(),
   new Linear(128, 10),
-  new Softmax(-1)
+  new Softmax(-1),
 );
 ```
 
 ### Sequential Builder (Best Type Inference)
 
 ```typescript
-import { sequential } from '@ts-torch/nn';
+import { sequential } from "@ts-torch/nn";
 
 // Builder pattern with full shape tracking
 const model = sequential<readonly [number, 784]>()
@@ -95,16 +92,16 @@ const model = sequential<readonly [number, 784]>()
 ### Linear Layers
 
 ```typescript
-import { Linear } from '@ts-torch/nn';
+import { Linear } from "@ts-torch/nn";
 
 // Basic usage
 const fc = new Linear(784, 128);
 
 // With options
 const fc = new Linear(784, 128, {
-  bias: true,                    // Include bias term (default: true)
-  init: 'kaiming_uniform',      // Weight initialization strategy
-  dtype: DType.float32          // Data type
+  bias: true, // Include bias term (default: true)
+  init: "kaiming_uniform", // Weight initialization strategy
+  dtype: DType.float32, // Data type
 });
 
 // Initialization strategies:
@@ -120,7 +117,7 @@ const fc = new Linear(784, 128, {
 All activation functions preserve input shape and are type-safe:
 
 ```typescript
-import { ReLU, Sigmoid, Tanh, Softmax, LeakyReLU, GELU } from '@ts-torch/nn';
+import { ReLU, Sigmoid, Tanh, Softmax, LeakyReLU, GELU } from "@ts-torch/nn";
 
 // ReLU: max(0, x)
 const relu = new ReLU();
@@ -146,7 +143,7 @@ const gelu = new GELU();
 Stateless operations for custom forward passes:
 
 ```typescript
-import { F } from '@ts-torch/nn';
+import { F } from "@ts-torch/nn";
 
 class CustomModule extends Module {
   forward(x: Tensor) {
@@ -211,9 +208,7 @@ const classifier = hiddenLayer(784, 512)
 ### Parameter Management
 
 ```typescript
-const model = new Linear(784, 128)
-  .pipe(new ReLU())
-  .pipe(new Linear(128, 10));
+const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10));
 
 // Get all parameters
 const params = model.parameters();
@@ -234,9 +229,7 @@ for (const [name, param] of namedParams) {
 ### Training vs Evaluation Mode
 
 ```typescript
-const model = new Linear(784, 128)
-  .pipe(new ReLU())
-  .pipe(new Linear(128, 10));
+const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10));
 
 // Training mode (enables dropout, etc.)
 model.train();
@@ -296,9 +289,7 @@ The `next` module's input shape must match `OutShape` (this module's output shap
 
 ```typescript
 // Good: Type-safe chaining
-const model = new Linear(784, 128)
-  .pipe(new ReLU())
-  .pipe(new Linear(128, 10));
+const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10));
 
 // Also good: Sequential builder
 const model = sequential<readonly [number, 784]>()
@@ -323,10 +314,10 @@ const model = new Linear(INPUT_DIM, HIDDEN_DIM)
 ### 3. Use Type Parameters for Generic Models
 
 ```typescript
-function createClassifier<
-  InputDim extends number,
-  OutputDim extends number
->(inputDim: InputDim, outputDim: OutputDim) {
+function createClassifier<InputDim extends number, OutputDim extends number>(
+  inputDim: InputDim,
+  outputDim: OutputDim,
+) {
   return new Linear(inputDim, 256)
     .pipe(new ReLU())
     .pipe(new Linear(256, 128))
@@ -341,12 +332,9 @@ const cifar = createClassifier(3072, 10);
 ### 4. Leverage Functional API in Custom Modules
 
 ```typescript
-import { Module, F } from '@ts-torch/nn';
+import { Module, F } from "@ts-torch/nn";
 
-class CustomLayer extends Module<
-  readonly [number, 128],
-  readonly [number, 64]
-> {
+class CustomLayer extends Module<readonly [number, 128], readonly [number, 64]> {
   weight: Parameter<readonly [64, 128]>;
 
   forward(x: Tensor<readonly [number, 128]>): Tensor<readonly [number, 64]> {
@@ -368,10 +356,10 @@ For ReLU networks. Based on [He et al. 2015](https://arxiv.org/abs/1502.01852).
 
 ```typescript
 // Uniform: W ~ U(-√(6/fan_in), √(6/fan_in))
-const layer = new Linear(784, 128, { init: 'kaiming_uniform' });
+const layer = new Linear(784, 128, { init: "kaiming_uniform" });
 
 // Normal: W ~ N(0, √(2/fan_in))
-const layer = new Linear(784, 128, { init: 'kaiming_normal' });
+const layer = new Linear(784, 128, { init: "kaiming_normal" });
 ```
 
 ### Xavier (Glorot) Initialization
@@ -380,10 +368,10 @@ For tanh/sigmoid networks. Based on [Glorot & Bengio 2010](http://proceedings.ml
 
 ```typescript
 // Uniform: W ~ U(-√(6/(fan_in+fan_out)), √(6/(fan_in+fan_out)))
-const layer = new Linear(784, 128, { init: 'xavier_uniform' });
+const layer = new Linear(784, 128, { init: "xavier_uniform" });
 
 // Normal: W ~ N(0, √(2/(fan_in+fan_out)))
-const layer = new Linear(784, 128, { init: 'xavier_normal' });
+const layer = new Linear(784, 128, { init: "xavier_normal" });
 ```
 
 ## License

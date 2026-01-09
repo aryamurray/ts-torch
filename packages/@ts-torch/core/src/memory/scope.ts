@@ -193,7 +193,7 @@ export function escapeTensor<T extends ScopedTensor>(tensor: T): T {
   if (currentScope === null) {
     throw new Error(
       "Cannot escape tensor: not currently in a scope. " +
-      "Use torch.run(() => { ... }) to create a scope."
+        "Use torch.run(() => { ... }) to create a scope.",
     );
   }
 

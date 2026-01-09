@@ -102,27 +102,40 @@ export type DTypeName = keyof typeof DType;
  * Note: float16 and bfloat16 use Uint16Array as backing storage,
  * with conversion logic handled at runtime.
  */
-export type DTypeToTypedArray<D extends DTypeName> =
-  D extends "float32" ? Float32Array :
-  D extends "float64" ? Float64Array :
-  D extends "int32" ? Int32Array :
-  D extends "int64" ? BigInt64Array :
-  D extends "float16" ? Uint16Array :
-  D extends "bfloat16" ? Uint16Array :
-  D extends "bool" ? Uint8Array :
-  never;
+export type DTypeToTypedArray<D extends DTypeName> = D extends "float32"
+  ? Float32Array
+  : D extends "float64"
+    ? Float64Array
+    : D extends "int32"
+      ? Int32Array
+      : D extends "int64"
+        ? BigInt64Array
+        : D extends "float16"
+          ? Uint16Array
+          : D extends "bfloat16"
+            ? Uint16Array
+            : D extends "bool"
+              ? Uint8Array
+              : never;
 
 /**
  * Maps DType to the element type (number, bigint, boolean)
  *
  * @template D - The DType name
  */
-export type DTypeElement<D extends DTypeName> =
-  D extends "float16" | "float32" | "float64" | "bfloat16" ? number :
-  D extends "int32" ? number :
-  D extends "int64" ? bigint :
-  D extends "bool" ? boolean :
-  never;
+export type DTypeElement<D extends DTypeName> = D extends
+  | "float16"
+  | "float32"
+  | "float64"
+  | "bfloat16"
+  ? number
+  : D extends "int32"
+    ? number
+    : D extends "int64"
+      ? bigint
+      : D extends "bool"
+        ? boolean
+        : never;
 
 /**
  * Bytes per element for each dtype
@@ -168,19 +181,31 @@ export function getDType<N extends DTypeName>(name: N): DType<N> {
  * @template D1 - First dtype name
  * @template D2 - Second dtype name
  */
-export type PromoteDType<D1 extends DTypeName, D2 extends DTypeName> =
-  D1 extends D2 ? D1 :
-  // float64 promotes all other types
-  D1 extends "float64" ? "float64" :
-  D2 extends "float64" ? "float64" :
-  // float32 promotes all except float64
-  D1 extends "float32" ? "float32" :
-  D2 extends "float32" ? "float32" :
-  // bfloat16 promotes to float32 when mixed with float types
-  [D1, D2] extends [infer A, infer B] ?
-    A extends "bfloat16" ?
-      B extends "float16" | "bfloat16" ? "float32" : B extends DTypeName ? B : never
-    : B extends "bfloat16" ?
-      A extends "float16" | "bfloat16" ? "float32" : A extends DTypeName ? A : never
-    : never
-  : never;
+export type PromoteDType<D1 extends DTypeName, D2 extends DTypeName> = D1 extends D2
+  ? D1
+  : // float64 promotes all other types
+    D1 extends "float64"
+    ? "float64"
+    : D2 extends "float64"
+      ? "float64"
+      : // float32 promotes all except float64
+        D1 extends "float32"
+        ? "float32"
+        : D2 extends "float32"
+          ? "float32"
+          : // bfloat16 promotes to float32 when mixed with float types
+            [D1, D2] extends [infer A, infer B]
+            ? A extends "bfloat16"
+              ? B extends "float16" | "bfloat16"
+                ? "float32"
+                : B extends DTypeName
+                  ? B
+                  : never
+              : B extends "bfloat16"
+                ? A extends "float16" | "bfloat16"
+                  ? "float32"
+                  : A extends DTypeName
+                    ? A
+                    : never
+                : never
+            : never;

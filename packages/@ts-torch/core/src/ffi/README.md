@@ -28,6 +28,7 @@ export const FFI_SYMBOLS = {
 ```
 
 Categories:
+
 - Tensor creation (zeros, ones, randn, from_buffer, empty)
 - Tensor properties (ndim, size, shape, dtype, numel, requires_grad)
 - Memory management (delete, clone, detach, data_ptr, copy_to_buffer)
@@ -57,6 +58,7 @@ const result = lib.symbols.ts_tensor_zeros(...);
 ```
 
 Resolution order:
+
 1. `TS_TORCH_LIB` environment variable
 2. Platform-specific npm package
 3. Local development paths (workspace monorepo)
@@ -72,12 +74,11 @@ const handle = lib.symbols.ts_tensor_zeros(ptr(shape), 2, 0, false, err);
 checkError(err); // Throws TorchError if code != 0
 
 // Automatic error handling
-const handle = withError(err =>
-  lib.symbols.ts_tensor_zeros(ptr(shape), 2, 0, false, err)
-);
+const handle = withError((err) => lib.symbols.ts_tensor_zeros(ptr(shape), 2, 0, false, err));
 ```
 
 Error codes:
+
 - `OK = 0` - Success
 - `NULL_POINTER = 1` - Null pointer encountered
 - `INVALID_SHAPE = 2` - Invalid tensor shape
@@ -94,7 +95,7 @@ Error codes:
 ### Basic Tensor Creation
 
 ```typescript
-import { getLib, createError, checkError, ptr } from '@ts-torch/core/ffi';
+import { getLib, createError, checkError, ptr } from "@ts-torch/core/ffi";
 
 const lib = getLib();
 const err = createError();
@@ -104,11 +105,11 @@ const shape = new BigInt64Array([2, 3]);
 
 // Create tensor
 const handle = lib.symbols.ts_tensor_zeros(
-  ptr(shape),    // shape pointer
-  2,             // ndim
-  0,             // dtype (0=f32, 1=f64, 2=i32, 3=i64)
-  false,         // requires_grad
-  err
+  ptr(shape), // shape pointer
+  2, // ndim
+  0, // dtype (0=f32, 1=f64, 2=i32, 3=i64)
+  false, // requires_grad
+  err,
 );
 
 checkError(err);
@@ -117,35 +118,27 @@ checkError(err);
 ### With Automatic Error Handling
 
 ```typescript
-import { getLib, withError, ptr } from '@ts-torch/core/ffi';
+import { getLib, withError, ptr } from "@ts-torch/core/ffi";
 
 const lib = getLib();
 const shape = new BigInt64Array([2, 3]);
 
-const handle = withError(err =>
-  lib.symbols.ts_tensor_zeros(ptr(shape), 2, 0, false, err)
-);
+const handle = withError((err) => lib.symbols.ts_tensor_zeros(ptr(shape), 2, 0, false, err));
 ```
 
 ### Tensor Operations
 
 ```typescript
-import { getLib, withError } from '@ts-torch/core/ffi';
+import { getLib, withError } from "@ts-torch/core/ffi";
 
 const lib = getLib();
 
 // Create two tensors
-const a = withError(err =>
-  lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err)
-);
-const b = withError(err =>
-  lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err)
-);
+const a = withError((err) => lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err));
+const b = withError((err) => lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err));
 
 // Add tensors
-const result = withError(err =>
-  lib.symbols.ts_tensor_add(a, b, err)
-);
+const result = withError((err) => lib.symbols.ts_tensor_add(a, b, err));
 
 // Cleanup
 lib.symbols.ts_tensor_delete(a);
@@ -156,7 +149,7 @@ lib.symbols.ts_tensor_delete(result);
 ### Scope Management (Automatic Cleanup)
 
 ```typescript
-import { getLib, withError } from '@ts-torch/core/ffi';
+import { getLib, withError } from "@ts-torch/core/ffi";
 
 const lib = getLib();
 
@@ -165,21 +158,14 @@ const scopeId = lib.symbols.ts_scope_begin();
 
 try {
   // Create tensors (automatically registered with scope)
-  const a = withError(err =>
-    lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err)
-  );
+  const a = withError((err) => lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err));
 
-  withError(err =>
-    lib.symbols.ts_scope_register_tensor(a, err)
-  );
+  withError((err) => lib.symbols.ts_scope_register_tensor(a, err));
 
   // ... use tensors ...
-
 } finally {
   // Cleanup all tensors in scope
-  withError(err =>
-    lib.symbols.ts_scope_end(scopeId, err)
-  );
+  withError((err) => lib.symbols.ts_scope_end(scopeId, err));
 }
 ```
 
@@ -215,7 +201,7 @@ console.log(buffer); // Float32Array with tensor data
 ### CUDA Operations
 
 ```typescript
-import { getLib } from '@ts-torch/core/ffi';
+import { getLib } from "@ts-torch/core/ffi";
 
 const lib = getLib();
 
@@ -225,28 +211,28 @@ if (lib.symbols.ts_cuda_is_available()) {
   console.log(`CUDA available with ${deviceCount} devices`);
 
   // Move tensor to GPU
-  const gpuHandle = withError(err =>
+  const gpuHandle = withError((err) =>
     lib.symbols.ts_tensor_to_device(
       cpuHandle,
-      1,  // device_type: 1=CUDA
-      0,  // device_id: first GPU
-      err
-    )
+      1, // device_type: 1=CUDA
+      0, // device_id: first GPU
+      err,
+    ),
   );
 }
 ```
 
 ## FFI Type Mappings
 
-| C Type | FFIType | TypeScript |
-|--------|---------|------------|
-| `void*` | `ptr` | `Pointer` |
-| `int32_t` | `i32` | `number` |
-| `int64_t` | `i64` | `bigint` |
-| `float` | `f32` | `number` |
-| `double` | `f64` | `number` |
-| `bool` | `bool` | `boolean` |
-| `void` | `void` | `void` |
+| C Type    | FFIType | TypeScript |
+| --------- | ------- | ---------- |
+| `void*`   | `ptr`   | `Pointer`  |
+| `int32_t` | `i32`   | `number`   |
+| `int64_t` | `i64`   | `bigint`   |
+| `float`   | `f32`   | `number`   |
+| `double`  | `f64`   | `number`   |
+| `bool`    | `bool`  | `boolean`  |
+| `void`    | `void`  | `void`     |
 
 ## Platform Support
 

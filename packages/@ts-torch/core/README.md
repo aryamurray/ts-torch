@@ -22,10 +22,13 @@ bun add @ts-torch/core
 ## Usage
 
 ```typescript
-import { tensor, zeros, ones } from '@ts-torch/core';
+import { tensor, zeros, ones } from "@ts-torch/core";
 
 // Create a tensor from data
-const t = tensor([[1, 2, 3], [4, 5, 6]]);
+const t = tensor([
+  [1, 2, 3],
+  [4, 5, 6],
+]);
 console.log(t.shape); // [2, 3]
 
 // Create zero/one tensors

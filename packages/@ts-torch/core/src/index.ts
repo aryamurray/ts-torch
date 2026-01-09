@@ -70,7 +70,7 @@ export { DebugMode } from "./debug.js";
 export class Device {
   private constructor(
     public readonly type: "cpu" | "cuda" | "mps",
-    public readonly index: number
+    public readonly index: number,
   ) {}
 
   static cpu(): Device {
@@ -168,7 +168,7 @@ export const torch = {
    */
   zeros<S extends Shape, D extends DType<string> = typeof float32>(
     shape: S,
-    dtype?: D
+    dtype?: D,
   ): Tensor<S, D> {
     return zerosFactory(shape, dtype);
   },
@@ -189,7 +189,7 @@ export const torch = {
    */
   ones<S extends Shape, D extends DType<string> = typeof float32>(
     shape: S,
-    dtype?: D
+    dtype?: D,
   ): Tensor<S, D> {
     return onesFactory(shape, dtype);
   },
@@ -210,7 +210,7 @@ export const torch = {
    */
   randn<S extends Shape, D extends DType<string> = typeof float32>(
     shape: S,
-    dtype?: D
+    dtype?: D,
   ): Tensor<S, D> {
     return randnFactory(shape, dtype);
   },
@@ -231,7 +231,7 @@ export const torch = {
    */
   empty<S extends Shape, D extends DType<string> = typeof float32>(
     shape: S,
-    dtype?: D
+    dtype?: D,
   ): Tensor<S, D> {
     return emptyFactory(shape, dtype);
   },
@@ -257,7 +257,7 @@ export const torch = {
   tensor<S extends Shape, D extends DType<string> = typeof float32>(
     data: number[] | Float32Array | Float64Array,
     shape: S,
-    dtype?: D
+    dtype?: D,
   ): Tensor<S, D> {
     return fromArrayFactory(data, shape, dtype);
   },
@@ -282,7 +282,7 @@ export const torch = {
     start: number,
     end: number,
     step?: number,
-    dtype?: D
+    dtype?: D,
   ): Tensor<readonly [number], D> {
     return createArange(start, end, step, dtype);
   },
@@ -302,7 +302,7 @@ export const torch = {
    */
   from<D extends DType<string> = typeof float32>(
     data: number | number[] | number[][] | number[][][] | number[][][][],
-    dtype?: D
+    dtype?: D,
   ): Tensor<readonly number[], D> {
     return createTensorFromData(data, dtype);
   },
@@ -366,7 +366,7 @@ export const torch = {
      */
     synchronize(_device = 0): void {
       // TODO: Implement when FFI symbol is available
-      console.warn('torch.cuda.synchronize() not yet implemented');
+      console.warn("torch.cuda.synchronize() not yet implemented");
     },
   },
 

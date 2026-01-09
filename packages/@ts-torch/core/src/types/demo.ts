@@ -29,7 +29,7 @@ import { DTypeConstants } from "./index";
 interface LinearLayer<
   InFeatures extends number,
   OutFeatures extends number,
-  D extends DTypeName = "float32"
+  D extends DTypeName = "float32",
 > {
   weight: TensorType<[InFeatures, OutFeatures], D>;
   bias: TensorType<[OutFeatures], D>;
@@ -43,7 +43,7 @@ interface LinearLayer<
 type LinearForward<
   Batch extends Dim<"batch">,
   InFeatures extends number,
-  OutFeatures extends number
+  OutFeatures extends number,
 > = MatMulShape<[Batch, InFeatures], [InFeatures, OutFeatures]>;
 
 // Usage example
@@ -63,7 +63,7 @@ interface Conv2dLayer<
   InChannels extends number,
   OutChannels extends number,
   KernelSize extends number,
-  D extends DTypeName = "float32"
+  D extends DTypeName = "float32",
 > {
   weight: TensorType<[OutChannels, InChannels, KernelSize, KernelSize], D>;
   bias: TensorType<[OutChannels], D>;
@@ -89,10 +89,7 @@ interface AttentionConfig {
 /**
  * Self-attention types
  */
-interface SelfAttention<
-  HiddenDim extends number,
-  D extends DTypeName = "float32"
-> {
+interface SelfAttention<HiddenDim extends number, D extends DTypeName = "float32"> {
   qkvProjection: TensorType<[HiddenDim, number], D>;
   outputProjection: TensorType<[HiddenDim, HiddenDim], D>;
 }
@@ -111,10 +108,7 @@ type BatchNormInput = TensorType<[32, 64, 224, 224], "float32">; // NCHW
 type BatchNormScale = TensorType<[1, 64, 1, 1], "float32">; // Broadcastable
 
 // The scale broadcasts to match input
-type BatchNormOutput = TensorType<
-  BroadcastShape<[32, 64, 224, 224], [1, 64, 1, 1]>,
-  "float32"
->;
+type BatchNormOutput = TensorType<BroadcastShape<[32, 64, 224, 224], [1, 64, 1, 1]>, "float32">;
 
 // ============================================================================
 // Example 5: Reshape and View Operations
@@ -182,7 +176,7 @@ type MixedResult = PromoteDType<"int32", "float32">; // "float32"
 interface TransformerEncoderLayer<
   HiddenDim extends number,
   FFNDim extends number,
-  D extends DTypeName = "float32"
+  D extends DTypeName = "float32",
 > {
   selfAttn: SelfAttention<HiddenDim, D>;
   feedForward: {
@@ -192,16 +186,10 @@ interface TransformerEncoderLayer<
 }
 
 // Input has dynamic batch and sequence length
-type TransformerInput = TensorType<
-  [Dim<"batch">, Dim<"seq_len">, 768],
-  "float32"
->;
+type TransformerInput = TensorType<[Dim<"batch">, Dim<"seq_len">, 768], "float32">;
 
 // Output has same shape
-type TransformerOutput = TensorType<
-  [Dim<"batch">, Dim<"seq_len">, 768],
-  "float32"
->;
+type TransformerOutput = TensorType<[Dim<"batch">, Dim<"seq_len">, 768], "float32">;
 
 // ============================================================================
 // Example 9: Runtime DType Constants
@@ -235,7 +223,7 @@ interface TensorFactory {
   create<S extends readonly number[], D extends DTypeName>(
     shape: S,
     dtype: D,
-    data?: ArrayLike<number>
+    data?: ArrayLike<number>,
   ): TensorType<S, D>;
 
   /**
@@ -243,7 +231,7 @@ interface TensorFactory {
    */
   zeros<S extends readonly number[], D extends DTypeName = "float32">(
     shape: S,
-    dtype?: D
+    dtype?: D,
   ): TensorType<S, D>;
 
   /**
@@ -251,7 +239,7 @@ interface TensorFactory {
    */
   ones<S extends readonly number[], D extends DTypeName = "float32">(
     shape: S,
-    dtype?: D
+    dtype?: D,
   ): TensorType<S, D>;
 }
 
@@ -278,10 +266,7 @@ namespace ResNet {
 
   // After residual connection (element-wise add, uses broadcasting)
   export type _Output = TensorType<
-    BroadcastShape<
-      [Dim<"batch">, 64, 56, 56],
-      [Dim<"batch">, 64, 56, 56]
-    >,
+    BroadcastShape<[Dim<"batch">, 64, 56, 56], [Dim<"batch">, 64, 56, 56]>,
     "float32"
   >;
 }
@@ -362,9 +347,4 @@ export type {
   TensorFactory,
 };
 
-export {
-  ResNet,
-  ViT,
-  GPT2,
-  Seq2Seq,
-};
+export { ResNet, ViT, GPT2, Seq2Seq };

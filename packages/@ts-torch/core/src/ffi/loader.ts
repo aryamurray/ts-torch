@@ -150,7 +150,7 @@ export function getLibraryPath(): string {
       `  bun add ${packageName}\n\n` +
       `Or build from source:\n` +
       `  cd native && cargo build --release\n\n` +
-      `Or set TS_TORCH_LIB environment variable to the library path.`
+      `Or set TS_TORCH_LIB environment variable to the library path.`,
   );
 }
 
@@ -180,7 +180,7 @@ export function getLib(): Library<FFISymbols> {
         `  - Missing system dependencies (libtorch, CUDA, etc.)\n` +
         `  - Corrupted library file\n\n` +
         `Try rebuilding the native library:\n` +
-        `  cd native && cargo clean && cargo build --release`
+        `  cd native && cargo clean && cargo build --release`,
     );
   }
 }

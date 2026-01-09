@@ -2,9 +2,9 @@
  * ImageFolder dataset for loading images from a directory structure
  */
 
-import type { Tensor } from '@ts-torch/core';
-import { BaseDataset } from '../dataset.js';
-import type { Transform } from '../transforms.js';
+import type { Tensor } from "@ts-torch/core";
+import { BaseDataset } from "../dataset.js";
+import type { Transform } from "../transforms.js";
 
 /**
  * ImageFolder dataset
@@ -30,7 +30,7 @@ export class ImageFolder extends BaseDataset<[Tensor, number]> {
   constructor(
     _root: string,
     _transform?: Transform<Tensor, Tensor>,
-    _extensions: string[] = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
+    _extensions: string[] = [".jpg", ".jpeg", ".png", ".gif", ".bmp"],
   ) {
     super();
   }
@@ -67,7 +67,7 @@ export class ImageFolder extends BaseDataset<[Tensor, number]> {
     // }
     // return [image, label];
 
-    throw new Error('ImageFolder.getItem not yet implemented');
+    throw new Error("ImageFolder.getItem not yet implemented");
   }
 
   get length(): number {

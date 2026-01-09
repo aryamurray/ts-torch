@@ -20,14 +20,16 @@ const f64Tensor = torch.zeros([10, 20] as const, float64);
 const f32Tensor = torch.ones([5, 5] as const, float32);
 
 // Create from data
-const dataMatrix = torch.tensor(
-  [1, 2, 3, 4, 5, 6],
-  [2, 3] as const,
-  float32
-);
+const dataMatrix = torch.tensor([1, 2, 3, 4, 5, 6], [2, 3] as const, float32);
 
 // Auto-infer shape from nested arrays
-const nested = torch.from([[1, 2], [3, 4]], float32);
+const nested = torch.from(
+  [
+    [1, 2],
+    [3, 4],
+  ],
+  float32,
+);
 
 // Arange
 const range = torch.arange(0, 10); // [0, 1, 2, ..., 9]
@@ -187,9 +189,7 @@ function advancedExample() {
 
 function versionInfo() {
   const version = torch.version();
-  console.log(
-    `ts-torch v${version.major}.${version.minor}.${version.patch}`
-  );
+  console.log(`ts-torch v${version.major}.${version.minor}.${version.patch}`);
 }
 
 // ==================== Export Examples ====================

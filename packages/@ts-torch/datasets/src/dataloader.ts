@@ -2,7 +2,7 @@
  * DataLoader for batching and iterating over datasets
  */
 
-import type { Dataset } from './dataset.js';
+import type { Dataset } from "./dataset.js";
 
 /**
  * DataLoader options
@@ -26,14 +26,14 @@ export class DataLoader<T = unknown> implements AsyncIterable<T[]> {
 
   constructor(
     private dataset: Dataset<T>,
-    options: DataLoaderOptions = {}
+    options: DataLoaderOptions = {},
   ) {
     this.batchSize = options.batchSize ?? 1;
     this.shuffle = options.shuffle ?? false;
     this.dropLast = options.drop_last ?? false;
 
     if (this.batchSize < 1) {
-      throw new Error('Batch size must be positive');
+      throw new Error("Batch size must be positive");
     }
   }
 
@@ -104,7 +104,7 @@ export class DataLoader<T = unknown> implements AsyncIterable<T[]> {
       for (const idx of batchIndices) {
         const sample = this.dataset.getItem(idx);
         if (sample instanceof Promise) {
-          throw new Error('Cannot use synchronous iterator with async dataset');
+          throw new Error("Cannot use synchronous iterator with async dataset");
         }
         batch.push(sample);
       }

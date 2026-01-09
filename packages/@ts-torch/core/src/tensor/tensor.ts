@@ -10,10 +10,7 @@ import { ptr } from "bun:ffi";
 import type { Shape } from "../types/shape.js";
 import type { DType } from "../types/dtype.js";
 import type { Device } from "../types/index.js";
-import type {
-  MatMulShape,
-  TransposeShape,
-} from "../types/tensor.js";
+import type { MatMulShape, TransposeShape } from "../types/tensor.js";
 import { getLib } from "../ffi/loader.js";
 import { withError, checkNull, TorchError, ErrorCode } from "../ffi/error.js";
 import { BytesPerElement } from "../types/dtype.js";
@@ -30,10 +27,7 @@ import { BytesPerElement } from "../types/dtype.js";
  * const result = t.add(ones([2, 3], DType.float32));
  * ```
  */
-export class Tensor<
-  S extends Shape = Shape,
-  D extends DType<string> = DType<"float32">
-> {
+export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<"float32">> {
   /**
    * Native tensor handle (opaque pointer)
    * @internal
@@ -104,7 +98,7 @@ export class Tensor<
     if (this._freed) {
       throw new TorchError(
         ErrorCode.SCOPE_ERROR,
-        "Tensor has been freed and can no longer be used"
+        "Tensor has been freed and can no longer be used",
       );
     }
   }
@@ -237,9 +231,7 @@ export class Tensor<
     this._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_clone(this._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_clone(this._handle, err));
 
     checkNull(handle, "Failed to clone tensor");
 
@@ -261,9 +253,7 @@ export class Tensor<
     this._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_detach(this._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_detach(this._handle, err));
 
     checkNull(handle, "Failed to detach tensor");
 
@@ -288,7 +278,8 @@ export class Tensor<
     const lib = getLib();
 
     // Allocate buffer for data
-    const byteSize = this.numel * (BytesPerElement[this.dtype.name as keyof typeof BytesPerElement] || 4);
+    const byteSize =
+      this.numel * (BytesPerElement[this.dtype.name as keyof typeof BytesPerElement] || 4);
 
     let buffer: ArrayBuffer;
     let result: Float32Array | Float64Array | Int32Array | BigInt64Array;
@@ -321,11 +312,7 @@ export class Tensor<
     // Copy data from native memory
     const bufferPtr = ptr(buffer);
 
-    lib.symbols.ts_tensor_copy_to_buffer(
-      this._handle,
-      bufferPtr,
-      BigInt(byteSize)
-    );
+    lib.symbols.ts_tensor_copy_to_buffer(this._handle, bufferPtr, BigInt(byteSize));
 
     return result;
   }
@@ -344,9 +331,7 @@ export class Tensor<
    */
   item(): number {
     if (this.numel !== 1) {
-      throw new Error(
-        `item() only works on scalar tensors (numel=1), got numel=${this.numel}`
-      );
+      throw new Error(`item() only works on scalar tensors (numel=1), got numel=${this.numel}`);
     }
 
     const data = this.toArray();
@@ -373,9 +358,7 @@ export class Tensor<
     other._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_add(this._handle, other._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_add(this._handle, other._handle, err));
 
     checkNull(handle, "Failed to add tensors");
 
@@ -400,9 +383,7 @@ export class Tensor<
     other._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_sub(this._handle, other._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_sub(this._handle, other._handle, err));
 
     checkNull(handle, "Failed to subtract tensors");
 
@@ -427,9 +408,7 @@ export class Tensor<
     other._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_mul(this._handle, other._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_mul(this._handle, other._handle, err));
 
     checkNull(handle, "Failed to multiply tensors");
 
@@ -454,9 +433,7 @@ export class Tensor<
     other._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_div(this._handle, other._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_div(this._handle, other._handle, err));
 
     checkNull(handle, "Failed to divide tensors");
 
@@ -479,31 +456,22 @@ export class Tensor<
    * const c = a.matmul(b); // Type: Tensor<[2, 4], DType<"float32">>
    * ```
    */
-  matmul<S2 extends Shape>(
-    other: Tensor<S2, D>
-  ): Tensor<MatMulShape<S, S2>, D> {
+  matmul<S2 extends Shape>(other: Tensor<S2, D>): Tensor<MatMulShape<S, S2>, D> {
     this._checkValid();
     other._checkValid();
     const lib = getLib();
 
     const handle = withError((err) =>
-      lib.symbols.ts_tensor_matmul(this._handle, other._handle, err)
+      lib.symbols.ts_tensor_matmul(this._handle, other._handle, err),
     );
 
     checkNull(handle, "Failed to perform matrix multiplication");
 
     // Compute result shape
     // This is simplified - real implementation would compute proper shape
-    const resultShape = this._computeMatMulShape(
-      this.shape,
-      other.shape
-    ) as MatMulShape<S, S2>;
+    const resultShape = this._computeMatMulShape(this.shape, other.shape) as MatMulShape<S, S2>;
 
-    return new Tensor<MatMulShape<S, S2>, D>(
-      handle!,
-      resultShape,
-      this.dtype
-    );
+    return new Tensor<MatMulShape<S, S2>, D>(handle!, resultShape, this.dtype);
   }
 
   /**
@@ -563,28 +531,25 @@ export class Tensor<
    */
   transpose<D0 extends number, D1 extends number>(
     dim0: D0,
-    dim1: D1
+    dim1: D1,
   ): Tensor<TransposeShape<S, D0, D1>, D> {
     this._checkValid();
     const lib = getLib();
 
     const handle = withError((err) =>
-      lib.symbols.ts_tensor_transpose(this._handle, dim0, dim1, err)
+      lib.symbols.ts_tensor_transpose(this._handle, dim0, dim1, err),
     );
 
     checkNull(handle, "Failed to transpose tensor");
 
     // Compute result shape
     const resultShape = [...this.shape];
-    [resultShape[dim0], resultShape[dim1]] = [
-      resultShape[dim1]!,
-      resultShape[dim0]!,
-    ];
+    [resultShape[dim0], resultShape[dim1]] = [resultShape[dim1]!, resultShape[dim0]!];
 
     return new Tensor<TransposeShape<S, D0, D1>, D>(
       handle!,
       resultShape as unknown as TransposeShape<S, D0, D1>,
-      this.dtype
+      this.dtype,
     );
   }
 
@@ -610,7 +575,7 @@ export class Tensor<
     const shapePtr = ptr(shapeArray);
 
     const handle = withError((err) =>
-      lib.symbols.ts_tensor_reshape(this._handle, shapePtr, shape.length, err)
+      lib.symbols.ts_tensor_reshape(this._handle, shapePtr, shape.length, err),
     );
 
     checkNull(handle, "Failed to reshape tensor");
@@ -635,9 +600,7 @@ export class Tensor<
     this._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_sum(this._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_sum(this._handle, err));
 
     checkNull(handle, "Failed to compute sum");
 
@@ -659,9 +622,7 @@ export class Tensor<
     this._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_mean(this._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_mean(this._handle, err));
 
     checkNull(handle, "Failed to compute mean");
 
@@ -685,9 +646,7 @@ export class Tensor<
     this._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_relu(this._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_relu(this._handle, err));
 
     checkNull(handle, "Failed to apply ReLU");
 
@@ -709,9 +668,7 @@ export class Tensor<
     this._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_sigmoid(this._handle, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_sigmoid(this._handle, err));
 
     checkNull(handle, "Failed to apply sigmoid");
 
@@ -734,9 +691,7 @@ export class Tensor<
     this._checkValid();
     const lib = getLib();
 
-    const handle = withError((err) =>
-      lib.symbols.ts_tensor_softmax(this._handle, dim, err)
-    );
+    const handle = withError((err) => lib.symbols.ts_tensor_softmax(this._handle, dim, err));
 
     checkNull(handle, "Failed to apply softmax");
 
@@ -840,12 +795,7 @@ export class Tensor<
     }
 
     const handle = withError((err) =>
-      lib.symbols.ts_tensor_to_device(
-        this._handle,
-        deviceType,
-        deviceId,
-        err
-      )
+      lib.symbols.ts_tensor_to_device(this._handle, deviceType, deviceId, err),
     );
 
     checkNull(handle, "Failed to move tensor to device");
@@ -886,7 +836,7 @@ export class Tensor<
     const lib = getLib();
 
     const handle = withError((err) =>
-      lib.symbols.ts_tensor_to_device(this._handle, 1, deviceIndex, err)
+      lib.symbols.ts_tensor_to_device(this._handle, 1, deviceIndex, err),
     );
 
     checkNull(handle, "Failed to move tensor to CUDA");
@@ -915,9 +865,7 @@ export class Tensor<
    *   .pipe(linear);
    * ```
    */
-  pipe<OutS extends Shape>(module: {
-    forward(x: Tensor<S, D>): Tensor<OutS, D>;
-  }): Tensor<OutS, D> {
+  pipe<OutS extends Shape>(module: { forward(x: Tensor<S, D>): Tensor<OutS, D> }): Tensor<OutS, D> {
     return module.forward(this);
   }
 

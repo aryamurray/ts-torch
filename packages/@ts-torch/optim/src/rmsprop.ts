@@ -2,8 +2,8 @@
  * RMSprop optimizer
  */
 
-import type { Tensor } from '@ts-torch/core';
-import { Optimizer, type ParameterGroup, type OptimizerOptions } from './optimizer.js';
+import type { Tensor } from "@ts-torch/core";
+import { Optimizer, type ParameterGroup, type OptimizerOptions } from "./optimizer.js";
 
 /**
  * RMSprop optimizer options
@@ -40,10 +40,7 @@ export interface RMSpropOptions extends OptimizerOptions {
 export class RMSprop extends Optimizer {
   declare defaults: RMSpropOptions;
 
-  constructor(
-    params: Tensor[] | ParameterGroup[],
-    options: RMSpropOptions
-  ) {
+  constructor(params: Tensor[] | ParameterGroup[], options: RMSpropOptions) {
     const defaults: RMSpropOptions = {
       lr: options.lr,
       alpha: options.alpha ?? 0.99,
@@ -58,10 +55,11 @@ export class RMSprop extends Optimizer {
 
   step(): void {
     for (const group of this.paramGroups) {
-      const lr = (group.lr ?? this.defaults.lr);
+      const lr = group.lr ?? this.defaults.lr;
       const alpha = (group.alpha as number | undefined) ?? this.defaults.alpha ?? 0.99;
       const eps = (group.eps as number | undefined) ?? this.defaults.eps ?? 1e-8;
-      const weightDecay = (group.weightDecay as number | undefined) ?? this.defaults.weightDecay ?? 0;
+      const weightDecay =
+        (group.weightDecay as number | undefined) ?? this.defaults.weightDecay ?? 0;
       const momentum = (group.momentum as number | undefined) ?? this.defaults.momentum ?? 0;
       const centered = (group.centered as boolean | undefined) ?? this.defaults.centered ?? false;
 

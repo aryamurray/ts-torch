@@ -2,7 +2,7 @@
  * Base Dataset and utility types
  */
 
-import type { Tensor } from '@ts-torch/core';
+import type { Tensor } from "@ts-torch/core";
 
 /**
  * Base interface for all datasets
@@ -35,7 +35,7 @@ export abstract class BaseDataset<T = Tensor> implements Dataset<T> {
     for (let i = 0; i < this.length; i++) {
       const item = this.getItem(i);
       if (item instanceof Promise) {
-        throw new Error('Cannot iterate over async dataset synchronously. Use DataLoader instead.');
+        throw new Error("Cannot iterate over async dataset synchronously. Use DataLoader instead.");
       }
       yield item;
     }
@@ -64,10 +64,7 @@ export abstract class BaseDataset<T = Tensor> implements Dataset<T> {
     const trainIndices = indices.slice(0, trainSize);
     const testIndices = indices.slice(trainSize);
 
-    return [
-      new SubsetDataset(this, trainIndices),
-      new SubsetDataset(this, testIndices)
-    ];
+    return [new SubsetDataset(this, trainIndices), new SubsetDataset(this, testIndices)];
   }
 }
 
@@ -77,7 +74,7 @@ export abstract class BaseDataset<T = Tensor> implements Dataset<T> {
 export class SubsetDataset<T = Tensor> extends BaseDataset<T> {
   constructor(
     private dataset: Dataset<T>,
-    private indices: number[]
+    private indices: number[],
   ) {
     super();
   }
@@ -104,13 +101,13 @@ export class TensorDataset extends BaseDataset<Tensor[]> {
 
     // Validate all tensors have the same first dimension
     if (tensors.length === 0) {
-      throw new Error('TensorDataset requires at least one tensor');
+      throw new Error("TensorDataset requires at least one tensor");
     }
 
     const firstDim = tensors[0]?.shape[0];
     for (const tensor of tensors) {
       if (tensor.shape[0] !== firstDim) {
-        throw new Error('All tensors must have the same size in the first dimension');
+        throw new Error("All tensors must have the same size in the first dimension");
       }
     }
   }

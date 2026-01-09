@@ -2,9 +2,9 @@
  * CIFAR-10 and CIFAR-100 datasets
  */
 
-import type { Tensor } from '@ts-torch/core';
-import { BaseDataset } from '../dataset.js';
-import type { Transform } from '../transforms.js';
+import type { Tensor } from "@ts-torch/core";
+import { BaseDataset } from "../dataset.js";
+import type { Transform } from "../transforms.js";
 
 /**
  * CIFAR-10 dataset
@@ -20,7 +20,7 @@ export class CIFAR10 extends BaseDataset<[Tensor, number]> {
     _root: string,
     private train: boolean = true,
     _transform?: Transform<Tensor, Tensor>,
-    _download: boolean = false
+    _download: boolean = false,
   ) {
     super();
   }
@@ -31,14 +31,14 @@ export class CIFAR10 extends BaseDataset<[Tensor, number]> {
 
   getItem(index: number): [Tensor, number] {
     if (!this.data) {
-      throw new Error('CIFAR10 dataset not initialized. Call init() first.');
+      throw new Error("CIFAR10 dataset not initialized. Call init() first.");
     }
 
     if (index < 0 || index >= this.length) {
       throw new Error(`Index ${index} out of bounds`);
     }
 
-    throw new Error('CIFAR10.getItem not yet implemented');
+    throw new Error("CIFAR10.getItem not yet implemented");
   }
 
   get length(): number {
@@ -47,8 +47,16 @@ export class CIFAR10 extends BaseDataset<[Tensor, number]> {
 
   get classes(): string[] {
     return [
-      'airplane', 'automobile', 'bird', 'cat', 'deer',
-      'dog', 'frog', 'horse', 'ship', 'truck'
+      "airplane",
+      "automobile",
+      "bird",
+      "cat",
+      "deer",
+      "dog",
+      "frog",
+      "horse",
+      "ship",
+      "truck",
     ];
   }
 }
@@ -67,7 +75,7 @@ export class CIFAR100 extends BaseDataset<[Tensor, number]> {
     private train: boolean = true,
     _transform?: Transform<Tensor, Tensor>,
     _download: boolean = false,
-    fineLabels: boolean = true
+    fineLabels: boolean = true,
   ) {
     super();
     this.fineLabels = fineLabels;
@@ -78,7 +86,7 @@ export class CIFAR100 extends BaseDataset<[Tensor, number]> {
   }
 
   getItem(_index: number): [Tensor, number] {
-    throw new Error('CIFAR100.getItem not yet implemented');
+    throw new Error("CIFAR100.getItem not yet implemented");
   }
 
   get length(): number {

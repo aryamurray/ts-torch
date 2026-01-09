@@ -8,8 +8,8 @@
  * - Type errors for shape mismatches
  */
 
-import { Linear, ReLU, Sigmoid, Softmax, Sequential, sequential } from '../index.js';
-import type { Tensor } from '../module.js';
+import { Linear, ReLU, Sigmoid, Softmax, Sequential, sequential } from "../index.js";
+import type { Tensor } from "../module.js";
 
 // ============================================================================
 // Example 1: Basic .pipe() chaining
@@ -73,16 +73,13 @@ function example2_TypeErrors() {
  */
 function example3_Sequential() {
   // Explicit type annotation for full type safety
-  const model = new Sequential<
-    readonly [number, 784],
-    readonly [number, 10]
-  >(
+  const model = new Sequential<readonly [number, 784], readonly [number, 10]>(
     new Linear(784, 256),
     new ReLU(),
     new Linear(256, 128),
     new ReLU(),
     new Linear(128, 10),
-    new Softmax(-1)
+    new Softmax(-1),
   );
 
   const input = {} as Tensor<readonly [32, 784]>;
@@ -216,17 +213,15 @@ function example7_ModularConstruction() {
  * Using training/eval modes and accessing parameters
  */
 function example8_TrainingMode() {
-  const model = new Linear(784, 128)
-    .pipe(new ReLU())
-    .pipe(new Linear(128, 10));
+  const model = new Linear(784, 128).pipe(new ReLU()).pipe(new Linear(128, 10));
 
   // Switch to training mode
   model.train();
-  console.log('Training:', model.training); // true
+  console.log("Training:", model.training); // true
 
   // Get all parameters for optimizer
   const params = model.parameters();
-  console.log('Number of parameters:', params.length);
+  console.log("Number of parameters:", params.length);
 
   // Get named parameters
   const namedParams = model.namedParameters();
@@ -236,7 +231,7 @@ function example8_TrainingMode() {
 
   // Switch to evaluation mode
   model.eval();
-  console.log('Training:', model.training); // false
+  console.log("Training:", model.training); // false
 
   return model;
 }
@@ -268,10 +263,7 @@ namespace TypeTests {
   // Should be: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 20]>
 
   // Test 2: Long chain preserves end-to-end types
-  const model2 = new Linear(10, 20)
-    .pipe(new ReLU())
-    .pipe(new Linear(20, 30))
-    .pipe(new ReLU());
+  const model2 = new Linear(10, 20).pipe(new ReLU()).pipe(new Linear(20, 30)).pipe(new ReLU());
   type Test2In = Parameters<typeof model2.forward>[0];
   type Test2Out = ReturnType<typeof model2.forward>;
   // Should be: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 30]>
@@ -279,7 +271,7 @@ namespace TypeTests {
   // Test 3: Sequential has correct types
   const model3 = new Sequential<readonly [number, 10], readonly [number, 30]>(
     new Linear(10, 20),
-    new Linear(20, 30)
+    new Linear(20, 30),
   );
   type Test3In = Parameters<typeof model3.forward>[0];
   type Test3Out = ReturnType<typeof model3.forward>;

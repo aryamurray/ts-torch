@@ -9,8 +9,15 @@ import { TensorPool, type PoolableTensor } from "../pool";
 class MockPoolableTensor implements PoolableTensor {
   constructor(
     public readonly shape: readonly number[],
-    public readonly dtype: "float32" | "float64" | "int32" | "int64" | "float16" | "bfloat16" | "bool",
-    public readonly handle: unknown = Math.random()
+    public readonly dtype:
+      | "float32"
+      | "float64"
+      | "int32"
+      | "int64"
+      | "float16"
+      | "bfloat16"
+      | "bool",
+    public readonly handle: unknown = Math.random(),
   ) {}
 }
 
@@ -297,8 +304,7 @@ describe("TensorPool", () => {
 
       for (let i = 0; i < 100; i++) {
         const tensor =
-          pool.acquire([256, 256], "float32") ??
-          new MockPoolableTensor([256, 256], "float32");
+          pool.acquire([256, 256], "float32") ?? new MockPoolableTensor([256, 256], "float32");
 
         results.push(tensor);
         pool.release(tensor);

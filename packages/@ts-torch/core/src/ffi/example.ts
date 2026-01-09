@@ -42,7 +42,7 @@ function example1_basic_tensor() {
     shape.length,
     dtype,
     false, // requires_grad
-    err
+    err,
   );
 
   checkError(err);
@@ -75,16 +75,14 @@ function example2_with_error() {
 
   // Create tensor with automatic error handling
   const handle = withError((err) =>
-    lib.symbols.ts_tensor_ones(ptr(shape), shape.length, 0, false, err)
+    lib.symbols.ts_tensor_ones(ptr(shape), shape.length, 0, false, err),
   );
 
   console.log("Created ones tensor:", handle);
 
   // Get properties
   const dtype = withError((err) => lib.symbols.ts_tensor_dtype(handle, err));
-  const requiresGrad = withError((err) =>
-    lib.symbols.ts_tensor_requires_grad(handle, err)
-  );
+  const requiresGrad = withError((err) => lib.symbols.ts_tensor_requires_grad(handle, err));
 
   console.log("dtype:", dtype, "requires_grad:", requiresGrad);
 
@@ -102,13 +100,9 @@ function example3_operations() {
   const shape = new BigInt64Array([2, 2]);
 
   // Create two tensors
-  const a = withError((err) =>
-    lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err)
-  );
+  const a = withError((err) => lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err));
 
-  const b = withError((err) =>
-    lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err)
-  );
+  const b = withError((err) => lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err));
 
   console.log("Created tensors a and b");
 
@@ -140,9 +134,7 @@ function example4_read_data() {
   const shape = new BigInt64Array([2, 3]);
 
   // Create tensor
-  const handle = withError((err) =>
-    lib.symbols.ts_tensor_randn(ptr(shape), 2, 0, false, err)
-  );
+  const handle = withError((err) => lib.symbols.ts_tensor_randn(ptr(shape), 2, 0, false, err));
 
   // Get number of elements
   const numel = withError((err) => lib.symbols.ts_tensor_numel(handle, err));
@@ -151,12 +143,7 @@ function example4_read_data() {
   // Allocate buffer and copy data
   const buffer = new Float32Array(Number(numel));
   withError((err) =>
-    lib.symbols.ts_tensor_copy_to_buffer(
-      handle,
-      ptr(buffer),
-      BigInt(buffer.byteLength),
-      err
-    )
+    lib.symbols.ts_tensor_copy_to_buffer(handle, ptr(buffer), BigInt(buffer.byteLength), err),
   );
 
   console.log("Tensor data:", Array.from(buffer));
@@ -184,14 +171,10 @@ function example5_scopes() {
 
   try {
     // Create tensors and register with scope
-    const a = withError((err) =>
-      lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err)
-    );
+    const a = withError((err) => lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err));
     withError((err) => lib.symbols.ts_scope_register_tensor(a, err));
 
-    const b = withError((err) =>
-      lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err)
-    );
+    const b = withError((err) => lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, false, err));
     withError((err) => lib.symbols.ts_scope_register_tensor(b, err));
 
     const c = withError((err) => lib.symbols.ts_tensor_add(a, b, err));
@@ -226,9 +209,7 @@ function example6_activations() {
   const lib = getLib();
   const shape = new BigInt64Array([3, 3]);
 
-  const x = withError((err) =>
-    lib.symbols.ts_tensor_randn(ptr(shape), 2, 0, false, err)
-  );
+  const x = withError((err) => lib.symbols.ts_tensor_randn(ptr(shape), 2, 0, false, err));
 
   // Apply various activations
   const relu = withError((err) => lib.symbols.ts_tensor_relu(x, err));
@@ -259,13 +240,11 @@ function example7_autograd() {
   const shape = new BigInt64Array([2, 2]);
 
   // Create tensor with gradients enabled
-  const x = withError((err) =>
-    lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, true, err) // requires_grad = true
+  const x = withError(
+    (err) => lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, true, err), // requires_grad = true
   );
 
-  const y = withError((err) =>
-    lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, true, err)
-  );
+  const y = withError((err) => lib.symbols.ts_tensor_ones(ptr(shape), 2, 0, true, err));
 
   // Perform operations
   const z = withError((err) => lib.symbols.ts_tensor_mul(x, y, err));
@@ -317,7 +296,7 @@ function example8_cuda() {
 
       // Create tensor on CPU
       const cpuTensor = withError((err) =>
-        lib.symbols.ts_tensor_randn(ptr(shape), 2, 0, false, err)
+        lib.symbols.ts_tensor_randn(ptr(shape), 2, 0, false, err),
       );
 
       console.log("Created CPU tensor:", cpuTensor);
@@ -328,8 +307,8 @@ function example8_cuda() {
           cpuTensor,
           1, // device_type: 1=CUDA
           0, // device_id: first GPU
-          err
-        )
+          err,
+        ),
       );
 
       console.log("Moved to GPU:", gpuTensor);
@@ -344,8 +323,8 @@ function example8_cuda() {
           result,
           0, // device_type: 0=CPU
           0,
-          err
-        )
+          err,
+        ),
       );
 
       console.log("Moved back to CPU:", backToCpu);

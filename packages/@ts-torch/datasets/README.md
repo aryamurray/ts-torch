@@ -26,29 +26,29 @@ bun add @ts-torch/datasets
 ### Using Built-in Datasets
 
 ```typescript
-import { MNIST, DataLoader } from '@ts-torch/datasets';
+import { MNIST, DataLoader } from "@ts-torch/datasets";
 
 // Load MNIST dataset
-const dataset = new MNIST('./data', true, undefined, true);
+const dataset = new MNIST("./data", true, undefined, true);
 await dataset.init();
 
 // Create data loader
 const loader = new DataLoader(dataset, {
   batchSize: 32,
-  shuffle: true
+  shuffle: true,
 });
 
 // Iterate over batches
 for await (const batch of loader) {
-  console.log('Batch size:', batch.length);
+  console.log("Batch size:", batch.length);
 }
 ```
 
 ### Custom Datasets
 
 ```typescript
-import { BaseDataset } from '@ts-torch/datasets';
-import type { Tensor } from '@ts-torch/core';
+import { BaseDataset } from "@ts-torch/datasets";
+import type { Tensor } from "@ts-torch/core";
 
 class MyDataset extends BaseDataset<[Tensor, number]> {
   getItem(index: number): [Tensor, number] {
@@ -67,31 +67,31 @@ class MyDataset extends BaseDataset<[Tensor, number]> {
 ### Data Transformations
 
 ```typescript
-import { Compose, Normalize, RandomHorizontalFlip, Resize } from '@ts-torch/datasets';
+import { Compose, Normalize, RandomHorizontalFlip, Resize } from "@ts-torch/datasets";
 
 const transform = new Compose([
   new Resize([224, 224]),
   new RandomHorizontalFlip(0.5),
-  new Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+  new Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ]);
 
 // Apply to dataset
-const dataset = new ImageFolder('./data/train', transform);
+const dataset = new ImageFolder("./data/train", transform);
 ```
 
 ### DataLoader
 
 ```typescript
-import { DataLoader } from '@ts-torch/datasets';
+import { DataLoader } from "@ts-torch/datasets";
 
 const loader = new DataLoader(dataset, {
   batchSize: 64,
   shuffle: true,
   drop_last: false,
-  numWorkers: 4
+  numWorkers: 4,
 });
 
-console.log('Number of batches:', loader.numBatches);
+console.log("Number of batches:", loader.numBatches);
 
 // Async iteration
 for await (const batch of loader) {

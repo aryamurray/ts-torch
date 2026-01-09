@@ -5,19 +5,19 @@
  * native binaries for ts-torch operations.
  */
 
-import { platform, arch } from 'node:os';
-import { join } from 'node:path';
+import { platform, arch } from "node:os";
+import { join } from "node:path";
 
 /**
  * Supported platform identifiers
  */
 export type PlatformIdentifier =
-  | 'win32-x64'
-  | 'win32-arm64'
-  | 'darwin-x64'
-  | 'darwin-arm64'
-  | 'linux-x64'
-  | 'linux-arm64';
+  | "win32-x64"
+  | "win32-arm64"
+  | "darwin-x64"
+  | "darwin-arm64"
+  | "linux-x64"
+  | "linux-arm64";
 
 /**
  * Platform information
@@ -40,17 +40,17 @@ export function getPlatformIdentifier(): PlatformIdentifier {
 
   // Validate supported platforms
   const supported: PlatformIdentifier[] = [
-    'win32-x64',
-    'win32-arm64',
-    'darwin-x64',
-    'darwin-arm64',
-    'linux-x64',
-    'linux-arm64',
+    "win32-x64",
+    "win32-arm64",
+    "darwin-x64",
+    "darwin-arm64",
+    "linux-x64",
+    "linux-arm64",
   ];
 
   if (!supported.includes(identifier)) {
     throw new Error(
-      `Unsupported platform: ${identifier}. Supported platforms: ${supported.join(', ')}`
+      `Unsupported platform: ${identifier}. Supported platforms: ${supported.join(", ")}`,
     );
   }
 
@@ -92,18 +92,18 @@ export function loadNativeBinary(): string | null {
     // Try to resolve the platform package
     try {
       const resolved = require.resolve(`${packageName}/package.json`);
-      const packageDir = join(resolved, '..');
-      const binaryPath = join(packageDir, 'lib', 'ts_torch.node');
+      const packageDir = join(resolved, "..");
+      const binaryPath = join(packageDir, "lib", "ts_torch.node");
 
       return binaryPath;
     } catch (resolveError) {
       console.warn(
-        `Platform package ${packageName} not found. Native operations will not be available.`
+        `Platform package ${packageName} not found. Native operations will not be available.`,
       );
       return null;
     }
   } catch (error) {
-    console.error('Error loading native binary:', error);
+    console.error("Error loading native binary:", error);
     return null;
   }
 }
@@ -156,7 +156,7 @@ export function validatePlatform(): void {
   try {
     getPlatformIdentifier();
   } catch (error) {
-    console.error('Platform validation failed:', error);
+    console.error("Platform validation failed:", error);
     throw error;
   }
 }

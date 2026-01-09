@@ -15,6 +15,7 @@ This package contains the pre-compiled native binaries for ts-torch on Windows x
 ## Contents
 
 This package includes:
+
 - `ts_torch.node` - Node.js native addon with PyTorch bindings
 - Supporting DLL files (if required)
 
@@ -50,6 +51,7 @@ To build the native binaries from source:
 ### Build Steps
 
 1. Install build dependencies:
+
    ```bash
    # Install CMake
    winget install Kitware.CMake
@@ -59,6 +61,7 @@ To build the native binaries from source:
    ```
 
 2. Configure and build:
+
    ```bash
    cd native
    mkdir build && cd build
@@ -76,6 +79,7 @@ To build the native binaries from source:
 ### Missing DLL errors
 
 If you get errors about missing DLLs, ensure that:
+
 - Visual C++ Redistributable is installed
 - PyTorch DLLs are in your PATH or next to the binary
 
