@@ -1,0 +1,13 @@
+{
+  "$schema": "https://oxc.rs/schemas/oxfmtrc.json",
+  // Use 2 spaces for indentation (matching TypeScript conventions)
+  "tabWidth": 2,
+  // Use double quotes for strings
+  "singleQuote": false,
+  // Add trailing commas where valid in ES5
+  "trailingComma": "all",
+  // Print semicolons at the ends of statements
+  "semi": true,
+  // Line width before wrapping (oxfmt default is 100)
+  "printWidth": 100
+}

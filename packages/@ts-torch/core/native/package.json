@@ -1,0 +1,39 @@
+{
+  "name": "@ts-torch/native",
+  "version": "0.1.0",
+  "description": "Native C++ bindings for ts-torch - LibTorch C API wrapper",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.js",
+    "build:debug": "node scripts/build.js --debug",
+    "clean": "node scripts/clean.js",
+    "test": "node scripts/test.js"
+  },
+  "keywords": [
+    "pytorch",
+    "libtorch",
+    "tensor",
+    "machine-learning",
+    "deep-learning",
+    "native",
+    "ffi",
+    "c-api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ts-torch.git",
+    "directory": "packages/@ts-torch/core/native"
+  },
+  "files": [
+    "include/**/*.h",
+    "src/**/*.cpp",
+    "cmake/**/*",
+    "CMakeLists.txt",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

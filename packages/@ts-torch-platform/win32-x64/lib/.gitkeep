@@ -1,0 +1,34 @@
+# Native binaries will be placed here
+
+This directory will contain the compiled native binaries for Windows x64:
+- ts_torch.node - Node.js native addon
+- ts_torch.dll - Dynamic library (if needed)
+- Other platform-specific binaries
+
+## Building Native Binaries
+
+To build the native binaries for this platform:
+
+1. Ensure you have the required build tools:
+   - Visual Studio 2019 or later (with C++ tools)
+   - CMake 3.15 or later
+   - PyTorch C++ libraries (libtorch)
+
+2. Build the project:
+   ```bash
+   cd native
+   mkdir build && cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Release
+   cmake --build . --config Release
+   ```
+
+3. Copy the built binaries to this directory:
+   ```bash
+   cp build/Release/ts_torch.node packages/@ts-torch-platform/win32-x64/lib/
+   ```
+
+## Note
+
+The `.gitkeep` file is a placeholder. Once you add actual binary files,
+you can remove this file. Make sure to add the binary files to your
+`.gitignore` if they should not be committed to version control.

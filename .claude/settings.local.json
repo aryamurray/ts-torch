@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -R *)",
+      "Bash(cat *)",
+      "Bash(git ls-tree *)",
+      "Bash(git show *)",
+      "Bash(git diff *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(du *)",
+      "WebSearch",
+      "WebFetch(domain:bun.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:sebinsua.com)",
+      "WebFetch(domain:sentry.engineering)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(tree:*)",
+      "Bash(bun tsc:*)",
+      "Bash(find:*)",
+      "Bash(bun install:*)",
+      "Bash(done)",
+      "Bash(bun run tsc:*)",
+      "Bash(bun run check-types:*)",
+      "Bash(bun run build:*)",
+      "Bash(bun run:*)",
+      "Bash(bun test:*)",
+      "Bash(bun build:*)",
+      "Bash(bunx tsc:*)"
+    ]
+  }
+}
