@@ -90,12 +90,20 @@ export class TorchError extends Error {
 }
 
 /**
+ * Error buffer wrapper that holds both pointer and backing ArrayBuffer
+ */
+interface ErrorBuffer {
+  ptr: Pointer;
+  buffer: ArrayBuffer;
+}
+
+/**
  * Create a new error struct buffer
  * Allocates memory for error reporting from FFI calls
  *
- * @returns Pointer to allocated error buffer
+ * @returns Error buffer with pointer and backing ArrayBuffer
  */
-export function createError(): Pointer {
+export function createError(): ErrorBuffer {
   // Allocate buffer for error struct
   const buffer = new ArrayBuffer(ERROR_STRUCT_SIZE);
   const view = new DataView(buffer);
@@ -103,20 +111,23 @@ export function createError(): Pointer {
   // Initialize error code to 0 (OK)
   view.setInt32(0, 0, true); // little-endian
 
-  // Return pointer to buffer
-  return ptr(buffer);
+  // Return both pointer and buffer
+  return {
+    ptr: ptr(buffer),
+    buffer,
+  };
 }
 
 /**
  * Check if an error occurred and throw if necessary
  * Reads the error struct and throws TorchError if code != 0
  *
- * @param errorPtr - Pointer to error struct
+ * @param errorBuffer - Error buffer containing pointer and backing ArrayBuffer
  * @throws TorchError if error code is not 0
  */
-export function checkError(errorPtr: Pointer): void {
-  // Read error code (first 4 bytes)
-  const codeView = new DataView(errorPtr as unknown as ArrayBuffer, 0, 4);
+export function checkError(errorBuffer: ErrorBuffer): void {
+  // Read error code (first 4 bytes) from the backing ArrayBuffer
+  const codeView = new DataView(errorBuffer.buffer, 0, 4);
   const code = codeView.getInt32(0, true) as ErrorCode;
 
   if (code === ErrorCode.OK) {
@@ -124,7 +135,7 @@ export function checkError(errorPtr: Pointer): void {
   }
 
   // Read error message (next 256 bytes)
-  const messageBytes = new Uint8Array(errorPtr as unknown as ArrayBuffer, 4, 256);
+  const messageBytes = new Uint8Array(errorBuffer.buffer, 4, 256);
 
   // Find null terminator
   let messageLength = 0;
@@ -154,10 +165,10 @@ export function checkError(errorPtr: Pointer): void {
  * const result = withError(err => lib.symbols.ts_tensor_zeros(shape, ndim, dtype, false, err));
  */
 export function withError<T>(fn: (errorPtr: Pointer) => T): T {
-  const errorPtr = createError();
+  const errorBuffer = createError();
   try {
-    const result = fn(errorPtr);
-    checkError(errorPtr);
+    const result = fn(errorBuffer.ptr);
+    checkError(errorBuffer);
     return result;
   } finally {
     // Error buffer is automatically freed when it goes out of scope

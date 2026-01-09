@@ -5,7 +5,8 @@
     "apps/*",
     "packages/*",
     "packages/@ts-torch/*",
-    "packages/@ts-torch-platform/*"
+    "packages/@ts-torch-platform/*",
+    "examples"
   ],
   "scripts": {
     "build": "turbo run build",

@@ -27,7 +27,13 @@
       "Bash(bun run:*)",
       "Bash(bun test:*)",
       "Bash(bun build:*)",
-      "Bash(bunx tsc:*)"
+      "Bash(bunx tsc:*)",
+      "Bash(bunx oxfmt:*)",
+      "Bash(cmake:*)",
+      "Bash(ls:*)",
+      "Bash(dumpbin:*)",
+      "Bash(export PATH=\"/c/Users/Arya/Documents/Code/ts-tools/packages/@ts-torch/core/native/build/Release:/c/Users/Arya/Downloads/libtorch-win-shared-with-deps-2.5.1+cpu/libtorch/lib:$PATH\")",
+      "Bash(git rm:*)"
     ]
   }
 }

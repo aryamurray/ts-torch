@@ -38,6 +38,7 @@ export interface ScopedTensor {
  */
 interface ScopeContext {
   readonly id: number;
+  readonly nativeHandle: Pointer; // Native scope handle from ts_scope_begin
   readonly tensors: Set<ScopedTensor>;
   readonly parent: ScopeContext | null;
 }
@@ -70,12 +71,13 @@ let currentScope: ScopeContext | null = null;
 export function run<T>(fn: () => T): T {
   const lib = getLib();
 
-  // Begin native scope
-  lib.symbols.ts_scope_begin();
+  // Begin native scope - returns scope handle
+  const nativeHandle = lib.symbols.ts_scope_begin();
 
   // Create JS scope context
   const newScope: ScopeContext = {
     id: Date.now(), // Use timestamp as unique scope ID
+    nativeHandle: nativeHandle as Pointer,
     tensors: new Set(),
     parent: currentScope,
   };
@@ -95,8 +97,8 @@ export function run<T>(fn: () => T): T {
       }
     }
 
-    // End native scope
-    lib.symbols.ts_scope_end();
+    // End native scope - pass the scope handle
+    lib.symbols.ts_scope_end(newScope.nativeHandle);
 
     // Restore previous scope
     currentScope = previousScope;
@@ -124,10 +126,12 @@ export function run<T>(fn: () => T): T {
 export async function runAsync<T>(fn: () => Promise<T>): Promise<T> {
   const lib = getLib();
 
-  lib.symbols.ts_scope_begin();
+  // Begin native scope - returns scope handle
+  const nativeHandle = lib.symbols.ts_scope_begin();
 
   const newScope: ScopeContext = {
     id: Date.now(), // Use timestamp as unique scope ID
+    nativeHandle: nativeHandle as Pointer,
     tensors: new Set(),
     parent: currentScope,
   };
@@ -146,7 +150,8 @@ export async function runAsync<T>(fn: () => Promise<T>): Promise<T> {
       }
     }
 
-    lib.symbols.ts_scope_end();
+    // End native scope - pass the scope handle
+    lib.symbols.ts_scope_end(newScope.nativeHandle);
 
     currentScope = previousScope;
   }
@@ -164,9 +169,9 @@ export function registerTensor(tensor: ScopedTensor): void {
   if (currentScope !== null) {
     currentScope.tensors.add(tensor);
 
-    // Register with native scope
+    // Register with native scope - pass scope handle and tensor handle
     const lib = getLib();
-    lib.symbols.ts_scope_register_tensor(tensor.handle);
+    lib.symbols.ts_scope_register_tensor(currentScope.nativeHandle, tensor.handle);
   }
 }
 
@@ -200,9 +205,9 @@ export function escapeTensor<T extends ScopedTensor>(tensor: T): T {
   // Mark as escaped in JS
   tensor.markEscaped();
 
-  // Remove from native scope tracking
+  // Remove from native scope tracking - pass scope handle and tensor handle
   const lib = getLib();
-  lib.symbols.ts_scope_escape_tensor(tensor.handle);
+  lib.symbols.ts_scope_escape_tensor(currentScope.nativeHandle, tensor.handle);
 
   return tensor;
 }

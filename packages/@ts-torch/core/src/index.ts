@@ -328,7 +328,7 @@ export const torch = {
     isAvailable(): boolean {
       try {
         const lib = getLib();
-        return lib.symbols.ts_cuda_is_available();
+        return lib.symbols.ts_cuda_is_available() !== 0; // Convert i32 to boolean
       } catch {
         return false;
       }

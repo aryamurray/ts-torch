@@ -14,6 +14,7 @@ import type { MatMulShape, TransposeShape } from "../types/tensor.js";
 import { getLib } from "../ffi/loader.js";
 import { withError, checkNull, TorchError, ErrorCode } from "../ffi/error.js";
 import { BytesPerElement } from "../types/dtype.js";
+import { escapeTensor as scopeEscapeTensor, inScope } from "../memory/scope.js";
 
 /**
  * Core Tensor class representing a multi-dimensional array with type-safe operations
@@ -146,7 +147,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<"fl
     this._checkValid();
     const lib = getLib();
 
-    return lib.symbols.ts_tensor_requires_grad(this._handle);
+    const result = withError((err) => lib.symbols.ts_tensor_requires_grad(this._handle, err));
+    return result !== 0; // Convert i32 to boolean
   }
 
   /**
@@ -156,7 +158,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<"fl
     this._checkValid();
     const lib = getLib();
 
-    lib.symbols.ts_tensor_set_requires_grad(this._handle, value);
+    withError((err) => lib.symbols.ts_tensor_set_requires_grad(this._handle, value, err));
 
     // Clear gradient cache
     this._gradCache = undefined;
@@ -183,13 +185,35 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<"fl
   escape(): this {
     this._checkValid();
 
-    if (!this._escaped) {
-      const lib = getLib();
-      lib.symbols.ts_scope_escape_tensor(this._handle);
-      this._escaped = true;
+    if (!this._escaped && inScope()) {
+      // Use the scope module's escapeTensor which has access to the current scope handle
+      scopeEscapeTensor(this as unknown as { handle: Pointer; escaped: boolean; markEscaped(): void });
     }
 
     return this;
+  }
+
+  /**
+   * Get native handle for FFI operations
+   * @internal
+   */
+  get handle(): Pointer {
+    return this._handle;
+  }
+
+  /**
+   * Check if tensor has been escaped from scope
+   */
+  get escaped(): boolean {
+    return this._escaped;
+  }
+
+  /**
+   * Mark tensor as escaped (called by scope module)
+   * @internal
+   */
+  markEscaped(): void {
+    this._escaped = true;
   }
 
   /**
@@ -312,7 +336,9 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<"fl
     // Copy data from native memory
     const bufferPtr = ptr(buffer);
 
-    lib.symbols.ts_tensor_copy_to_buffer(this._handle, bufferPtr, BigInt(byteSize));
+    withError((err) =>
+      lib.symbols.ts_tensor_copy_to_buffer(this._handle, bufferPtr, BigInt(byteSize), err),
+    );
 
     return result;
   }
@@ -745,7 +771,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<"fl
 
     const lib = getLib();
 
-    const handle = lib.symbols.ts_tensor_grad(this._handle);
+    const handle = withError((err) => lib.symbols.ts_tensor_grad(this._handle, err));
 
     // Null handle means no gradient
     if (handle === null || handle === 0) {

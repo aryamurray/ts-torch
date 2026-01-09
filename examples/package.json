@@ -1,0 +1,18 @@
+{
+  "name": "examples",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "mnist": "bun run mnist.ts"
+  },
+  "dependencies": {
+    "@ts-torch/core": "workspace:*",
+    "@ts-torch/nn": "workspace:*",
+    "@ts-torch/optim": "workspace:*",
+    "@ts-torch/datasets": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}
