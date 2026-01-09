@@ -16,12 +16,15 @@ export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType
   readonly dtype: D;
 
   // Core operations that modules might need
-  relu?(): Tensor<S, D>;
-  sigmoid?(): Tensor<S, D>;
-  tanh?(): Tensor<S, D>;
-  softmax?(dim: number): Tensor<S, D>;
-  matmul?<S2 extends Shape>(other: Tensor<S2, D>): Tensor<any, D>;
-  add?<S2 extends Shape>(other: Tensor<S2, D> | number): Tensor<any, D>;
+  relu(): Tensor<S, D>;
+  sigmoid(): Tensor<S, D>;
+  tanh(): Tensor<S, D>;
+  softmax(dim: number): Tensor<S, D>;
+  matmul<S2 extends Shape>(other: Tensor<S2, D>): Tensor<any, D>;
+  add<S2 extends Shape>(other: Tensor<S2, D> | number): Tensor<any, D>;
+  transpose(dim0: number, dim1: number): Tensor<any, D>;
+  escape(): this;
+  free(): void;
 }
 
 /**

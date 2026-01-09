@@ -31,6 +31,8 @@ dist
 *.tsbuildinfo
 tsconfig.tsbuildinfo
 
+#Data
+/data*
 
 # Debug
 npm-debug.log*

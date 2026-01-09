@@ -6,7 +6,7 @@
  */
 
 import { Module, Parameter, type Tensor, type float32 } from "../module.js";
-import type { DType } from "@ts-torch/core";
+import { torch, type DType } from "@ts-torch/core";
 
 /**
  * Linear options interface
@@ -112,19 +112,23 @@ export class Linear<
     input: Tensor<readonly [number, InFeatures], D>,
   ): Tensor<readonly [number, OutFeatures], D> {
     // Input: [Batch, InFeatures]
-    // Weight: [OutFeatures, InFeatures] (transposed during matmul)
+    // Weight: [OutFeatures, InFeatures]
+    // Weight^T: [InFeatures, OutFeatures]
     // Result: [Batch, OutFeatures]
 
-    // TODO: Implement actual computation when Tensor ops are ready
-    // For now, return a mock typed tensor
-    // In real implementation:
-    // let output = input.matmul(this.weight.data.transpose(0, 1));
-    // if (this.bias) {
-    //   output = output.add(this.bias.data);
-    // }
-    // return output;
+    // Transpose weight for matmul: [OutFeatures, InFeatures] -> [InFeatures, OutFeatures]
+    const weightT = this.weight.data.transpose(0, 1);
 
-    return input as any; // Placeholder - maintains type safety
+    // Compute xW^T: [Batch, InFeatures] @ [InFeatures, OutFeatures] = [Batch, OutFeatures]
+    let output = input.matmul(weightT) as Tensor<readonly [number, OutFeatures], D>;
+
+    // Add bias if present
+    if (this.bias) {
+      // Broadcasting: [Batch, OutFeatures] + [OutFeatures] = [Batch, OutFeatures]
+      output = output.add(this.bias.data as any) as Tensor<readonly [number, OutFeatures], D>;
+    }
+
+    return output;
   }
 
   /**
@@ -136,56 +140,42 @@ export class Linear<
   private initWeight(
     init: "kaiming_uniform" | "kaiming_normal" | "xavier_uniform" | "xavier_normal" | "zeros",
   ): Parameter<readonly [OutFeatures, InFeatures], D> {
-    // TODO: Implement actual weight initialization
-    // For now, return a placeholder
-    // In real implementation, use appropriate initialization:
-
     const shape = [this.outFeatures, this.inFeatures] as const;
 
+    let weight: Tensor<readonly [OutFeatures, InFeatures], D>;
+
     switch (init) {
-      case "kaiming_uniform": {
-        // Kaiming/He initialization for ReLU activations
-        // W ~ U(-√(6/fan_in), √(6/fan_in))
-        // const bound = Math.sqrt(6.0 / this.inFeatures);
-        // const weight = uniform(shape, -bound, bound);
-        break;
-      }
-
+      case "kaiming_uniform":
       case "kaiming_normal": {
-        // Kaiming/He normal initialization
-        // W ~ N(0, √(2/fan_in))
-        // const std = Math.sqrt(2.0 / this.inFeatures);
-        // const weight = normal(shape, 0, std);
+        // Kaiming/He initialization for ReLU activations
+        // Use randn (approximate - we'd need scalar mul for exact scaling)
+        weight = torch.randn(shape) as unknown as Tensor<readonly [OutFeatures, InFeatures], D>;
         break;
       }
 
-      case "xavier_uniform": {
-        // Xavier/Glorot uniform initialization for tanh/sigmoid
-        // W ~ U(-√(6/(fan_in + fan_out)), √(6/(fan_in + fan_out)))
-        // const bound = Math.sqrt(6.0 / (this.inFeatures + this.outFeatures));
-        // const weight = uniform(shape, -bound, bound);
-        break;
-      }
-
+      case "xavier_uniform":
       case "xavier_normal": {
-        // Xavier/Glorot normal initialization
-        // W ~ N(0, √(2/(fan_in + fan_out)))
-        // const std = Math.sqrt(2.0 / (this.inFeatures + this.outFeatures));
-        // const weight = normal(shape, 0, std);
+        // Xavier/Glorot initialization for tanh/sigmoid
+        weight = torch.randn(shape) as unknown as Tensor<readonly [OutFeatures, InFeatures], D>;
         break;
       }
 
       case "zeros": {
         // Zero initialization (mainly for testing)
-        // const weight = zeros(shape);
+        weight = torch.zeros(shape) as unknown as Tensor<readonly [OutFeatures, InFeatures], D>;
         break;
+      }
+
+      default: {
+        // Default to randn
+        weight = torch.randn(shape) as unknown as Tensor<readonly [OutFeatures, InFeatures], D>;
       }
     }
 
-    // Placeholder: return a mock parameter
-    // In real implementation, create proper tensor
-    const mockTensor = { shape, dtype: {} as D } as Tensor<readonly [OutFeatures, InFeatures], D>;
-    return new Parameter(mockTensor, true);
+    // Escape weight from any scope so it persists
+    weight.escape();
+
+    return new Parameter(weight, true);
   }
 
   /**
@@ -194,14 +184,13 @@ export class Linear<
    * @returns Initialized bias parameter
    */
   private initBias(): Parameter<readonly [OutFeatures], D> {
-    // TODO: Implement actual bias initialization
-    // For now, return a placeholder
-    // In real implementation:
-    // const bias = zeros([this.outFeatures]);
-
     const shape = [this.outFeatures] as const;
-    const mockTensor = { shape, dtype: {} as D } as Tensor<readonly [OutFeatures], D>;
-    return new Parameter(mockTensor, true);
+    const bias = torch.zeros(shape) as unknown as Tensor<readonly [OutFeatures], D>;
+
+    // Escape bias from any scope so it persists
+    bias.escape();
+
+    return new Parameter(bias, true);
   }
 
   /**
