@@ -30,6 +30,7 @@
       "name": "@ts-torch-platform/loader",
       "version": "0.1.0",
       "devDependencies": {
+        "@types/node": "^22.10.6",
         "typescript": "5.9.2",
       },
       "optionalDependencies": {

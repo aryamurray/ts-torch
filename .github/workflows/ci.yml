@@ -14,11 +14,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-14]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -43,17 +46,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: libtorch
-          key: ${{ runner.os }}-libtorch-2.5.1-cpu
+          key: ${{ runner.os }}-${{ runner.arch }}-libtorch-2.5.1-cpu
           restore-keys: |
-            ${{ runner.os }}-libtorch-
+            ${{ runner.os }}-${{ runner.arch }}-libtorch-
 
       - name: Cache native build
         uses: actions/cache@v4
         with:
           path: packages/@ts-torch/core/native/build
-          key: ${{ runner.os }}-native-build-${{ github.sha }}
+          key: ${{ runner.os }}-${{ runner.arch }}-native-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
           restore-keys: |
-            ${{ runner.os }}-native-build-
+            ${{ runner.os }}-${{ runner.arch }}-native-
 
       - name: Setup LibTorch and build native library
         run: bun run setup
@@ -78,6 +81,10 @@ jobs:
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
+      - name: Run tests
+        run: bun run test
+        continue-on-error: true
 
       - name: Verify outputs
         run: |
