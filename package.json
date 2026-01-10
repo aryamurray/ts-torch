@@ -28,12 +28,13 @@
     "test:integration": "vitest run --testNamePattern=integration"
   },
   "devDependencies": {
+    "@types/node": "^25.0.5",
     "@vitest/coverage-v8": "^4.0.16",
-    "vite": "^6.0.0",
     "oxfmt": "^0.23.0",
     "oxlint": "^1.38.0",
     "turbo": "^2.7.3",
     "typescript": "5.9.2",
+    "vite": "^6.0.0",
     "vitest": "^4.0.16"
   },
   "engines": {
