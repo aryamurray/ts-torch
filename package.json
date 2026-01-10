@@ -1,6 +1,7 @@
 {
   "name": "ts-tools",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.16",
+    "vite": "^6.0.0",
     "oxfmt": "^0.23.0",
     "oxlint": "^1.38.0",
     "turbo": "^2.7.3",

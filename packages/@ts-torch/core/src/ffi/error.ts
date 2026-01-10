@@ -3,7 +3,11 @@
  * Manages error struct allocation and error checking
  */
 
-import { ptr, type Pointer } from 'bun:ffi'
+/**
+ * Pointer type for koffi
+ * koffi accepts ArrayBuffer/TypedArray directly as pointer arguments
+ */
+export type Pointer = ArrayBuffer | unknown
 
 /**
  * C error struct layout:
@@ -90,10 +94,10 @@ export class TorchError extends Error {
 }
 
 /**
- * Error buffer wrapper that holds both pointer and backing ArrayBuffer
+ * Error buffer wrapper that holds the backing ArrayBuffer
+ * With koffi, we pass the ArrayBuffer directly as pointer
  */
-interface ErrorBuffer {
-  ptr: Pointer
+export interface ErrorBuffer {
   buffer: ArrayBuffer
 }
 
@@ -101,7 +105,7 @@ interface ErrorBuffer {
  * Create a new error struct buffer
  * Allocates memory for error reporting from FFI calls
  *
- * @returns Error buffer with pointer and backing ArrayBuffer
+ * @returns Error buffer with backing ArrayBuffer
  */
 export function createError(): ErrorBuffer {
   // Allocate buffer for error struct
@@ -111,18 +115,15 @@ export function createError(): ErrorBuffer {
   // Initialize error code to 0 (OK)
   view.setInt32(0, 0, true) // little-endian
 
-  // Return both pointer and buffer
-  return {
-    ptr: ptr(buffer),
-    buffer,
-  }
+  // Return buffer (koffi accepts ArrayBuffer directly as pointer)
+  return { buffer }
 }
 
 /**
  * Check if an error occurred and throw if necessary
  * Reads the error struct and throws TorchError if code != 0
  *
- * @param errorBuffer - Error buffer containing pointer and backing ArrayBuffer
+ * @param errorBuffer - Error buffer containing backing ArrayBuffer
  * @throws TorchError if error code is not 0
  */
 export function checkError(errorBuffer: ErrorBuffer): void {
@@ -157,23 +158,18 @@ export function checkError(errorBuffer: ErrorBuffer): void {
  * Wrapper for FFI calls with automatic error handling
  * Simplifies error checking pattern
  *
- * @param fn - Function that takes error pointer and returns result
+ * @param fn - Function that takes error buffer and returns result
  * @returns Result from function
  * @throws TorchError if error occurred
  *
  * @example
- * const result = withError(err => lib.symbols.ts_tensor_zeros(shape, ndim, dtype, false, err));
+ * const result = withError(err => lib.ts_tensor_zeros(shape, ndim, dtype, false, err));
  */
-export function withError<T>(fn: (errorPtr: Pointer) => T): T {
+export function withError<T>(fn: (errorBuffer: ArrayBuffer) => T): T {
   const errorBuffer = createError()
-  try {
-    const result = fn(errorBuffer.ptr)
-    checkError(errorBuffer)
-    return result
-  } finally {
-    // Error buffer is automatically freed when it goes out of scope
-    // Bun's GC will handle cleanup
-  }
+  const result = fn(errorBuffer.buffer)
+  checkError(errorBuffer)
+  return result
 }
 
 /**
@@ -182,7 +178,7 @@ export function withError<T>(fn: (errorPtr: Pointer) => T): T {
  * @throws TorchError if pointer is null
  */
 export function checkNull(ptr: Pointer | null, message = 'Unexpected null pointer'): void {
-  if (ptr === null || ptr === 0) {
+  if (ptr === null || ptr === 0 || ptr === undefined) {
     throw new TorchError(ErrorCode.NULL_POINTER, message)
   }
 }

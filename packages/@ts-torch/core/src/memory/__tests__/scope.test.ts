@@ -14,7 +14,7 @@ import {
   escapeTensor,
   type ScopedTensor,
 } from '../scope'
-import type { Pointer } from 'bun:ffi'
+import type { Pointer } from '../../ffi/error.js'
 
 // Mock tensor for testing
 class MockTensor implements ScopedTensor {

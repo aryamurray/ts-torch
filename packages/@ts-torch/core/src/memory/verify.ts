@@ -3,7 +3,7 @@
  * This file ensures all types compile correctly without needing the native library
  */
 
-import type { Pointer } from 'bun:ffi'
+import type { Pointer } from '../ffi/error.js'
 import type { Shape } from '../types/shape.js'
 import type { DTypeName } from '../types/dtype.js'
 

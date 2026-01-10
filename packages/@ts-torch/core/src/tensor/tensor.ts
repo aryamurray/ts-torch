@@ -5,14 +5,12 @@
  * compile-time shape checking.
  */
 
-import type { Pointer } from 'bun:ffi'
-import { ptr } from 'bun:ffi'
 import type { Shape } from '../types/shape.js'
 import type { DType } from '../types/dtype.js'
 import type { Device } from '../types/index.js'
 import type { MatMulShape, TransposeShape } from '../types/tensor.js'
 import { getLib } from '../ffi/loader.js'
-import { withError, checkNull, TorchError, ErrorCode } from '../ffi/error.js'
+import { withError, checkNull, TorchError, ErrorCode, type Pointer } from '../ffi/error.js'
 import { BytesPerElement } from '../types/dtype.js'
 import { escapeTensor as scopeEscapeTensor, inScope } from '../memory/scope.js'
 
@@ -144,7 +142,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const result = withError((err) => lib.symbols.ts_tensor_requires_grad(this._handle, err))
+    const result = withError((err) => lib.ts_tensor_requires_grad(this._handle, err))
     return result !== 0 // Convert i32 to boolean
   }
 
@@ -155,7 +153,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.symbols.ts_tensor_set_requires_grad(this._handle, value, err))
+    withError((err) => lib.ts_tensor_set_requires_grad(this._handle, value, err))
 
     // Clear gradient cache
     this._gradCache = undefined
@@ -233,7 +231,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     }
 
     const lib = getLib()
-    lib.symbols.ts_tensor_delete(this._handle)
+    lib.ts_tensor_delete(this._handle)
     this._freed = true
   }
 
@@ -252,7 +250,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_clone(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_clone(this._handle, err))
 
     checkNull(handle, 'Failed to clone tensor')
 
@@ -274,7 +272,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_detach(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_detach(this._handle, err))
 
     checkNull(handle, 'Failed to detach tensor')
 
@@ -329,10 +327,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
         throw new Error(`Unsupported dtype: ${this.dtype.name}`)
     }
 
-    // Copy data from native memory
-    const bufferPtr = ptr(buffer)
-
-    withError((err) => lib.symbols.ts_tensor_copy_to_buffer(this._handle, bufferPtr, BigInt(byteSize), err))
+    // Copy data from native memory (koffi accepts ArrayBuffer directly)
+    withError((err) => lib.ts_tensor_copy_to_buffer(this._handle, buffer, BigInt(byteSize), err))
 
     return result
   }
@@ -378,7 +374,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     other._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_add(this._handle, other._handle, err))
+    const handle = withError((err) => lib.ts_tensor_add(this._handle, other._handle, err))
 
     checkNull(handle, 'Failed to add tensors')
 
@@ -403,7 +399,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     other._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_sub(this._handle, other._handle, err))
+    const handle = withError((err) => lib.ts_tensor_sub(this._handle, other._handle, err))
 
     checkNull(handle, 'Failed to subtract tensors')
 
@@ -428,7 +424,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     other._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_mul(this._handle, other._handle, err))
+    const handle = withError((err) => lib.ts_tensor_mul(this._handle, other._handle, err))
 
     checkNull(handle, 'Failed to multiply tensors')
 
@@ -453,7 +449,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     other._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_div(this._handle, other._handle, err))
+    const handle = withError((err) => lib.ts_tensor_div(this._handle, other._handle, err))
 
     checkNull(handle, 'Failed to divide tensors')
 
@@ -481,7 +477,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     other._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_matmul(this._handle, other._handle, err))
+    const handle = withError((err) => lib.ts_tensor_matmul(this._handle, other._handle, err))
 
     checkNull(handle, 'Failed to perform matrix multiplication')
 
@@ -551,7 +547,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_transpose(this._handle, dim0, dim1, err))
+    const handle = withError((err) => lib.ts_tensor_transpose(this._handle, dim0, dim1, err))
 
     checkNull(handle, 'Failed to transpose tensor')
 
@@ -583,11 +579,10 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    // Convert shape to BigInt64Array for FFI
+    // Convert shape to BigInt64Array for FFI (koffi accepts ArrayBuffer directly)
     const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
-    const shapePtr = ptr(shapeArray)
 
-    const handle = withError((err) => lib.symbols.ts_tensor_reshape(this._handle, shapePtr, shape.length, err))
+    const handle = withError((err) => lib.ts_tensor_reshape(this._handle, shapeArray.buffer, shape.length, err))
 
     checkNull(handle, 'Failed to reshape tensor')
 
@@ -611,7 +606,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_sum(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_sum(this._handle, err))
 
     checkNull(handle, 'Failed to compute sum')
 
@@ -633,7 +628,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_mean(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_mean(this._handle, err))
 
     checkNull(handle, 'Failed to compute mean')
 
@@ -657,7 +652,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_relu(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_relu(this._handle, err))
 
     checkNull(handle, 'Failed to apply ReLU')
 
@@ -679,7 +674,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_sigmoid(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_sigmoid(this._handle, err))
 
     checkNull(handle, 'Failed to apply sigmoid')
 
@@ -702,7 +697,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_softmax(this._handle, dim, err))
+    const handle = withError((err) => lib.ts_tensor_softmax(this._handle, dim, err))
 
     checkNull(handle, 'Failed to apply softmax')
 
@@ -725,7 +720,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_log_softmax(this._handle, dim, err))
+    const handle = withError((err) => lib.ts_tensor_log_softmax(this._handle, dim, err))
 
     checkNull(handle, 'Failed to apply log_softmax')
 
@@ -747,7 +742,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_log(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_log(this._handle, err))
 
     checkNull(handle, 'Failed to apply log')
 
@@ -769,7 +764,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_exp(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_exp(this._handle, err))
 
     checkNull(handle, 'Failed to apply exp')
 
@@ -791,7 +786,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_neg(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_neg(this._handle, err))
 
     checkNull(handle, 'Failed to apply neg')
 
@@ -816,7 +811,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_add_scalar(this._handle, scalar, err))
+    const handle = withError((err) => lib.ts_tensor_add_scalar(this._handle, scalar, err))
 
     checkNull(handle, 'Failed to add scalar')
 
@@ -839,7 +834,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_sub_scalar(this._handle, scalar, err))
+    const handle = withError((err) => lib.ts_tensor_sub_scalar(this._handle, scalar, err))
 
     checkNull(handle, 'Failed to subtract scalar')
 
@@ -862,7 +857,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_mul_scalar(this._handle, scalar, err))
+    const handle = withError((err) => lib.ts_tensor_mul_scalar(this._handle, scalar, err))
 
     checkNull(handle, 'Failed to multiply by scalar')
 
@@ -885,7 +880,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_div_scalar(this._handle, scalar, err))
+    const handle = withError((err) => lib.ts_tensor_div_scalar(this._handle, scalar, err))
 
     checkNull(handle, 'Failed to divide by scalar')
 
@@ -913,7 +908,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.symbols.ts_tensor_backward(this._handle, err))
+    withError((err) => lib.ts_tensor_backward(this._handle, err))
   }
 
   /**
@@ -934,7 +929,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.symbols.ts_tensor_zero_grad(this._handle, err))
+    withError((err) => lib.ts_tensor_zero_grad(this._handle, err))
   }
 
   /**
@@ -960,7 +955,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_grad(this._handle, err))
+    const handle = withError((err) => lib.ts_tensor_grad(this._handle, err))
 
     // Null handle means no gradient
     if (handle === null || handle === 0) {
@@ -1009,7 +1004,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
         throw new Error(`Unknown device: ${device}`)
     }
 
-    const handle = withError((err) => lib.symbols.ts_tensor_to_device(this._handle, deviceType, deviceId, err))
+    const handle = withError((err) => lib.ts_tensor_to_device(this._handle, deviceType, deviceId, err))
 
     checkNull(handle, 'Failed to move tensor to device')
 
@@ -1048,7 +1043,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.symbols.ts_tensor_to_device(this._handle, 1, deviceIndex, err))
+    const handle = withError((err) => lib.ts_tensor_to_device(this._handle, 1, deviceIndex, err))
 
     checkNull(handle, 'Failed to move tensor to CUDA')
 

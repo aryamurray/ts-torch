@@ -9,23 +9,21 @@
  * import { getLib, createError, checkError, TensorHandle } from '@ts-torch/core/ffi';
  *
  * const lib = getLib();
- * const err = createError();
  * const shape = new BigInt64Array([2, 3]);
  *
- * const handle = lib.symbols.ts_tensor_zeros(
- *   ptr(shape),
+ * const handle = withError(err => lib.ts_tensor_zeros(
+ *   shape.buffer,
  *   2, // ndim
  *   0, // dtype (f32)
- *   false, // requires_grad
+ *   0, // device
+ *   0, // device_index
  *   err
- * );
- *
- * checkError(err);
+ * ));
  * ```
  */
 
 // Re-export library loader
-export { getLib, closeLib, getLibraryPath, getPlatformPackage } from './loader.js'
+export { getLib, closeLib, getLibraryPath, getPlatformPackage, type KoffiLibrary } from './loader.js'
 
 // Re-export error handling
 export {
@@ -38,10 +36,12 @@ export {
   validateShape,
   validateDtype,
   ERROR_STRUCT_SIZE,
+  type Pointer,
+  type ErrorBuffer,
 } from './error.js'
 
 // Re-export FFI symbols and types
 export { FFI_SYMBOLS, type TensorHandle, type FFISymbols } from './symbols.js'
 
-// Re-export useful Bun FFI utilities
-export { ptr, type Pointer, type Library } from 'bun:ffi'
+// Re-export koffi for direct access if needed
+export { default as koffi } from 'koffi'

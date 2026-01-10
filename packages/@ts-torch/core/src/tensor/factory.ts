@@ -5,7 +5,6 @@
  * All functions integrate with the memory scope system for automatic cleanup.
  */
 
-import { ptr } from 'bun:ffi'
 import { Tensor } from './tensor.js'
 import type { Shape } from '../types/shape.js'
 import type { DType } from '../types/dtype.js'
@@ -36,12 +35,11 @@ export function zeros<S extends Shape, D extends DType<string> = DType<'float32'
 ): Tensor<S, D> {
   const lib = getLib()
 
-  // Convert shape to BigInt64Array for FFI
+  // Convert shape to BigInt64Array for FFI (koffi accepts ArrayBuffer directly)
   const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
-  const shapePtr = ptr(shapeArray)
 
   // Device: CPU (0), device_index: 0
-  const handle = withError((err) => lib.symbols.ts_tensor_zeros(shapePtr, shape.length, dtype.value, 0, 0, err))
+  const handle = withError((err) => lib.ts_tensor_zeros(shapeArray.buffer, shape.length, dtype.value, 0, 0, err))
 
   checkNull(handle, 'Failed to create zeros tensor')
 
@@ -79,10 +77,9 @@ export function ones<S extends Shape, D extends DType<string> = DType<'float32'>
   const lib = getLib()
 
   const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
-  const shapePtr = ptr(shapeArray)
 
   // Device: CPU (0), device_index: 0
-  const handle = withError((err) => lib.symbols.ts_tensor_ones(shapePtr, shape.length, dtype.value, 0, 0, err))
+  const handle = withError((err) => lib.ts_tensor_ones(shapeArray.buffer, shape.length, dtype.value, 0, 0, err))
 
   checkNull(handle, 'Failed to create ones tensor')
 
@@ -122,10 +119,9 @@ export function empty<S extends Shape, D extends DType<string> = DType<'float32'
   const lib = getLib()
 
   const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
-  const shapePtr = ptr(shapeArray)
 
   // Device: CPU (0), device_index: 0
-  const handle = withError((err) => lib.symbols.ts_tensor_empty(shapePtr, shape.length, dtype.value, 0, 0, err))
+  const handle = withError((err) => lib.ts_tensor_empty(shapeArray.buffer, shape.length, dtype.value, 0, 0, err))
 
   checkNull(handle, 'Failed to create empty tensor')
 
@@ -162,10 +158,9 @@ export function randn<S extends Shape, D extends DType<string> = DType<'float32'
   const lib = getLib()
 
   const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
-  const shapePtr = ptr(shapeArray)
 
   // Device: CPU (0), device_index: 0
-  const handle = withError((err) => lib.symbols.ts_tensor_randn(shapePtr, shape.length, dtype.value, 0, 0, err))
+  const handle = withError((err) => lib.ts_tensor_randn(shapeArray.buffer, shape.length, dtype.value, 0, 0, err))
 
   checkNull(handle, 'Failed to create randn tensor')
 
@@ -236,13 +231,11 @@ export function fromArray<S extends Shape, D extends DType<string> = DType<'floa
     typedData = data as Float32Array | Float64Array | Int32Array | BigInt64Array
   }
 
-  const dataPtr = ptr(typedData.buffer)
   const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
-  const shapePtr = ptr(shapeArray)
 
-  // Device: CPU (0), device_index: 0
+  // Device: CPU (0), device_index: 0 (koffi accepts ArrayBuffer directly)
   const handle = withError((err) =>
-    lib.symbols.ts_tensor_from_buffer(dataPtr, shapePtr, shape.length, dtype.value, 0, 0, err),
+    lib.ts_tensor_from_buffer(typedData.buffer, shapeArray.buffer, shape.length, dtype.value, 0, 0, err),
   )
 
   checkNull(handle, 'Failed to create tensor from array')

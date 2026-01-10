@@ -21,7 +21,7 @@
  */
 
 import { getLib } from '../ffi/loader.js'
-import type { Pointer } from 'bun:ffi'
+import type { Pointer } from '../ffi/error.js'
 
 /**
  * Tensor interface for scope management
@@ -72,7 +72,7 @@ export function run<T>(fn: () => T): T {
   const lib = getLib()
 
   // Begin native scope - returns scope handle
-  const nativeHandle = lib.symbols.ts_scope_begin()
+  const nativeHandle = lib.ts_scope_begin()
 
   // Create JS scope context
   const newScope: ScopeContext = {
@@ -98,7 +98,7 @@ export function run<T>(fn: () => T): T {
     }
 
     // End native scope - pass the scope handle
-    lib.symbols.ts_scope_end(newScope.nativeHandle)
+    lib.ts_scope_end(newScope.nativeHandle)
 
     // Restore previous scope
     currentScope = previousScope
@@ -127,7 +127,7 @@ export async function runAsync<T>(fn: () => Promise<T>): Promise<T> {
   const lib = getLib()
 
   // Begin native scope - returns scope handle
-  const nativeHandle = lib.symbols.ts_scope_begin()
+  const nativeHandle = lib.ts_scope_begin()
 
   const newScope: ScopeContext = {
     id: Date.now(), // Use timestamp as unique scope ID
@@ -151,7 +151,7 @@ export async function runAsync<T>(fn: () => Promise<T>): Promise<T> {
     }
 
     // End native scope - pass the scope handle
-    lib.symbols.ts_scope_end(newScope.nativeHandle)
+    lib.ts_scope_end(newScope.nativeHandle)
 
     currentScope = previousScope
   }
@@ -171,7 +171,7 @@ export function registerTensor(tensor: ScopedTensor): void {
 
     // Register with native scope - pass scope handle and tensor handle
     const lib = getLib()
-    lib.symbols.ts_scope_register_tensor(currentScope.nativeHandle, tensor.handle)
+    lib.ts_scope_register_tensor(currentScope.nativeHandle, tensor.handle)
   }
 }
 
@@ -206,7 +206,7 @@ export function escapeTensor<T extends ScopedTensor>(tensor: T): T {
 
   // Remove from native scope tracking - pass scope handle and tensor handle
   const lib = getLib()
-  lib.symbols.ts_scope_escape_tensor(currentScope.nativeHandle, tensor.handle)
+  lib.ts_scope_escape_tensor(currentScope.nativeHandle, tensor.handle)
 
   return tensor
 }

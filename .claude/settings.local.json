@@ -6,7 +6,15 @@
       "Bash(bun run lint:*)",
       "Bash(bun run check-types:*)",
       "Bash(bun run build)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(bun run test)",
+      "Bash(bun pm:*)",
+      "Bash(findstr:*)",
+      "WebSearch",
+      "WebFetch(domain:koffi.dev)",
+      "Bash(bun install)",
+      "Bash(bunx tsc:*)",
+      "Bash(bunx vitest run:*)"
     ],
     "deny": [],
     "ask": []

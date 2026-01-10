@@ -3,15 +3,27 @@
  * Handles platform detection, library resolution, and FFI initialization
  */
 
-import { dlopen, type Library, suffix } from 'bun:ffi'
+import koffi from 'koffi'
 import { existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { FFI_SYMBOLS, type FFISymbols } from './symbols.js'
 
 /**
+ * Type for a koffi function
+ */
+type KoffiFunction = (...args: unknown[]) => unknown
+
+/**
+ * Library interface with all FFI functions bound
+ */
+export type KoffiLibrary = {
+  [K in keyof FFISymbols]: KoffiFunction
+}
+
+/**
  * Cached library instance
  */
-let libInstance: Library<FFISymbols> | null = null
+let libInstance: KoffiLibrary | null = null
 
 /**
  * Platform-specific library information
@@ -19,6 +31,21 @@ let libInstance: Library<FFISymbols> | null = null
 interface PlatformInfo {
   packageName: string
   libraryName: string
+}
+
+/**
+ * Get platform-specific library suffix
+ * Replaces bun:ffi's suffix constant
+ */
+function getLibrarySuffix(): string {
+  switch (process.platform) {
+    case 'win32':
+      return 'dll'
+    case 'darwin':
+      return 'dylib'
+    default:
+      return 'so'
+  }
 }
 
 /**
@@ -104,6 +131,7 @@ export function getLibraryPath(): string {
   }
 
   const { packageName, libraryName } = getPlatformPackage()
+  const suffix = getLibrarySuffix()
   const libFileName = `${libraryName}.${suffix}`
 
   // 2. Try to resolve from installed platform package
@@ -221,7 +249,7 @@ function setupDllSearchPath(): void {
  * @returns Library instance with typed FFI symbols
  * @throws Error if library cannot be loaded
  */
-export function getLib(): Library<FFISymbols> {
+export function getLib(): KoffiLibrary {
   if (libInstance !== null) {
     return libInstance
   }
@@ -232,7 +260,17 @@ export function getLib(): Library<FFISymbols> {
   const libraryPath = getLibraryPath()
 
   try {
-    libInstance = dlopen(libraryPath, FFI_SYMBOLS)
+    // Load the native library with koffi
+    const lib = koffi.load(libraryPath)
+
+    // Bind all functions from FFI_SYMBOLS
+    const symbols: Record<string, KoffiFunction> = {}
+
+    for (const [name, def] of Object.entries(FFI_SYMBOLS)) {
+      symbols[name] = lib.func(name, def.returns, def.args as unknown as string[])
+    }
+
+    libInstance = symbols as KoffiLibrary
     return libInstance
   } catch (err) {
     const libtorchPath = findLibtorchPath()
@@ -252,13 +290,10 @@ export function getLib(): Library<FFISymbols> {
 
 /**
  * Close the library and release resources
- * Should be called on process exit or when library is no longer needed
+ * Note: koffi handles cleanup automatically, but we clear the cache
  */
 export function closeLib(): void {
-  if (libInstance !== null) {
-    libInstance.close()
-    libInstance = null
-  }
+  libInstance = null
 }
 
 /**

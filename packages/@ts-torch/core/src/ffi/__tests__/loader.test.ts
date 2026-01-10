@@ -81,10 +81,10 @@ describe('FFI Loader', () => {
         const lib = getLib()
 
         // Check a few key symbols
-        expect(lib.symbols.ts_tensor_zeros).toBeDefined()
-        expect(lib.symbols.ts_tensor_add).toBeDefined()
-        expect(lib.symbols.ts_tensor_delete).toBeDefined()
-        expect(lib.symbols.ts_version).toBeDefined()
+        expect(lib.ts_tensor_zeros).toBeDefined()
+        expect(lib.ts_tensor_add).toBeDefined()
+        expect(lib.ts_tensor_delete).toBeDefined()
+        expect(lib.ts_version).toBeDefined()
       } catch (err) {
         // Expected if library not built yet
         expect(err).toBeInstanceOf(Error)

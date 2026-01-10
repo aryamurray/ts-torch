@@ -317,7 +317,7 @@ export const torch = {
     isAvailable(): boolean {
       try {
         const lib = getLib()
-        return lib.symbols.ts_cuda_is_available() !== 0 // Convert i32 to boolean
+        return (lib.ts_cuda_is_available() as number) !== 0 // Convert i32 to boolean
       } catch {
         return false
       }
@@ -337,7 +337,7 @@ export const torch = {
     deviceCount(): number {
       try {
         const lib = getLib()
-        return lib.symbols.ts_cuda_device_count()
+        return lib.ts_cuda_device_count() as number
       } catch {
         return 0
       }
@@ -424,7 +424,7 @@ export const torch = {
       const lib = getLib()
 
       const handle = withError((err: any) =>
-        lib.symbols.ts_tensor_nll_loss((logProbs as any)._handle, (targets as any)._handle, err),
+        lib.ts_tensor_nll_loss((logProbs as any)._handle, (targets as any)._handle, err),
       )
 
       checkNull(handle, 'Failed to compute NLL loss')
@@ -456,7 +456,7 @@ export const torch = {
       const lib = getLib()
 
       const handle = withError((err: any) =>
-        lib.symbols.ts_tensor_cross_entropy_loss((logits as any)._handle, (targets as any)._handle, err),
+        lib.ts_tensor_cross_entropy_loss((logits as any)._handle, (targets as any)._handle, err),
       )
 
       checkNull(handle, 'Failed to compute cross entropy loss')
@@ -487,7 +487,7 @@ export const torch = {
       const lib = getLib()
 
       const handle = withError((err: any) =>
-        lib.symbols.ts_tensor_mse_loss((input as any)._handle, (target as any)._handle, err),
+        lib.ts_tensor_mse_loss((input as any)._handle, (target as any)._handle, err),
       )
 
       checkNull(handle, 'Failed to compute MSE loss')

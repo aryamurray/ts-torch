@@ -14,7 +14,6 @@ import {
   validateDtype,
   ERROR_STRUCT_SIZE,
 } from '../error.js'
-import { ptr } from 'bun:ffi'
 
 describe('FFI Error Handling', () => {
   describe('ERROR_STRUCT_SIZE', () => {
@@ -66,6 +65,7 @@ describe('FFI Error Handling', () => {
       const err = createError()
       expect(err).toBeTruthy()
       expect(typeof err).toBe('object')
+      expect(err.buffer).toBeInstanceOf(ArrayBuffer)
     })
 
     it('should initialize with code 0 (OK)', () => {
@@ -80,8 +80,7 @@ describe('FFI Error Handling', () => {
       const view = new DataView(buffer)
       view.setInt32(0, ErrorCode.OK, true)
 
-      const errorPtr = ptr(buffer)
-      expect(() => checkError(errorPtr)).not.toThrow()
+      expect(() => checkError({ buffer })).not.toThrow()
     })
 
     it('should throw TorchError for non-zero code', () => {
@@ -98,12 +97,10 @@ describe('FFI Error Handling', () => {
       const uint8View = new Uint8Array(buffer, 4, 256)
       uint8View.set(messageBytes)
 
-      const errorPtr = ptr(buffer)
-
-      expect(() => checkError(errorPtr)).toThrow(TorchError)
+      expect(() => checkError({ buffer })).toThrow(TorchError)
 
       try {
-        checkError(errorPtr)
+        checkError({ buffer })
       } catch (err) {
         expect(err).toBeInstanceOf(TorchError)
         expect((err as TorchError).code).toBe(ErrorCode.NULL_POINTER)
@@ -116,12 +113,10 @@ describe('FFI Error Handling', () => {
       const view = new DataView(buffer)
       view.setInt32(0, ErrorCode.UNKNOWN, true)
 
-      const errorPtr = ptr(buffer)
-
-      expect(() => checkError(errorPtr)).toThrow(TorchError)
+      expect(() => checkError({ buffer })).toThrow(TorchError)
 
       try {
-        checkError(errorPtr)
+        checkError({ buffer })
       } catch (err) {
         expect((err as TorchError).code).toBe(ErrorCode.UNKNOWN)
         expect((err as TorchError).nativeMessage).toBe('')
@@ -143,9 +138,8 @@ describe('FFI Error Handling', () => {
     it('should throw if error is set', () => {
       expect(() => {
         withError((err) => {
-          // Simulate error
-          const buffer = err as unknown as ArrayBuffer
-          const view = new DataView(buffer)
+          // Simulate error by writing to the buffer
+          const view = new DataView(err)
           view.setInt32(0, ErrorCode.OUT_OF_MEMORY, true)
 
           return null
@@ -164,14 +158,11 @@ describe('FFI Error Handling', () => {
     it('should throw for null pointer', () => {
       expect(() => checkNull(null as any)).toThrow(TorchError)
       expect(() => checkNull(0 as any)).toThrow(TorchError)
-      expect(() => checkNull(0n as any)).toThrow(TorchError)
     })
 
     it('should not throw for valid pointer', () => {
       const buffer = new ArrayBuffer(8)
-      const validPtr = ptr(buffer)
-
-      expect(() => checkNull(validPtr)).not.toThrow()
+      expect(() => checkNull(buffer)).not.toThrow()
     })
 
     it('should use custom message', () => {
