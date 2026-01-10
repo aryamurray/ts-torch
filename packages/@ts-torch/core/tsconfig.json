@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "ESNext",
     "lib": ["ES2022"],
-    "types": ["bun"],
+    "types": ["node"],
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowImportingTsExtensions": false,

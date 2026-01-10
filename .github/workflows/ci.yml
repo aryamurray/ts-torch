@@ -43,22 +43,21 @@ jobs:
           TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
       - name: Cache LibTorch
+        id: cache-libtorch
         uses: actions/cache@v4
         with:
           path: libtorch
-          key: ${{ runner.os }}-${{ runner.arch }}-libtorch-2.5.1-cpu
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-libtorch-
+          key: libtorch-${{ runner.os }}-${{ runner.arch }}-2.5.1-cpu
 
       - name: Cache native build
+        id: cache-native
         uses: actions/cache@v4
         with:
           path: packages/@ts-torch/core/native/build
-          key: ${{ runner.os }}-${{ runner.arch }}-native-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-native-
+          key: native-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
 
       - name: Setup LibTorch and build native library
+        if: steps.cache-libtorch.outputs.cache-hit != 'true' || steps.cache-native.outputs.cache-hit != 'true'
         run: bun run setup
 
       - name: Cache Turbo build artifacts

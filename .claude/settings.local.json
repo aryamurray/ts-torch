@@ -14,7 +14,8 @@
       "WebFetch(domain:koffi.dev)",
       "Bash(bun install)",
       "Bash(bunx tsc:*)",
-      "Bash(bunx vitest run:*)"
+      "Bash(bunx vitest run:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

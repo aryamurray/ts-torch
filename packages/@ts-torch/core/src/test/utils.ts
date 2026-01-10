@@ -50,13 +50,28 @@ export function setupTensorMatchers(): void {
 
     /**
      * Check if tensor values are close to expected values (within tolerance)
+     * Also handles plain numbers by falling back to built-in behavior
      */
     toBeCloseTo(
-      received: Tensor<Shape, DType<string>>,
+      received: Tensor<Shape, DType<string>> | number,
       expected: number | number[],
       tolerance = 1e-5,
     ) {
       const { isNot } = this;
+
+      // If received is a plain number, use simple comparison
+      if (typeof received === 'number') {
+        const expectedNum = Array.isArray(expected) ? expected[0]! : expected;
+        const pass = Math.abs(received - expectedNum) <= tolerance;
+        return {
+          pass,
+          message: () =>
+            isNot
+              ? `Expected ${received} not to be close to ${expectedNum} (tolerance: ${tolerance})`
+              : `Expected ${received} to be close to ${expectedNum} (tolerance: ${tolerance})`,
+        };
+      }
+
       const data = received.toArray();
       const expectedArray = Array.isArray(expected) ? expected : [expected];
 
