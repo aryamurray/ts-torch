@@ -234,6 +234,70 @@ export class MockTensor {
     return sumTensor.mulScalar(1 / count);
   }
 
+  addScalar(scalar: number): MockTensor {
+    this._checkNotFreed();
+
+    const result = new Float32Array(this._data.length);
+    for (let i = 0; i < this._data.length; i++) {
+      result[i] = getAt(this._data, i) + scalar;
+    }
+
+    return new MockTensor(result, [...this.shape], this._requiresGrad);
+  }
+
+  transpose(dim0: number, dim1: number): MockTensor {
+    this._checkNotFreed();
+
+    if (this.shape.length !== 2) {
+      throw new Error('transpose only implemented for 2D tensors in mock');
+    }
+
+    const rows = getAt(this.shape, 0);
+    const cols = getAt(this.shape, 1);
+    const result = new Float32Array(this._data.length);
+
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        result[j * rows + i] = getAt(this._data, i * cols + j);
+      }
+    }
+
+    return new MockTensor(result, [cols, rows], this._requiresGrad);
+  }
+
+  matmul(other: MockTensor): MockTensor {
+    this._checkNotFreed();
+
+    if (this.shape.length !== 2 || other.shape.length !== 2) {
+      throw new Error('matmul only implemented for 2D tensors in mock');
+    }
+
+    const m = getAt(this.shape, 0);
+    const k1 = getAt(this.shape, 1);
+    const k2 = getAt(other.shape, 0);
+    const n = getAt(other.shape, 1);
+
+    if (k1 !== k2) {
+      throw new Error(`Matrix dimensions don't match for matmul: [${m}, ${k1}] x [${k2}, ${n}]`);
+    }
+
+    const result = new Float32Array(m * n);
+
+    for (let i = 0; i < m; i++) {
+      for (let j = 0; j < n; j++) {
+        let sum = 0;
+        for (let k = 0; k < k1; k++) {
+          const aIdx = i * k1 + k;
+          const bIdx = k * n + j;
+          sum += getAt(this._data, aIdx) * getAt(other._data, bIdx);
+        }
+        result[i * n + j] = sum;
+      }
+    }
+
+    return new MockTensor(result, [m, n], this._requiresGrad || other._requiresGrad);
+  }
+
   backward(): void {
     this._checkNotFreed();
 

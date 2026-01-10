@@ -5,6 +5,7 @@
 import { describe, test, expect } from 'vitest'
 import { Linear } from '../linear.js'
 import { mockTensorFactories } from '@ts-torch/test-utils'
+import { torch } from '@ts-torch/core'
 import type { Tensor } from '../../module.js'
 
 describe('Linear', () => {
@@ -106,51 +107,43 @@ describe('Linear', () => {
 
   describe('forward pass', () => {
     test('transforms input shape correctly', () => {
-      const linear = new Linear(784, 128)
+      torch.run(() => {
+        const linear = new Linear<784, 128>(784, 128)
+        const input = torch.randn([32, 784] as const)
+        const output = linear.forward(input)
 
-      // Create mock input [Batch=32, InFeatures=784]
-      const input = mockTensorFactories.randn([32, 784]) as unknown as Tensor<
-        readonly [number, 784]
-      >
-
-      const output = linear.forward(input)
-
-      // Output should be [Batch=32, OutFeatures=128]
-      expect(output.shape).toEqual([32, 128])
+        expect(output.shape).toEqual([32, 128])
+      })
     })
 
     test('handles single sample input', () => {
-      const linear = new Linear(10, 5)
+      torch.run(() => {
+        const linear = new Linear<10, 5>(10, 5)
+        const input = torch.randn([1, 10] as const)
+        const output = linear.forward(input)
 
-      // Create mock input [Batch=1, InFeatures=10]
-      const input = mockTensorFactories.randn([1, 10]) as unknown as Tensor<readonly [number, 10]>
-
-      const output = linear.forward(input)
-
-      expect(output.shape).toEqual([1, 5])
+        expect(output.shape).toEqual([1, 5])
+      })
     })
 
     test('handles large batch input', () => {
-      const linear = new Linear(128, 64)
+      torch.run(() => {
+        const linear = new Linear<128, 64>(128, 64)
+        const input = torch.randn([256, 128] as const)
+        const output = linear.forward(input)
 
-      // Create mock input [Batch=256, InFeatures=128]
-      const input = mockTensorFactories.randn([256, 128]) as unknown as Tensor<
-        readonly [number, 128]
-      >
-
-      const output = linear.forward(input)
-
-      expect(output.shape).toEqual([256, 64])
+        expect(output.shape).toEqual([256, 64])
+      })
     })
 
     test('works without bias', () => {
-      const linear = new Linear(10, 5, { bias: false })
+      torch.run(() => {
+        const linear = new Linear<10, 5>(10, 5, { bias: false })
+        const input = torch.randn([4, 10] as const)
+        const output = linear.forward(input)
 
-      const input = mockTensorFactories.randn([4, 10]) as unknown as Tensor<readonly [number, 10]>
-
-      const output = linear.forward(input)
-
-      expect(output.shape).toEqual([4, 5])
+        expect(output.shape).toEqual([4, 5])
+      })
     })
   })
 
@@ -200,49 +193,51 @@ describe('Linear', () => {
 
   describe('composition', () => {
     test('can be piped with other modules', () => {
-      const layer1 = new Linear(784, 128)
-      const layer2 = new Linear(128, 64)
+      torch.run(() => {
+        const layer1 = new Linear<784, 128>(784, 128)
+        const layer2 = new Linear<128, 64>(128, 64)
 
-      const piped = layer1.pipe(layer2)
+        const piped = layer1.pipe(layer2)
 
-      expect(piped).toBeDefined()
+        expect(piped).toBeDefined()
 
-      // Test forward pass
-      const input = mockTensorFactories.randn([32, 784]) as unknown as Tensor<
-        readonly [number, 784]
-      >
-      const output = piped.forward(input)
+        // Test forward pass
+        const input = torch.randn([32, 784] as const)
+        const output = piped.forward(input)
 
-      expect(output.shape).toEqual([32, 64])
+        expect(output.shape).toEqual([32, 64])
+      })
     })
 
     test('piped modules share training mode', () => {
-      const layer1 = new Linear(784, 128)
-      const layer2 = new Linear(128, 64)
-      const piped = layer1.pipe(layer2)
+      torch.run(() => {
+        const layer1 = new Linear(784, 128)
+        const layer2 = new Linear(128, 64)
+        const piped = layer1.pipe(layer2)
 
-      expect(layer1.training).toBe(true)
-      expect(layer2.training).toBe(true)
+        expect(layer1.training).toBe(true)
+        expect(layer2.training).toBe(true)
 
-      piped.eval()
+        piped.eval()
 
-      expect(layer1.training).toBe(false)
-      expect(layer2.training).toBe(false)
+        expect(layer1.training).toBe(false)
+        expect(layer2.training).toBe(false)
+      })
     })
 
     test('can chain multiple layers', () => {
-      const layer1 = new Linear(784, 256)
-      const layer2 = new Linear(256, 128)
-      const layer3 = new Linear(128, 64)
+      torch.run(() => {
+        const layer1 = new Linear<784, 256>(784, 256)
+        const layer2 = new Linear<256, 128>(256, 128)
+        const layer3 = new Linear<128, 64>(128, 64)
 
-      const piped = layer1.pipe(layer2).pipe(layer3)
+        const piped = layer1.pipe(layer2).pipe(layer3)
 
-      const input = mockTensorFactories.randn([16, 784]) as unknown as Tensor<
-        readonly [number, 784]
-      >
-      const output = piped.forward(input)
+        const input = torch.randn([16, 784] as const)
+        const output = piped.forward(input)
 
-      expect(output.shape).toEqual([16, 64])
+        expect(output.shape).toEqual([16, 64])
+      })
     })
   })
 

@@ -15,7 +15,8 @@
       "Bash(bun install)",
       "Bash(bunx tsc:*)",
       "Bash(bunx vitest run:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(bun run test:*)"
     ],
     "deny": [],
     "ask": []

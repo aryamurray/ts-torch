@@ -332,18 +332,21 @@ describe('TensorPool', () => {
     })
 
     it('memory pressure management', () => {
+      // Create a pool with large max size for this test
+      const largePool = new TensorPool(1000)
+
       // Fill pool
       for (let i = 0; i < 1000; i++) {
-        pool.release(new MockPoolableTensor([10, 10], 'float32'))
+        largePool.release(new MockPoolableTensor([10, 10], 'float32'))
       }
 
-      const beforePrune = pool.stats().size
+      const beforePrune = largePool.stats().size
       expect(beforePrune).toBe(1000)
 
       // Simulate memory pressure
-      pool.prune(100)
+      largePool.prune(100)
 
-      const afterPrune = pool.stats().size
+      const afterPrune = largePool.stats().size
       expect(afterPrune).toBe(100)
     })
   })

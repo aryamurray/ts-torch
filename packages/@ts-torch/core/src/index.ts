@@ -44,6 +44,12 @@ export const bfloat16 = DTypeNamespace.bfloat16
 export { Tensor } from './tensor/tensor.js'
 
 // ===============================
+// Factory Functions (direct export for advanced use cases)
+// ===============================
+
+export { fromArray, zeros, ones, randn, empty } from './tensor/factory.js'
+
+// ===============================
 // Memory Management
 // ===============================
 
@@ -159,16 +165,21 @@ export const torch = {
    * @template D - DType type
    * @param shape - Tensor shape
    * @param dtype - Data type (default: float32)
+   * @param requiresGrad - Whether to track gradients (default: false)
    * @returns New tensor filled with zeros
    *
    * @example
    * ```ts
    * const t = torch.zeros([2, 3] as const);
-   * const t2 = torch.zeros([10, 20] as const, torch.float64);
+   * const t2 = torch.zeros([10, 20] as const, torch.float64, true);
    * ```
    */
-  zeros<S extends Shape, D extends DType<string> = typeof float32>(shape: S, dtype?: D): Tensor<S, D> {
-    return zerosFactory(shape, dtype)
+  zeros<S extends Shape, D extends DType<string> = typeof float32>(
+    shape: S,
+    dtype?: D,
+    requiresGrad?: boolean,
+  ): Tensor<S, D> {
+    return zerosFactory(shape, dtype, requiresGrad)
   },
 
   /**
@@ -178,15 +189,21 @@ export const torch = {
    * @template D - DType type
    * @param shape - Tensor shape
    * @param dtype - Data type (default: float32)
+   * @param requiresGrad - Whether to track gradients (default: false)
    * @returns New tensor filled with ones
    *
    * @example
    * ```ts
    * const t = torch.ones([2, 3] as const);
+   * const t2 = torch.ones([2, 3] as const, torch.float32, true);
    * ```
    */
-  ones<S extends Shape, D extends DType<string> = typeof float32>(shape: S, dtype?: D): Tensor<S, D> {
-    return onesFactory(shape, dtype)
+  ones<S extends Shape, D extends DType<string> = typeof float32>(
+    shape: S,
+    dtype?: D,
+    requiresGrad?: boolean,
+  ): Tensor<S, D> {
+    return onesFactory(shape, dtype, requiresGrad)
   },
 
   /**
@@ -196,15 +213,21 @@ export const torch = {
    * @template D - DType type
    * @param shape - Tensor shape
    * @param dtype - Data type (default: float32)
+   * @param requiresGrad - Whether to track gradients (default: false)
    * @returns New tensor with random values
    *
    * @example
    * ```ts
    * const t = torch.randn([100, 50] as const);
+   * const t2 = torch.randn([100, 50] as const, torch.float32, true);
    * ```
    */
-  randn<S extends Shape, D extends DType<string> = typeof float32>(shape: S, dtype?: D): Tensor<S, D> {
-    return randnFactory(shape, dtype)
+  randn<S extends Shape, D extends DType<string> = typeof float32>(
+    shape: S,
+    dtype?: D,
+    requiresGrad?: boolean,
+  ): Tensor<S, D> {
+    return randnFactory(shape, dtype, requiresGrad)
   },
 
   /**
@@ -214,6 +237,7 @@ export const torch = {
    * @template D - DType type
    * @param shape - Tensor shape
    * @param dtype - Data type (default: float32)
+   * @param requiresGrad - Whether to track gradients (default: false)
    * @returns New uninitialized tensor
    *
    * @example
@@ -221,8 +245,12 @@ export const torch = {
    * const t = torch.empty([1000, 1000] as const);
    * ```
    */
-  empty<S extends Shape, D extends DType<string> = typeof float32>(shape: S, dtype?: D): Tensor<S, D> {
-    return emptyFactory(shape, dtype)
+  empty<S extends Shape, D extends DType<string> = typeof float32>(
+    shape: S,
+    dtype?: D,
+    requiresGrad?: boolean,
+  ): Tensor<S, D> {
+    return emptyFactory(shape, dtype, requiresGrad)
   },
 
   /**
@@ -233,6 +261,7 @@ export const torch = {
    * @param data - Flat array of data
    * @param shape - Tensor shape
    * @param dtype - Data type (default: float32)
+   * @param requiresGrad - Whether to track gradients (default: false)
    * @returns New tensor with data
    *
    * @example
@@ -241,14 +270,16 @@ export const torch = {
    *   [1, 2, 3, 4, 5, 6],
    *   [2, 3] as const
    * );
+   * const t2 = torch.tensor([1, 2, 3], [3] as const, torch.float32, true);
    * ```
    */
   tensor<S extends Shape, D extends DType<string> = typeof float32>(
     data: number[] | Float32Array | Float64Array,
     shape: S,
     dtype?: D,
+    requiresGrad?: boolean,
   ): Tensor<S, D> {
-    return fromArrayFactory(data, shape, dtype)
+    return fromArrayFactory(data, shape, dtype, requiresGrad)
   },
 
   /**

@@ -83,11 +83,11 @@ export class Adam extends Optimizer {
         if (weightDecay !== 0) {
           if (
             'add' in grad &&
-            'mul' in param &&
+            'mulScalar' in param &&
             typeof grad.add === 'function' &&
-            typeof (param as { mul?: Function }).mul === 'function'
+            typeof (param as { mulScalar?: Function }).mulScalar === 'function'
           ) {
-            const weighted = (param.mul as any)(weightDecay) as Tensor
+            const weighted = (param.mulScalar as (s: number) => Tensor)(weightDecay)
             grad = grad.add(weighted) as Tensor
           }
         }
@@ -95,9 +95,9 @@ export class Adam extends Optimizer {
         // Initialize exponential moving averages if needed
         if (state.exp_avg === null) {
           // Create zero tensor with same shape as gradient
-          if ('mul' in grad && typeof grad.mul === 'function') {
-            state.exp_avg = (grad.mul as any)(0) as Tensor
-            state.exp_avg_sq = (grad.mul as any)(0) as Tensor
+          if ('mulScalar' in grad && typeof grad.mulScalar === 'function') {
+            state.exp_avg = (grad.mulScalar as (s: number) => Tensor)(0)
+            state.exp_avg_sq = (grad.mulScalar as (s: number) => Tensor)(0)
           } else {
             state.exp_avg = grad
             state.exp_avg_sq = grad
@@ -107,34 +107,38 @@ export class Adam extends Optimizer {
         // Update biased first moment estimate: m_t = beta1 * m_{t-1} + (1 - beta1) * grad
         if (
           state.exp_avg &&
-          'mul' in state.exp_avg &&
+          'mulScalar' in state.exp_avg &&
           'add' in state.exp_avg &&
-          'mul' in grad &&
-          typeof state.exp_avg.mul === 'function' &&
+          'mulScalar' in grad &&
+          typeof state.exp_avg.mulScalar === 'function' &&
           typeof state.exp_avg.add === 'function' &&
-          typeof grad.mul === 'function'
+          typeof grad.mulScalar === 'function'
         ) {
-          const m1 = (state.exp_avg.mul as any)(beta1) as Tensor
-          const m2 = (grad.mul as any)(1 - beta1) as Tensor
+          const m1 = (state.exp_avg.mulScalar as (s: number) => Tensor)(beta1)
+          const m2 = (grad.mulScalar as (s: number) => Tensor)(1 - beta1)
           state.exp_avg = m1.add(m2) as Tensor
         }
 
         // Update biased second raw moment estimate: v_t = beta2 * v_{t-1} + (1 - beta2) * grad^2
+        // Use grad.mul(grad) instead of grad.pow(2) since pow is not implemented
         if (
           state.exp_avg_sq &&
-          'mul' in state.exp_avg_sq &&
+          'mulScalar' in state.exp_avg_sq &&
           'add' in state.exp_avg_sq &&
+          'mulScalar' in grad &&
           'mul' in grad &&
-          'pow' in grad &&
-          typeof state.exp_avg_sq.mul === 'function' &&
+          typeof state.exp_avg_sq.mulScalar === 'function' &&
           typeof state.exp_avg_sq.add === 'function' &&
-          typeof grad.mul === 'function' &&
-          typeof grad.pow === 'function'
+          typeof grad.mulScalar === 'function' &&
+          typeof grad.mul === 'function'
         ) {
-          const v1 = (state.exp_avg_sq.mul as any)(beta2) as Tensor
-          const gradSq = (grad.pow as any)(2) as Tensor
+          const v1 = (state.exp_avg_sq.mulScalar as (s: number) => Tensor)(beta2)
+          // grad^2 = grad * grad
+          const gradSq = (grad.mul as (t: Tensor) => Tensor)(grad)
           const v2 =
-            'mul' in gradSq && typeof gradSq.mul === 'function' ? ((gradSq.mul as any)(1 - beta2) as Tensor) : gradSq
+            'mulScalar' in gradSq && typeof gradSq.mulScalar === 'function'
+              ? (gradSq.mulScalar as (s: number) => Tensor)(1 - beta2)
+              : gradSq
           state.exp_avg_sq = v1.add(v2) as Tensor
         }
 
@@ -168,20 +172,20 @@ export class Adam extends Optimizer {
           if (
             state.max_exp_avg_sq &&
             'sqrt' in state.max_exp_avg_sq &&
-            'div' in state.max_exp_avg_sq &&
-            'add' in state.max_exp_avg_sq &&
+            'divScalar' in state.max_exp_avg_sq &&
+            'addScalar' in state.max_exp_avg_sq &&
             typeof (state.max_exp_avg_sq as { sqrt?: Function }).sqrt === 'function' &&
-            typeof (state.max_exp_avg_sq as { div?: Function }).div === 'function' &&
-            typeof (state.max_exp_avg_sq as { add?: Function }).add === 'function'
+            typeof (state.max_exp_avg_sq as { divScalar?: Function }).divScalar === 'function' &&
+            typeof (state.max_exp_avg_sq as { addScalar?: Function }).addScalar === 'function'
           ) {
-            const sqrtTerm = (state.max_exp_avg_sq as { sqrt: () => Tensor }).sqrt() as Tensor
+            const sqrtTerm = (state.max_exp_avg_sq as { sqrt: () => Tensor }).sqrt()
             const divTerm =
-              'div' in sqrtTerm && typeof (sqrtTerm as { div?: Function }).div === 'function'
-                ? ((sqrtTerm.div as any)(Math.sqrt(bias_correction2)) as Tensor)
+              'divScalar' in sqrtTerm && typeof sqrtTerm.divScalar === 'function'
+                ? (sqrtTerm.divScalar as (s: number) => Tensor)(Math.sqrt(bias_correction2))
                 : sqrtTerm
             denom =
-              'add' in divTerm && typeof (divTerm as { add?: Function }).add === 'function'
-                ? ((divTerm.add as any)(eps) as Tensor)
+              'addScalar' in divTerm && typeof divTerm.addScalar === 'function'
+                ? (divTerm.addScalar as (s: number) => Tensor)(eps)
                 : divTerm
           }
         } else {
@@ -189,20 +193,20 @@ export class Adam extends Optimizer {
           if (
             state.exp_avg_sq &&
             'sqrt' in state.exp_avg_sq &&
-            'div' in state.exp_avg_sq &&
-            'add' in state.exp_avg_sq &&
+            'divScalar' in state.exp_avg_sq &&
+            'addScalar' in state.exp_avg_sq &&
             typeof (state.exp_avg_sq as { sqrt?: Function }).sqrt === 'function' &&
-            typeof (state.exp_avg_sq as { div?: Function }).div === 'function' &&
-            typeof (state.exp_avg_sq as { add?: Function }).add === 'function'
+            typeof (state.exp_avg_sq as { divScalar?: Function }).divScalar === 'function' &&
+            typeof (state.exp_avg_sq as { addScalar?: Function }).addScalar === 'function'
           ) {
-            const sqrtTerm = (state.exp_avg_sq as { sqrt: () => Tensor }).sqrt() as Tensor
+            const sqrtTerm = (state.exp_avg_sq as { sqrt: () => Tensor }).sqrt()
             const divTerm =
-              'div' in sqrtTerm && typeof (sqrtTerm as { div?: Function }).div === 'function'
-                ? ((sqrtTerm.div as any)(Math.sqrt(bias_correction2)) as Tensor)
+              'divScalar' in sqrtTerm && typeof sqrtTerm.divScalar === 'function'
+                ? (sqrtTerm.divScalar as (s: number) => Tensor)(Math.sqrt(bias_correction2))
                 : sqrtTerm
             denom =
-              'add' in divTerm && typeof (divTerm as { add?: Function }).add === 'function'
-                ? ((divTerm.add as any)(eps) as Tensor)
+              'addScalar' in divTerm && typeof divTerm.addScalar === 'function'
+                ? (divTerm.addScalar as (s: number) => Tensor)(eps)
                 : divTerm
           }
         }
@@ -211,31 +215,55 @@ export class Adam extends Optimizer {
         const step_size = lr / bias_correction1
 
         // Update parameters: param = param - step_size * m_t / denom
+        // With full Adam (when sqrt is available)
         if (
           state.exp_avg &&
           denom &&
           'div' in state.exp_avg &&
-          'mul' in state.exp_avg &&
+          'mulScalar' in state.exp_avg &&
           'sub' in param &&
           typeof (state.exp_avg as { div?: Function }).div === 'function' &&
-          typeof (state.exp_avg as { mul?: Function }).mul === 'function' &&
+          typeof (state.exp_avg as { mulScalar?: Function }).mulScalar === 'function' &&
           typeof (param as { sub?: Function }).sub === 'function'
         ) {
-          const update_num = (state.exp_avg as { div: (x: Tensor) => Tensor }).div(denom) as Tensor
+          const update_num = (state.exp_avg as { div: (x: Tensor) => Tensor }).div(denom)
           const update =
-            'mul' in update_num && typeof (update_num as { mul?: Function }).mul === 'function'
-              ? ((update_num.mul as any)(step_size) as Tensor)
+            'mulScalar' in update_num && typeof update_num.mulScalar === 'function'
+              ? (update_num.mulScalar as (s: number) => Tensor)(step_size)
               : update_num
-          const newParam = (param as { sub: (x: Tensor) => Tensor }).sub(update) as Tensor
+          const newParam = (param as { sub: (x: Tensor) => Tensor }).sub(update)
 
-          // Update param data in place
-          if ('data' in param) {
-            ;(param as { data: unknown }).data = 'data' in newParam ? newParam.data : newParam
-          }
+          // Update param via internal handle replacement
+          this.updateParam(param, newParam)
+        } else if (
+          // Fallback: simplified update when sqrt is not available
+          // This uses just the first moment (essentially SGD with momentum)
+          state.exp_avg &&
+          'mulScalar' in state.exp_avg &&
+          'sub' in param &&
+          typeof (state.exp_avg as { mulScalar?: Function }).mulScalar === 'function' &&
+          typeof (param as { sub?: Function }).sub === 'function'
+        ) {
+          const update = (state.exp_avg.mulScalar as (s: number) => Tensor)(step_size)
+          const newParam = (param as { sub: (x: Tensor) => Tensor }).sub(update)
+
+          // Update param via internal handle replacement
+          this.updateParam(param, newParam)
         }
 
         this.state.set(param, state)
       }
+    }
+  }
+
+  /**
+   * Update parameter tensor with new values
+   * This is a workaround since we can't do true in-place updates via FFI
+   */
+  private updateParam(oldParam: Tensor, newParam: Tensor): void {
+    // Replace the internal handle to update the tensor in place
+    if ('_handle' in oldParam && '_handle' in newParam) {
+      ;(oldParam as { _handle: unknown })._handle = (newParam as { _handle: unknown })._handle
     }
   }
 
