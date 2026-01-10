@@ -3,6 +3,9 @@ REM Build script for ts-torch native library (Windows)
 
 setlocal enabledelayedexpansion
 
+REM Change to the directory where this script is located
+cd /d "%~dp0"
+
 REM Default values
 set BUILD_TYPE=Release
 set LIBTORCH_PATH=

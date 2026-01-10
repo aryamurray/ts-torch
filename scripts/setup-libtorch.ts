@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync, unlinkSync } from "fs";
 import { mkdir } from "fs/promises";
 import path from "path";
 import { execSync } from "child_process";
@@ -43,8 +43,8 @@ async function setup() {
       await mkdir(LIBTORCH_DIR, { recursive: true });
     }
 
-    // Check if already extracted
-    const libDir = path.join(LIBTORCH_DIR, "lib");
+    // Check if already extracted (LibTorch extracts to a nested libtorch folder)
+    const libDir = path.join(LIBTORCH_DIR, "libtorch", "lib");
     if (!existsSync(libDir)) {
       console.log(`Downloading LibTorch ${LIBTORCH_VERSION} for ${platform} (${arch})...`);
       console.log(`URL: ${downloadUrl}`);
@@ -67,40 +67,46 @@ async function setup() {
       }
 
       // Clean up zip file
-      execSync(`rm -f "${zipPath}"`, { shell: true });
+      if (existsSync(zipPath)) {
+        unlinkSync(zipPath);
+      }
     } else {
       console.log("LibTorch already extracted, skipping download...");
     }
 
-    console.log(`✓ LibTorch ${LIBTORCH_VERSION} ready at ${LIBTORCH_DIR}`);
+    // The actual libtorch files are in the nested libtorch folder
+    const LIBTORCH_ACTUAL = path.join(LIBTORCH_DIR, "libtorch");
+    console.log(`✓ LibTorch ${LIBTORCH_VERSION} ready at ${LIBTORCH_ACTUAL}`);
 
-    // Build native library using build.sh
+    // Build native library
     console.log("\nBuilding native library...");
     if (!existsSync(NATIVE_DIR)) {
       console.error(`Native directory not found: ${NATIVE_DIR}`);
       process.exit(1);
     }
 
-    const buildScript = path.join(NATIVE_DIR, "build.sh");
+    // Use appropriate build script for platform
+    const buildScriptName = platform === "win32" ? "build.bat" : "build.sh";
+    const buildScript = path.join(NATIVE_DIR, buildScriptName);
     if (!existsSync(buildScript)) {
       console.error(`Build script not found: ${buildScript}`);
-      console.error("Make sure build.sh exists in packages/@ts-torch/core/native/");
+      console.error(`Make sure ${buildScriptName} exists in packages/@ts-torch/core/native/`);
       process.exit(1);
     }
 
     // Set LIBTORCH environment variable and run build script
-    const env = { ...process.env, LIBTORCH: LIBTORCH_DIR };
+    const env = { ...process.env, LIBTORCH: LIBTORCH_ACTUAL };
 
     if (platform === "win32") {
-      // On Windows, we need to use the batch or PowerShell version
-      // For now, assume build.sh works with bash or we have build.bat
-      execSync(`bash "${buildScript}" --libtorch "${LIBTORCH_DIR}" --release`, {
+      // On Windows, use the batch script
+      execSync(`"${buildScript}" --libtorch "${LIBTORCH_ACTUAL}" --release`, {
         stdio: "inherit",
         env,
+        shell: true,
       });
     } else {
       // Linux and macOS
-      execSync(`bash "${buildScript}" --libtorch "${LIBTORCH_DIR}" --release`, {
+      execSync(`bash "${buildScript}" --libtorch "${LIBTORCH_ACTUAL}" --release`, {
         stdio: "inherit",
         env,
       });

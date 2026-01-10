@@ -1,45 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls -R *)",
-      "Bash(cat *)",
-      "Bash(git ls-tree *)",
-      "Bash(git show *)",
-      "Bash(git diff *)",
-      "Bash(grep *)",
-      "Bash(find *)",
-      "Bash(du *)",
-      "WebSearch",
-      "WebFetch(domain:bun.com)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:sebinsua.com)",
-      "WebFetch(domain:sentry.engineering)",
-      "Bash(wc:*)",
-      "Bash(grep:*)",
-      "Bash(tree:*)",
-      "Bash(bun tsc:*)",
-      "Bash(find:*)",
-      "Bash(bun install:*)",
-      "Bash(done)",
-      "Bash(bun run tsc:*)",
-      "Bash(bun run check-types:*)",
-      "Bash(bun run build:*)",
-      "Bash(bun run:*)",
-      "Bash(bun test:*)",
-      "Bash(bun build:*)",
-      "Bash(bunx tsc:*)",
-      "Bash(bunx oxfmt:*)",
-      "Bash(cmake:*)",
-      "Bash(ls:*)",
-      "Bash(dumpbin:*)",
-      "Bash(export PATH=\"/c/Users/Arya/Documents/Code/ts-tools/packages/@ts-torch/core/native/build/Release:/c/Users/Arya/Downloads/libtorch-win-shared-with-deps-2.5.1+cpu/libtorch/lib:$PATH\")",
-      "Bash(git rm:*)",
-      "Bash(PATH=\"$PATH:C:/Users/Arya/Downloads/libtorch-win-shared-with-deps-2.5.1+cpu/libtorch/lib:C:/Users/Arya/Documents/Code/ts-tools/packages/@ts-torch/core/native/build/Release\" bun run:*)",
-      "Bash(TS_TORCH_LIB=\"C:\\\\Users\\\\Arya\\\\Documents\\\\Code\\\\ts-tools\\\\packages\\\\@ts-torch-platform\\\\win32-x64\\\\lib\\\\ts_torch.dll\" bun run:*)",
-      "Bash(./build.bat --release)",
-      "WebFetch(domain:turborepo.com)",
-      "WebFetch(domain:turbo.build)",
-      "WebFetch(domain:download.pytorch.org)"
-    ]
+      "Bash(if exist \"C:\\Users\\thema\\OneDrive\\Documents\\Code\\ts-torch\\packages\\@ts-torch\\core\\native\\build.bat\" echo exists)"
+    ],
+    "deny": [],
+    "ask": []
   }
 }
