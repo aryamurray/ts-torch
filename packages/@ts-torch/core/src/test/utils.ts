@@ -62,7 +62,7 @@ export function setupTensorMatchers(): void {
 
       if (data.length !== expectedArray.length && !Array.isArray(expected)) {
         // If expected is a single number, check if all values are close to it
-        const allClose = Array.from(data).every((val) =>
+        const allClose = Array.from(data as Iterable<number | bigint>).every((val) =>
           Math.abs(Number(val) - expected) <= tolerance,
         );
 
@@ -75,7 +75,7 @@ export function setupTensorMatchers(): void {
         };
       }
 
-      const allClose = Array.from(data).every((val, i) =>
+      const allClose = Array.from(data as Iterable<number | bigint>).every((val, i) =>
         Math.abs(Number(val) - expectedArray[i]!) <= tolerance,
       );
 
@@ -84,7 +84,7 @@ export function setupTensorMatchers(): void {
         message: () =>
           isNot
             ? `Expected tensor values not to be close to [${expectedArray.join(', ')}] (tolerance: ${tolerance})`
-            : `Expected tensor values to be close to [${expectedArray.join(', ')}] (tolerance: ${tolerance}), but got [${Array.from(data).join(', ')}]`,
+            : `Expected tensor values to be close to [${expectedArray.join(', ')}] (tolerance: ${tolerance}), but got [${Array.from(data as Iterable<number | bigint>).join(', ')}]`,
       };
     },
 
@@ -94,7 +94,7 @@ export function setupTensorMatchers(): void {
     toBeFinite(received: Tensor<Shape, DType<string>>) {
       const { isNot } = this;
       const data = received.toArray();
-      const allFinite = Array.from(data).every((val) => Number.isFinite(Number(val)));
+      const allFinite = Array.from(data as Iterable<number | bigint>).every((val) => Number.isFinite(Number(val)));
 
       return {
         pass: allFinite,
@@ -172,7 +172,7 @@ export function expectTensorValues(
   expectedValues: number[],
   tolerance = 1e-5,
 ): void {
-  const data = Array.from(tensor.toArray()).map(Number);
+  const data = Array.from(tensor.toArray() as Iterable<number | bigint>).map(Number);
   expect(data).toHaveLength(expectedValues.length);
   data.forEach((val, i) => {
     expect(Math.abs(val - expectedValues[i]!)).toBeLessThanOrEqual(tolerance);
@@ -183,7 +183,7 @@ export function expectTensorValues(
  * Helper to check if tensor is all zeros
  */
 export function expectZeros(tensor: Tensor<Shape, DType<string>>): void {
-  const data = Array.from(tensor.toArray()).map(Number);
+  const data = Array.from(tensor.toArray() as Iterable<number | bigint>).map(Number);
   data.forEach((val) => {
     expect(val).toBe(0);
   });
@@ -193,7 +193,7 @@ export function expectZeros(tensor: Tensor<Shape, DType<string>>): void {
  * Helper to check if tensor is all ones
  */
 export function expectOnes(tensor: Tensor<Shape, DType<string>>): void {
-  const data = Array.from(tensor.toArray()).map(Number);
+  const data = Array.from(tensor.toArray() as Iterable<number | bigint>).map(Number);
   data.forEach((val) => {
     expect(val).toBe(1);
   });

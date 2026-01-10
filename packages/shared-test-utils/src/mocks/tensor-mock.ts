@@ -7,6 +7,16 @@ export interface MockDtype {
   size: number;
 }
 
+/**
+ * Helper to safely get array element with bounds checking
+ */
+function getAt<T>(arr: ArrayLike<T>, index: number): T {
+  if (index < 0 || index >= arr.length) {
+    throw new Error(`Index ${index} out of bounds for array of length ${arr.length}`);
+  }
+  return arr[index] as T;
+}
+
 export class MockTensor {
   readonly shape: readonly number[];
   readonly dtype: MockDtype;
@@ -68,7 +78,7 @@ export class MockTensor {
     if (this.numel() !== 1) {
       throw new Error('item() can only be called on tensors with one element');
     }
-    return this._data[0];
+    return getAt(this._data, 0);
   }
 
   clone(): MockTensor {
@@ -95,7 +105,7 @@ export class MockTensor {
 
     const result = new Float32Array(this._data.length);
     for (let i = 0; i < this._data.length; i++) {
-      result[i] = this._data[i] + other._data[i];
+      result[i] = getAt(this._data, i) + getAt(other._data, i);
     }
 
     return new MockTensor(
@@ -111,7 +121,7 @@ export class MockTensor {
 
     const result = new Float32Array(this._data.length);
     for (let i = 0; i < this._data.length; i++) {
-      result[i] = this._data[i] - other._data[i];
+      result[i] = getAt(this._data, i) - getAt(other._data, i);
     }
 
     return new MockTensor(
@@ -127,7 +137,7 @@ export class MockTensor {
 
     const result = new Float32Array(this._data.length);
     for (let i = 0; i < this._data.length; i++) {
-      result[i] = this._data[i] * other._data[i];
+      result[i] = getAt(this._data, i) * getAt(other._data, i);
     }
 
     return new MockTensor(
@@ -142,7 +152,7 @@ export class MockTensor {
 
     const result = new Float32Array(this._data.length);
     for (let i = 0; i < this._data.length; i++) {
-      result[i] = this._data[i] * scalar;
+      result[i] = getAt(this._data, i) * scalar;
     }
 
     return new MockTensor(result, [...this.shape], this._requiresGrad);
@@ -153,7 +163,7 @@ export class MockTensor {
 
     const result = new Float32Array(this._data.length);
     for (let i = 0; i < this._data.length; i++) {
-      result[i] = Math.max(0, this._data[i]);
+      result[i] = Math.max(0, getAt(this._data, i));
     }
 
     return new MockTensor(result, [...this.shape], this._requiresGrad);
@@ -164,7 +174,7 @@ export class MockTensor {
 
     const result = new Float32Array(this._data.length);
     for (let i = 0; i < this._data.length; i++) {
-      result[i] = 1 / (1 + Math.exp(-this._data[i]));
+      result[i] = 1 / (1 + Math.exp(-getAt(this._data, i)));
     }
 
     return new MockTensor(result, [...this.shape], this._requiresGrad);
@@ -177,7 +187,7 @@ export class MockTensor {
       // Sum all elements
       let total = 0;
       for (let i = 0; i < this._data.length; i++) {
-        total += this._data[i];
+        total += getAt(this._data, i);
       }
       return new MockTensor(
         new Float32Array([total]),
@@ -188,12 +198,13 @@ export class MockTensor {
 
     // Simple implementation for 2D tensors summing along a dimension
     if (this.shape.length === 2 && dim === 0) {
-      const [rows, cols] = this.shape;
+      const rows = getAt(this.shape, 0);
+      const cols = getAt(this.shape, 1);
       const result = new Float32Array(cols);
       for (let col = 0; col < cols; col++) {
         let sum = 0;
         for (let row = 0; row < rows; row++) {
-          sum += this._data[row * cols + col];
+          sum += getAt(this._data, row * cols + col);
         }
         result[col] = sum;
       }
@@ -201,12 +212,13 @@ export class MockTensor {
     }
 
     if (this.shape.length === 2 && dim === 1) {
-      const [rows, cols] = this.shape;
+      const rows = getAt(this.shape, 0);
+      const cols = getAt(this.shape, 1);
       const result = new Float32Array(rows);
       for (let row = 0; row < rows; row++) {
         let sum = 0;
         for (let col = 0; col < cols; col++) {
-          sum += this._data[row * cols + col];
+          sum += getAt(this._data, row * cols + col);
         }
         result[row] = sum;
       }
@@ -218,7 +230,7 @@ export class MockTensor {
 
   mean(dim?: number): MockTensor {
     const sumTensor = this.sum(dim);
-    const count = dim === undefined ? this.numel() : this.shape[dim];
+    const count = dim === undefined ? this.numel() : getAt(this.shape, dim);
     return sumTensor.mulScalar(1 / count);
   }
 

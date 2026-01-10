@@ -55,14 +55,8 @@ export class RMSprop extends Optimizer {
 
   step(): void {
     for (const group of this.paramGroups) {
-      const lr = group.lr ?? this.defaults.lr
-      const alpha = (group.alpha as number | undefined) ?? this.defaults.alpha ?? 0.99
-      const eps = (group.eps as number | undefined) ?? this.defaults.eps ?? 1e-8
-      const weightDecay = (group.weightDecay as number | undefined) ?? this.defaults.weightDecay ?? 0
-      const momentum = (group.momentum as number | undefined) ?? this.defaults.momentum ?? 0
-      const centered = (group.centered as boolean | undefined) ?? this.defaults.centered ?? false
-
-      for (const param of group.params) {
+      // TODO: Implement RMSprop update
+      for (const _param of group.params) {
         // TODO: Implement RMSprop update
         // if (param.grad === null) continue;
         //

@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect } from 'vitest'
-import { Linear, type LinearOptions } from '../linear.js'
+import { Linear } from '../linear.js'
 import { mockTensorFactories } from '@ts-torch/test-utils'
 import type { Tensor } from '../../module.js'
 

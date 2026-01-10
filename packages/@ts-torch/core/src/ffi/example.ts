@@ -15,7 +15,6 @@ import {
   validateShape,
   validateDtype,
   ptr,
-  type TensorHandle,
 } from './index.js'
 
 /**

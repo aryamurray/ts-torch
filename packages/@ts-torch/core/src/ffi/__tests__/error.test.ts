@@ -133,7 +133,7 @@ describe('FFI Error Handling', () => {
     it('should automatically check error', () => {
       // Function that succeeds
       const result = withError((err) => {
-        // Return success (don't modify error struct)
+        void err // Not modifying error struct - success case
         return 42
       })
 

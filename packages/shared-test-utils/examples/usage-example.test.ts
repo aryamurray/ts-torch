@@ -6,7 +6,6 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import {
   setupTensorMatchers,
-  MockTensor,
   mockTensorFactories,
   createMockFFI,
   TensorFixtures,

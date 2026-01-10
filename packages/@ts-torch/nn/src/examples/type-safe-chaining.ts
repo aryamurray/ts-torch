@@ -30,12 +30,11 @@ function example1_SimplePipe() {
     .pipe(new Softmax(-1))
 
   // Type: PipedModule<readonly [number, 784], readonly [number, 10]>
-  type ModelType = typeof model
 
   // Type-safe forward pass
   const input = {} as Tensor<readonly [32, 784]>
   const output = model.forward(input)
-  // Type of output: Tensor<readonly [32, 10]>
+  void output // Type of output: Tensor<readonly [32, 10]>
 
   return model
 }
@@ -51,6 +50,7 @@ function example2_TypeErrors() {
   const layer1 = new Linear(784, 128)
   const layer2 = new Linear(128, 64)
   const layer3 = new Linear(256, 10) // Note: expects 256 inputs, not 64!
+  void layer3 // Intentionally unused - demonstrates incompatible shape
 
   // This works: 784 -> 128 -> 64
   const validPipeline = layer1.pipe(new ReLU()).pipe(layer2)
@@ -84,7 +84,7 @@ function example3_Sequential() {
 
   const input = {} as Tensor<readonly [32, 784]>
   const output = model.forward(input)
-  // Type: Tensor<readonly [32, 10]>
+  void output // Type: Tensor<readonly [32, 10]>
 
   return model
 }
@@ -111,7 +111,7 @@ function example4_SequentialBuilder() {
 
   const input = {} as Tensor<readonly [32, 784]>
   const output = model.forward(input)
-  // Type: Tensor<readonly [32, 10]>
+  void output // Type: Tensor<readonly [32, 10]>
 
   return model
 }
@@ -146,7 +146,7 @@ function example5_DeepNetwork() {
 
   const input = {} as Tensor<readonly [32, 784]>
   const reconstruction = autoencoder.forward(input)
-  // Type: Tensor<readonly [32, 784]>
+  void reconstruction // Type: Tensor<readonly [32, 784]>
 
   return { encoder, decoder, autoencoder }
 }
@@ -170,13 +170,12 @@ function example6_ImageClassifier() {
     .pipe(new Softmax(-1))
 
   // Type system knows exact dimensions!
-  type InputShape = readonly [number, 784]
-  type OutputShape = readonly [number, 10]
+  // InputShape: readonly [number, 784]
+  // OutputShape: readonly [number, 10]
 
-  const batchSize = 64
   const images = {} as Tensor<readonly [64, 784]>
   const predictions = classifier.forward(images)
-  // Type: Tensor<readonly [64, 10]>
+  void predictions // Type: Tensor<readonly [64, 10]>
 
   return classifier
 }
@@ -251,22 +250,19 @@ export const examples = {
  * Type-level tests to ensure shape inference works correctly
  * These types will fail to compile if shape inference is broken
  */
-namespace TypeTests {
+export namespace TypeTests {
   // Test 1: Simple pipe preserves exact types
   const model1 = new Linear(10, 20).pipe(new ReLU())
-  type Test1In = Parameters<typeof model1.forward>[0]
-  type Test1Out = ReturnType<typeof model1.forward>
-  // Should be: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 20]>
+  void model1 // Used for type testing only
+  // model1.forward: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 20]>
 
   // Test 2: Long chain preserves end-to-end types
   const model2 = new Linear(10, 20).pipe(new ReLU()).pipe(new Linear(20, 30)).pipe(new ReLU())
-  type Test2In = Parameters<typeof model2.forward>[0]
-  type Test2Out = ReturnType<typeof model2.forward>
-  // Should be: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 30]>
+  void model2 // Used for type testing only
+  // model2.forward: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 30]>
 
   // Test 3: Sequential has correct types
   const model3 = new Sequential<readonly [number, 10], readonly [number, 30]>(new Linear(10, 20), new Linear(20, 30))
-  type Test3In = Parameters<typeof model3.forward>[0]
-  type Test3Out = ReturnType<typeof model3.forward>
-  // Should be: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 30]>
+  void model3 // Used for type testing only
+  // model3.forward: Tensor<readonly [number, 10]> -> Tensor<readonly [number, 30]>
 }

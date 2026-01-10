@@ -219,8 +219,12 @@ export function createTestTensor(
         throw new Error('Identity pattern requires square matrix shape');
       }
       data = Array(numel).fill(0);
-      for (let i = 0; i < shape[0]; i++) {
-        data[i * shape[0] + i] = 1;
+      const size = shape[0];
+      if (size === undefined) {
+        throw new Error('Shape dimension is undefined');
+      }
+      for (let i = 0; i < size; i++) {
+        data[i * size + i] = 1;
       }
       break;
 

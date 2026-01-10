@@ -6,9 +6,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { zeros, ones, fromArray, randn } from '../factory.js';
-import { DType } from '../../types/dtype.js';
-import { scopedTest, expectTensorValues } from '../../test/utils.js';
+import { zeros, ones, fromArray } from '../factory.js';
+import { scopedTest } from '../../test/utils.js';
 
 describe('Tensor Operations - Integration', () => {
   describe('element-wise operations', () => {

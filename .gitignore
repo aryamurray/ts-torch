@@ -31,6 +31,12 @@ dist
 *.tsbuildinfo
 tsconfig.tsbuildinfo
 
+# TypeScript build artifacts in src (should be in dist)
+**/src/**/*.js
+**/src/**/*.js.map
+**/src/**/*.d.ts
+**/src/**/*.d.ts.map
+
 #Data
 /data*
 /libtorch*

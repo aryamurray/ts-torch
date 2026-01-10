@@ -4,7 +4,7 @@
  * Tests MNIST data loading with mocked file system operations.
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach, type Mock } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { MNIST } from '../mnist.js';
 
 // Import test utils from source
@@ -278,7 +278,7 @@ describe('MNIST', () => {
         await mnist.load();
 
         const sample = mnist.get(0);
-        const data = Array.from(sample.image.toArray()).map(Number);
+        const data = Array.from(sample.image.toArray() as Iterable<number | bigint>).map(Number);
 
         // All values should be in [0, 1]
         data.forEach((val) => {

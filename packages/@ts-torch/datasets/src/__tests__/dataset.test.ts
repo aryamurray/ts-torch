@@ -121,7 +121,6 @@ describe('Dataset', () => {
 
       // With random shuffling, they should likely be different
       // Note: This test has a small chance of false negative if shuffle produces same result
-      const same = items1.every((val, i) => val === items2[i]);
       // We can't guarantee they're different due to randomness, so just verify structure
       expect(items1.length).toBe(5);
       expect(items2.length).toBe(5);

@@ -95,7 +95,7 @@ export function loadNativeBinary(): string | null {
 
       return binaryPath
     } catch (resolveError) {
-      console.warn(`Platform package ${packageName} not found. Native operations will not be available.`)
+      console.warn(`Platform package ${packageName} not found: ${resolveError}. Native operations will not be available.`)
       return null
     }
   } catch (error) {

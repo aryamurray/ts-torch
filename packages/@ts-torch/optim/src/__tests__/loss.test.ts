@@ -10,19 +10,17 @@ import {
   l1Loss,
   smoothL1Loss,
   klDivLoss,
-  type Reduction,
 } from '../loss'
-import type { Tensor, Shape, DType } from '@ts-torch/core'
 
 /**
  * Mock tensor with tensor operations for testing
  */
-class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string>> implements Partial<Tensor<S, D>> {
-  shape: S
-  dtype: D
+class MockTensor {
+  shape: readonly number[]
+  dtype: string
   _data: number[]
 
-  constructor(data: number[], shape: S, dtype: D = 'float32' as D) {
+  constructor(data: number[], shape: readonly number[], dtype: string = 'float32') {
     this.shape = shape
     this.dtype = dtype
     this._data = [...data]
@@ -31,7 +29,7 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
   sub(other: MockTensor): MockTensor {
     return new MockTensor(
       this._data.map((v, i) => v - (other._data[i] ?? 0)),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
@@ -40,13 +38,13 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
     if (typeof other === 'number') {
       return new MockTensor(
         this._data.map((v) => v + other),
-        this.shape as any,
+        this.shape,
         this.dtype,
       )
     }
     return new MockTensor(
       this._data.map((v, i) => v + (other._data[i] ?? 0)),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
@@ -55,13 +53,13 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
     if (typeof other === 'number') {
       return new MockTensor(
         this._data.map((v) => v * other),
-        this.shape as any,
+        this.shape,
         this.dtype,
       )
     }
     return new MockTensor(
       this._data.map((v, i) => v * (other._data[i] ?? 1)),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
@@ -70,13 +68,13 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
     if (typeof other === 'number') {
       return new MockTensor(
         this._data.map((v) => v / other),
-        this.shape as any,
+        this.shape,
         this.dtype,
       )
     }
     return new MockTensor(
       this._data.map((v, i) => v / (other._data[i] ?? 1)),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
@@ -84,7 +82,7 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
   pow(exponent: number): MockTensor {
     return new MockTensor(
       this._data.map((v) => Math.pow(v, exponent)),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
@@ -92,7 +90,7 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
   sqrt(): MockTensor {
     return new MockTensor(
       this._data.map((v) => Math.sqrt(v)),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
@@ -100,7 +98,7 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
   abs(): MockTensor {
     return new MockTensor(
       this._data.map((v) => Math.abs(v)),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
@@ -108,7 +106,7 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
   exp(): MockTensor {
     return new MockTensor(
       this._data.map((v) => Math.exp(v)),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
@@ -116,29 +114,30 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
   log(): MockTensor {
     return new MockTensor(
       this._data.map((v) => Math.log(v)),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
 
   sum(dim?: number, keepdim?: boolean): MockTensor {
+    void keepdim // Simplified mock ignores keepdim
     if (dim === undefined) {
       const total = this._data.reduce((a, b) => a + b, 0)
-      return new MockTensor([total], [1] as any, this.dtype)
+      return new MockTensor([total], [1], this.dtype)
     }
     // Simplified sum along dimension
-    return new MockTensor([this._data.reduce((a, b) => a + b, 0)], [1] as any, this.dtype)
+    return new MockTensor([this._data.reduce((a, b) => a + b, 0)], [1], this.dtype)
   }
 
   mean(): MockTensor {
     const avg = this._data.reduce((a, b) => a + b, 0) / this._data.length
-    return new MockTensor([avg], [1] as any, this.dtype)
+    return new MockTensor([avg], [1], this.dtype)
   }
 
   clamp(min: number, max: number): MockTensor {
     return new MockTensor(
       this._data.map((v) => Math.max(min, Math.min(max, v))),
-      this.shape as any,
+      this.shape,
       this.dtype,
     )
   }
@@ -146,7 +145,7 @@ class MockTensor<S extends Shape = Shape, D extends DType<string> = DType<string
   gather(dim: number, index: MockTensor): MockTensor {
     // Simplified gather operation
     const result = index._data.map((idx) => this._data[Math.floor(idx)] ?? 0)
-    return new MockTensor(result, index.shape as any, this.dtype)
+    return new MockTensor(result, index.shape, this.dtype)
   }
 
   getData(): number[] {

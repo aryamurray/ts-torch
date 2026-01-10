@@ -5,7 +5,7 @@
 import { describe, test, expect, beforeEach } from 'vitest'
 import { Module, Parameter, PipedModule, type Tensor, type float32 } from '../module.js'
 import { mockTensorFactories } from '@ts-torch/test-utils'
-import type { Shape, DType } from '@ts-torch/core'
+import type { Shape, DType, Device } from '@ts-torch/core'
 
 // Simple test module for testing base functionality
 class TestModule<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
@@ -262,7 +262,7 @@ describe('Module.train() with nested modules', () => {
 describe('Module.to()', () => {
   test('returns this for chaining', () => {
     const module = new TestModule()
-    const result = module.to('cpu')
+    const result = module.to('cpu' as Device)
 
     expect(result).toBe(module)
   })

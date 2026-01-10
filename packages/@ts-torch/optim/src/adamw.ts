@@ -52,13 +52,8 @@ export class AdamW extends Optimizer {
 
   step(): void {
     for (const group of this.paramGroups) {
-      const lr = group.lr ?? this.defaults.lr
-      const [beta1, beta2] = (group.betas as [number, number] | undefined) ?? this.defaults.betas ?? [0.9, 0.999]
-      const eps = (group.eps as number | undefined) ?? this.defaults.eps ?? 1e-8
-      const weightDecay = (group.weightDecay as number | undefined) ?? this.defaults.weightDecay ?? 0.01
-      const amsgrad = (group.amsgrad as boolean | undefined) ?? this.defaults.amsgrad ?? false
-
-      for (const param of group.params) {
+      // TODO: Implement AdamW update
+      for (const _param of group.params) {
         // TODO: Implement AdamW update
         // if (param.grad === null) continue;
         //

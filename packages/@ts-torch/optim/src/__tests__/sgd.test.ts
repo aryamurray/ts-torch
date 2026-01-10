@@ -9,7 +9,7 @@ import type { Tensor } from '@ts-torch/core'
 /**
  * Mock tensor with tensor operations for testing
  */
-class MockTensor implements Partial<Tensor> {
+class MockTensor {
   shape: readonly number[]
   dtype: string
   grad: MockTensor | null = null
@@ -176,9 +176,19 @@ describe('SGD', () => {
       const data2 = param.getData()
 
       // Velocity should accumulate across steps
-      expect(data2[0]).toBeLessThan(data1[0])
-      expect(data2[1]).toBeLessThan(data1[1])
-      expect(data2[2]).toBeLessThan(data1[2])
+      const d1_0 = data1[0]
+      const d1_1 = data1[1]
+      const d1_2 = data1[2]
+      const d2_0 = data2[0]
+      const d2_1 = data2[1]
+      const d2_2 = data2[2]
+      if (d1_0 === undefined || d1_1 === undefined || d1_2 === undefined ||
+          d2_0 === undefined || d2_1 === undefined || d2_2 === undefined) {
+        throw new Error('Expected data arrays to have 3 elements')
+      }
+      expect(d2_0).toBeLessThan(d1_0)
+      expect(d2_1).toBeLessThan(d1_1)
+      expect(d2_2).toBeLessThan(d1_2)
     })
 
     test('handles multiple parameters', () => {

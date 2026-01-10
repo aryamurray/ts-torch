@@ -11,8 +11,6 @@ import type {
   MatMulShape,
   TransposeShape,
   ReshapeValid,
-  SqueezeShape,
-  UnsqueezeShape,
   ConcatShape,
   BroadcastShape,
   ReduceShape,
@@ -318,20 +316,65 @@ type CNNLogits = [Dim<'batch'>, NumClasses]
 // type Error6 = ExpandShape<[2, 3, 4], 0, 8>;
 
 export type {
+  // Basic Tensor Types
   ImageTensor,
   BatchedImages,
   EmbeddingMatrix,
+  Scalar,
+  // Matrix Multiplication
   MatMulResult,
+  BatchedResult,
+  BatchedResult2,
+  // Broadcasting
   Broadcast1,
+  Broadcast2,
+  Broadcast3,
+  // Transpose and Permute
   Transposed,
   NHWC,
+  // Reshape
   ValidReshape,
+  // Squeeze/Unsqueeze
   SimpleWithOne,
+  BaseShape,
+  // Concatenation
   Concatenated,
+  // Reduction
+  ReducedKeepDim,
+  SimpleReduce,
+  // Expand
+  Expanded,
+  // Element Counting
+  Count1,
+  Count2,
+  Count3,
+  // Real-world Shapes
+  ConvInput,
+  ConvOutput,
+  QShape,
+  KShape,
+  VShape,
+  QHeads,
+  // Validation Examples
+  CanBroadcast1,
+  CanBroadcast2,
+  CanMatMul1,
+  CanMatMul2,
+  CanReshape1,
+  CanReshape2,
+  // Complex Pipeline
+  Step3,
+  SimpleTranspose,
+  // Architecture Examples
   TransformerInput,
   AttentionWeights,
   LinearOutput,
+  ImageInput,
+  PatchSize,
   PatchEmbedding,
+  BertInput,
   BertOutput,
+  CNNInput,
+  CNNFeatures,
   CNNLogits,
 }

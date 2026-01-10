@@ -2,7 +2,7 @@
  * Tests for base Optimizer class
  */
 
-import { describe, test, expect, beforeEach } from 'vitest'
+import { describe, test, expect } from 'vitest'
 import { Optimizer, type ParameterGroup, type OptimizerOptions } from '../optimizer'
 import type { Tensor } from '@ts-torch/core'
 
@@ -20,7 +20,7 @@ class MockOptimizer extends Optimizer {
 /**
  * Mock tensor for testing
  */
-class MockTensor implements Partial<Tensor> {
+class MockTensor {
   shape: readonly number[]
   dtype: string
   grad: Tensor | null = null

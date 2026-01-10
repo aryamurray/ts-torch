@@ -121,6 +121,7 @@ function cudaExample() {
 
     // Move back to CPU
     const backToCpu = result.cpu()
+    void backToCpu // Demonstrates moving tensor back to CPU
   } else {
     console.log('CUDA not available, using CPU')
   }
@@ -141,6 +142,7 @@ function deviceExample() {
   // Move tensor to device
   const t = torch.zeros([10, 10] as const)
   const gpuT = t.to(gpu.type)
+  void gpuT // Demonstrates moving tensor to GPU device
 }
 
 // ==================== Type Safety Examples ====================
@@ -151,7 +153,7 @@ function typeSafetyExamples() {
   // Valid: shapes match for element-wise ops
   const a = torch.zeros([2, 3] as const)
   const b = torch.ones([2, 3] as const)
-  const sum = a.add(b) // OK
+  a.add(b) // OK
 
   // Valid: matmul with compatible shapes
   const m1 = torch.randn([10, 20] as const)
@@ -160,11 +162,13 @@ function typeSafetyExamples() {
 
   // Valid: reshape preserving element count
   const x = torch.zeros([2, 3, 4] as const) // 24 elements
-  const reshaped = x.reshape([4, 6] as const) // 24 elements - OK
+  x.reshape([4, 6] as const) // 24 elements - OK
 
-  // Type inference works
+  // Type inference works (used in type level)
   type ProductShape = typeof product.shape // [10, 5]
   type ProductDType = typeof product.dtype // DType<"float32">
+  // Satisfy type checker
+  type _Check = [ProductShape, ProductDType]
 }
 
 // ==================== Advanced Usage ====================
@@ -195,6 +199,7 @@ function versionInfo() {
 // ==================== Export Examples ====================
 
 export {
+  // Example functions
   tensorOperationsExample,
   cudaExample,
   deviceExample,
@@ -202,12 +207,23 @@ export {
   advancedExample,
   versionInfo,
   asyncExample,
+  // Demonstration tensors
+  x,
+  y,
+  z,
+  f64Tensor,
+  f32Tensor,
+  dataMatrix,
+  nested,
+  range,
+  floatRange,
+  result,
 }
 
 // Type-level tests to ensure the API works correctly
-type TestZeros = ReturnType<typeof torch.zeros<[2, 3], typeof float32>>
-type TestOnes = ReturnType<typeof torch.ones<[10, 20]>>
-type TestRandn = ReturnType<typeof torch.randn<[100, 50]>>
+type _TestZeros = ReturnType<typeof torch.zeros<[2, 3], typeof float32>>
+type _TestOnes = ReturnType<typeof torch.ones<[10, 20]>>
+type _TestRandn = ReturnType<typeof torch.randn<[100, 50]>>
 
 // Verify type inference
 const _typeTest1: Tensor<[2, 3], typeof float32> = torch.zeros([2, 3] as const)

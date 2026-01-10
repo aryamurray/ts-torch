@@ -116,7 +116,7 @@ export function getLibraryPath(): string {
     if (existsSync(libPath)) {
       return libPath
     }
-  } catch (err) {
+  } catch {
     // Package not found, try development paths
   }
 

@@ -9,7 +9,7 @@ import type { Tensor } from '@ts-torch/core'
 /**
  * Mock tensor with tensor operations for testing
  */
-class MockTensor implements Partial<Tensor> {
+class MockTensor {
   shape: readonly number[]
   dtype: string
   grad: MockTensor | null | undefined = null
@@ -258,9 +258,18 @@ describe('Adam', () => {
       const optimizer = new Adam([param as unknown as Tensor], { lr: 0.1 })
 
       // First few steps should have larger effective learning rates due to bias correction
-      const initialValue = param.getData()[0]
+      const initialData = param.getData()
+      const initialValue = initialData[0]
+      if (initialValue === undefined) {
+        throw new Error('Expected param data to have at least one element')
+      }
       optimizer.step()
-      const firstStepChange = Math.abs(param.getData()[0] - initialValue)
+      const afterStepData = param.getData()
+      const afterStepValue = afterStepData[0]
+      if (afterStepValue === undefined) {
+        throw new Error('Expected param data to have at least one element')
+      }
+      const firstStepChange = Math.abs(afterStepValue - initialValue)
 
       // The actual values will depend on bias correction
       expect(firstStepChange).toBeGreaterThan(0)
@@ -354,7 +363,11 @@ describe('Adam', () => {
 
       for (let i = 0; i < 100; i++) {
         // Gradient of (x - 5)^2 is 2(x - 5)
-        const x = param.getData()[0]
+        const data = param.getData()
+        const x = data[0]
+        if (x === undefined) {
+          throw new Error('Expected param data to have at least one element')
+        }
         const grad = 2 * (x - target)
         param.grad = new MockTensor([grad])
 
@@ -362,7 +375,11 @@ describe('Adam', () => {
       }
 
       // Should converge close to target
-      const finalValue = param.getData()[0]
+      const finalData = param.getData()
+      const finalValue = finalData[0]
+      if (finalValue === undefined) {
+        throw new Error('Expected param data to have at least one element')
+      }
       expect(Math.abs(finalValue - target)).toBeLessThan(0.1)
     })
 
@@ -370,20 +387,29 @@ describe('Adam', () => {
       const param = new MockTensor([1.0])
       const optimizer = new Adam([param as unknown as Tensor], { lr: 0.1 })
 
+      const getFirstValue = (): number => {
+        const data = param.getData()
+        const val = data[0]
+        if (val === undefined) {
+          throw new Error('Expected param data to have at least one element')
+        }
+        return val
+      }
+
       // Step 1: Large gradient
       param.grad = new MockTensor([1.0])
       optimizer.step()
-      const value1 = param.getData()[0]
+      const value1 = getFirstValue()
 
       // Step 2: Small gradient
       param.grad = new MockTensor([0.01])
       optimizer.step()
-      const value2 = param.getData()[0]
+      const value2 = getFirstValue()
 
       // Step 3: Large gradient again
       param.grad = new MockTensor([1.0])
       optimizer.step()
-      const value3 = param.getData()[0]
+      const value3 = getFirstValue()
 
       // All steps should make progress
       expect(value1).toBeLessThan(1.0)

@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(if exist \"C:\\Users\\thema\\OneDrive\\Documents\\Code\\ts-torch\\packages\\@ts-torch\\core\\native\\build.bat\" echo exists)"
+      "Bash(if exist \"C:\\Users\\thema\\OneDrive\\Documents\\Code\\ts-torch\\packages\\@ts-torch\\core\\native\\build.bat\" echo exists)",
+      "Bash(bun run typecheck:*)",
+      "Bash(bun run lint:*)",
+      "Bash(bun run check-types:*)",
+      "Bash(bun run build)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

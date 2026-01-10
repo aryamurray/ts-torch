@@ -28,7 +28,6 @@ import { TensorPool, globalTensorPool } from './pool.js'
 
 // Type tests
 type AssertTrue<T extends true> = T
-type AssertFalse<T extends false> = T
 type AssertExtends<T, U> = T extends U ? true : false
 
 // Test scope function types
@@ -77,7 +76,7 @@ type _TestPoolAcquire = AssertTrue<
 
 type _TestPoolRelease = AssertTrue<AssertExtends<TensorPool['release'], (tensor: PoolableTensor) => void>>
 
-type _TestPoolStats = AssertTrue<AssertExtends<TensorPool['stats'], () => PoolStats>>
+type _TestPoolStatsMethod = AssertTrue<AssertExtends<TensorPool['stats'], () => PoolStats>>
 
 // Mock implementations for compile-time testing
 class MockTensor implements ScopedTensor {

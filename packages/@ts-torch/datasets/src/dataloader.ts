@@ -57,7 +57,12 @@ export class DataLoader<T = unknown> implements AsyncIterable<T[]> {
       // Fisher-Yates shuffle
       for (let i = indices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
-        ;[indices[i]!, indices[j]!] = [indices[j]!, indices[i]!]
+        const temp = indices[i]
+        const swapVal = indices[j]
+        if (temp !== undefined && swapVal !== undefined) {
+          indices[i] = swapVal
+          indices[j] = temp
+        }
       }
     }
 
@@ -90,7 +95,7 @@ export class DataLoader<T = unknown> implements AsyncIterable<T[]> {
   /**
    * Synchronous iterator (for sync datasets)
    */
-  *iter(): Iterator<T[]> {
+  *iter(): IterableIterator<T[]> {
     const indices = this.getIndices()
     const numBatches = this.numBatches
 

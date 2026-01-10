@@ -2,11 +2,23 @@ import { expect } from 'vitest';
 import type { Tensor } from '@ts-torch/core';
 
 /**
+ * Convert a typed array to a number array
+ */
+function toNumberArray(arr: ArrayLike<number | bigint>): number[] {
+  const result: number[] = [];
+  for (let i = 0; i < arr.length; i++) {
+    const val = arr[i];
+    result.push(typeof val === 'bigint' ? Number(val) : (val as number));
+  }
+  return result;
+}
+
+/**
  * Custom Vitest matchers for tensor assertions
  */
 
 declare module 'vitest' {
-  interface Assertion<T = unknown> {
+  interface Assertion<T> {
     /**
      * Assert that a tensor has the expected shape
      */
@@ -65,7 +77,10 @@ function arraysClose(
   tolerance: number = 1e-5
 ): boolean {
   if (a.length !== b.length) return false;
-  return a.every((val, idx) => Math.abs(val - b[idx]) <= tolerance);
+  return a.every((val, idx) => {
+    const bVal = b[idx];
+    return bVal !== undefined && Math.abs(val - bVal) <= tolerance;
+  });
 }
 
 export const tensorMatchers = {
@@ -84,7 +99,7 @@ export const tensorMatchers = {
   },
 
   toBeCloseTo(received: Tensor, expected: number[], tolerance: number = 1e-5) {
-    const actual = received.toArray();
+    const actual = toNumberArray(received.toArray());
     const pass = arraysClose(actual, expected, tolerance);
 
     return {
@@ -99,7 +114,7 @@ export const tensorMatchers = {
   },
 
   toBeFinite(received: Tensor) {
-    const values = received.toArray();
+    const values = toNumberArray(received.toArray());
     const pass = values.every((val) => Number.isFinite(val));
 
     const nonFiniteValues = values.filter((val) => !Number.isFinite(val));
@@ -169,8 +184,8 @@ export const tensorMatchers = {
       };
     }
 
-    const actualValues = received.toArray();
-    const expectedValues = expected.toArray();
+    const actualValues = toNumberArray(received.toArray());
+    const expectedValues = toNumberArray(expected.toArray());
     const valuesMatch = arraysClose(actualValues, expectedValues, tolerance);
 
     return {

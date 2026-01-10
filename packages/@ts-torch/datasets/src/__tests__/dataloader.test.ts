@@ -4,7 +4,7 @@
  * Tests batching, shuffling, and iteration over datasets.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { DataLoader } from '../dataloader.js';
 import { BaseDataset } from '../dataset.js';
 
@@ -391,12 +391,15 @@ describe('DataLoader', () => {
       const batches2 = Array.from(loader.iter());
 
       // Both should contain all elements (make copies before sorting with numeric comparison)
-      expect([...batches1[0]!].sort((a, b) => a - b)).toEqual(Array.from({ length: 100 }, (_, i) => i));
-      expect([...batches2[0]!].sort((a, b) => a - b)).toEqual(Array.from({ length: 100 }, (_, i) => i));
+      const batch1First = batches1[0];
+      const batch2First = batches2[0];
+      if (batch1First === undefined || batch2First === undefined) {
+        throw new Error('Expected batches to have at least one element');
+      }
+      expect([...batch1First].sort((a, b) => a - b)).toEqual(Array.from({ length: 100 }, (_, i) => i));
+      expect([...batch2First].sort((a, b) => a - b)).toEqual(Array.from({ length: 100 }, (_, i) => i));
 
       // Order should be different (very likely with 100 elements)
-      // We verify they're different by checking if order matches
-      const sameOrder = batches1[0]?.every((val, i) => val === batches2[0]?.[i]);
       // Note: There's a tiny chance this could be the same, but with 100! permutations it's negligible
       // For test reliability, we just verify structure
       expect(batches1).toHaveLength(1);
