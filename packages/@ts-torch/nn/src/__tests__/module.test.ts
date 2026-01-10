@@ -262,7 +262,7 @@ describe('Module.train() with nested modules', () => {
 describe('Module.to()', () => {
   test('returns this for chaining', () => {
     const module = new TestModule()
-    const result = module.to('cpu' as Device)
+    const result = module.to('cpu' as unknown as Device)
 
     expect(result).toBe(module)
   })

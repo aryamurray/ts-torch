@@ -32,6 +32,7 @@
     "@ts-torch-platform/loader": "workspace:*"
   },
   "devDependencies": {
+    "@types/bun": "^1.2.5",
     "typescript": "5.9.2",
     "vitest": "^4.0.16"
   },
