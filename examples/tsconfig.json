@@ -10,5 +10,11 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["*.ts"]
+  "include": ["*.ts"],
+  "references": [
+    { "path": "../packages/@ts-torch/core" },
+    { "path": "../packages/@ts-torch/datasets" },
+    { "path": "../packages/@ts-torch/nn" },
+    { "path": "../packages/@ts-torch/optim" }
+  ]
 }

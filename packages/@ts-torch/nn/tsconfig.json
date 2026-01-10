@@ -26,5 +26,6 @@
     "incremental": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/examples/**/*", "src/**/*.test.ts", "src/**/__tests__"]
+  "exclude": ["node_modules", "dist", "src/examples/**/*", "src/**/*.test.ts", "src/**/__tests__"],
+  "references": [{ "path": "../core" }]
 }
