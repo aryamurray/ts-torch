@@ -151,9 +151,13 @@ export function getLibraryPath(): string {
   // 3. Try local development paths (workspace monorepo structure)
   const cwd = process.cwd()
   const possiblePaths = [
-    // CMake build output (Windows)
+    // CMake build output (from workspace root)
     join(cwd, 'packages', '@ts-torch', 'core', 'native', 'build', 'Release', libFileName),
     join(cwd, 'packages', '@ts-torch', 'core', 'native', 'build', 'Debug', libFileName),
+
+    // CMake build output (from examples/ directory - go up one level)
+    join(cwd, '..', 'packages', '@ts-torch', 'core', 'native', 'build', 'Release', libFileName),
+    join(cwd, '..', 'packages', '@ts-torch', 'core', 'native', 'build', 'Debug', libFileName),
 
     // Relative from @ts-torch/core package
     join(cwd, '..', '..', 'core', 'native', 'build', 'Release', libFileName),

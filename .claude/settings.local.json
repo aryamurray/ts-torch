@@ -16,7 +16,12 @@
       "Bash(bunx tsc:*)",
       "Bash(bunx vitest run:*)",
       "Bash(npm test:*)",
-      "Bash(bun run test:*)"
+      "Bash(bun run test:*)",
+      "Bash(npm run check-types:*)",
+      "Bash(TS_TORCH_LIB=\"C:\\\\Users\\\\thema\\\\OneDrive\\\\Documents\\\\Code\\\\ts-torch\\\\packages\\\\@ts-torch\\\\core\\\\native\\\\build\\\\Release\\\\ts_torch.dll\" bun run:*)",
+      "Bash(bun run:*)",
+      "Bash(bun -e:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

@@ -80,41 +80,30 @@ for (let epoch = 0; epoch < EPOCHS; epoch++) {
   console.log(`Starting epoch ${epoch + 1}...`)
 
   for (const batch of trainData.batches(BATCH_SIZE, true)) {
-    if (numBatches <= 3) console.log(`  Starting batch ${numBatches + 1}...`)
     torch.run(() => {
-      if (numBatches <= 2) console.log(`    [${numBatches}] zeroGrad...`)
       // Zero gradients
       optimizer.zeroGrad()
 
-      if (numBatches <= 2) console.log(`    [${numBatches}] Forward pass...`)
       // Forward pass
       const logits = forward(batch.images)
 
-      if (numBatches <= 2) console.log(`    [${numBatches}] Computing loss...`)
       // Compute cross-entropy loss
-      // This properly tracks gradients through the computation graph
       const loss = crossEntropyLoss(logits as any, batch.labelsTensor as any)
 
-      if (numBatches <= 2) console.log(`    [${numBatches}] Backward pass...`)
       // Backward pass - compute gradients
       loss.backward()
 
-      if (numBatches <= 2) console.log(`    [${numBatches}] Optimizer step...`)
       // Update weights
       optimizer.step()
 
-      if (numBatches <= 2) console.log(`    [${numBatches}] Getting loss value...`)
       // Track loss (get scalar value)
       const lossArray = loss.toArray() as Float32Array
       totalLoss += lossArray[0] ?? 0
       numBatches++
-      if (numBatches === 1) console.log('  First batch complete! Loss:', lossArray[0])
-      if (numBatches <= 3) console.log(`  Batch ${numBatches}: Computing accuracy...`)
 
       // Compute accuracy
       const probs = logits.softmax(1)
       const probsArray = probs.toArray() as Float32Array
-      if (numBatches <= 3) console.log(`  Batch ${numBatches}: Got probs, counting ${batch.labels.length} samples...`)
 
       for (let i = 0; i < batch.labels.length; i++) {
         const label = batch.labels[i]!
@@ -132,10 +121,14 @@ for (let epoch = 0; epoch < EPOCHS; epoch++) {
         if (pred === label) correct++
         total++
       }
-      if (numBatches <= 3) console.log(`  Batch ${numBatches}: Accuracy loop done, exiting scope...`)
     })
-    if (numBatches <= 3) console.log(`  Batch ${numBatches}: Scope exited successfully`)
+
+    // Progress indicator every 100 batches
+    if (numBatches % 100 === 0) {
+      process.stdout.write(`\r  Batch ${numBatches}/${Math.ceil(trainData.length / BATCH_SIZE)}`)
+    }
   }
+  console.log() // New line after progress
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
   const avgLoss = (totalLoss / numBatches).toFixed(4)

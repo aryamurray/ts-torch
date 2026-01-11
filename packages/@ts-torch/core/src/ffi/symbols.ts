@@ -267,6 +267,20 @@ export const FFI_SYMBOLS = {
     returns: ptr,
   },
 
+  // ==================== In-place Operations ====================
+
+  // ts_tensor_sub_inplace(tensor, other, error) - tensor.data -= other
+  ts_tensor_sub_inplace: {
+    args: [ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_add_scaled_inplace(tensor, other, scalar, error) - tensor.data += scalar * other
+  ts_tensor_add_scaled_inplace: {
+    args: [ptr, ptr, f64, ptr] as const,
+    returns: void_,
+  },
+
   // ts_tensor_zero_grad(tensor, error)
   ts_tensor_zero_grad: {
     args: [ptr, ptr] as const,

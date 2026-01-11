@@ -412,12 +412,14 @@ describe('MNIST', () => {
         const batches1 = Array.from(mnist.batches(25, true));
         const batches2 = Array.from(mnist.batches(25, true));
 
-        // Both should have same total labels
-        const labels1 = batches1[0]!.labels.sort();
-        const labels2 = batches2[0]!.labels.sort();
+        // Both should have same total labels (sorted for comparison)
+        const labels1 = batches1[0]!.labels.slice().sort((a, b) => a - b);
+        const labels2 = batches2[0]!.labels.slice().sort((a, b) => a - b);
 
-        expect(labels1).toEqual(Array.from({ length: 25 }, (_, i) => i % 10));
-        expect(labels2).toEqual(Array.from({ length: 25 }, (_, i) => i % 10));
+        // Expected: 25 labels where label[i] = i % 10, then sorted
+        const expectedSorted = Array.from({ length: 25 }, (_, i) => i % 10).sort((a, b) => a - b);
+        expect(labels1).toEqual(expectedSorted);
+        expect(labels2).toEqual(expectedSorted);
       });
     });
 

@@ -384,6 +384,20 @@ TS_TORCH_API ts_TensorHandle ts_tensor_mse_loss(
     ts_Error* error
 );
 
+// In-place operations (for optimizer updates)
+TS_TORCH_API void ts_tensor_sub_inplace(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    ts_Error* error
+);
+
+TS_TORCH_API void ts_tensor_add_scaled_inplace(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    double scalar,
+    ts_Error* error
+);
+
 // Comparison operations
 TS_TORCH_API ts_TensorHandle ts_tensor_eq(
     ts_TensorHandle a,

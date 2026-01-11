@@ -241,15 +241,18 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
   }
 
   /**
-   * Clear and free the gradient cache
+   * Clear the gradient cache
    * @internal
+   *
+   * Note: We don't free the gradient tensor because its underlying data is
+   * managed by PyTorch's autograd. The ts_Tensor wrapper will be cleaned up
+   * by the garbage collector, and its destructor will just decrement the
+   * reference count on the underlying torch::Tensor.
    */
   private _clearGradCache(): void {
-    if (this._gradCache) {
-      this._gradCache.free()
-    }
-    // Set to undefined (not null) to invalidate cache but allow refetching from native
-    // null means "no gradient exists", undefined means "cache invalid, refetch"
+    // Just drop our reference to the cached gradient
+    // Don't call free() - the gradient tensor's underlying data is managed by autograd
+    // and may still be needed by the computation graph
     this._gradCache = undefined
   }
 
@@ -1069,6 +1072,131 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     checkNull(handle, 'Failed to move tensor to CUDA')
 
     return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  // ==================== Loss Functions ====================
+
+  /**
+   * Compute cross entropy loss between logits and targets
+   *
+   * @param targets - Target class indices tensor
+   * @returns Scalar tensor with mean cross entropy loss
+   *
+   * @example
+   * ```ts
+   * const logits = fromArray([[1, 2, 3], [1, 2, 3]], [2, 3], DType.float32, true);
+   * const targets = fromArray([2, 0], [2], DType.int64);
+   * const loss = logits.crossEntropyLoss(targets);
+   * loss.backward();
+   * ```
+   */
+  crossEntropyLoss<TargetD extends DType<string>>(
+    targets: Tensor<readonly [S[0]], TargetD>,
+  ): Tensor<readonly [], D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_cross_entropy_loss(this._handle, targets._handle, err),
+    )
+
+    checkNull(handle, 'Failed to compute cross entropy loss')
+
+    return new Tensor<readonly [], D>(handle!, [] as const, this.dtype)
+  }
+
+  /**
+   * Compute negative log likelihood loss
+   *
+   * @param targets - Target class indices tensor
+   * @returns Scalar tensor with mean NLL loss
+   *
+   * @example
+   * ```ts
+   * const logProbs = fromArray([[...]], [2, 3], DType.float32, true).logSoftmax(1);
+   * const targets = fromArray([2, 0], [2], DType.int64);
+   * const loss = logProbs.nllLoss(targets);
+   * ```
+   */
+  nllLoss<TargetD extends DType<string>>(targets: Tensor<readonly [S[0]], TargetD>): Tensor<readonly [], D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_nll_loss(this._handle, targets._handle, err))
+
+    checkNull(handle, 'Failed to compute NLL loss')
+
+    return new Tensor<readonly [], D>(handle!, [] as const, this.dtype)
+  }
+
+  /**
+   * Compute mean squared error loss
+   *
+   * @param target - Target tensor (same shape as this)
+   * @returns Scalar tensor with mean MSE loss
+   *
+   * @example
+   * ```ts
+   * const pred = fromArray([1, 2, 3], [3], DType.float32, true);
+   * const target = fromArray([1.5, 2.5, 3.5], [3], DType.float32);
+   * const loss = pred.mseLoss(target);
+   * loss.backward();
+   * ```
+   */
+  mseLoss(target: Tensor<S, D>): Tensor<readonly [], D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_mse_loss(this._handle, target._handle, err))
+
+    checkNull(handle, 'Failed to compute MSE loss')
+
+    return new Tensor<readonly [], D>(handle!, [] as const, this.dtype)
+  }
+
+  // ==================== In-place Operations ====================
+
+  /**
+   * In-place subtraction: this.data -= other
+   *
+   * Modifies tensor data directly, bypassing autograd.
+   * Used for optimizer parameter updates.
+   *
+   * @param other - Tensor to subtract
+   *
+   * @example
+   * ```ts
+   * param.subInplace(gradient);  // param -= gradient
+   * ```
+   */
+  subInplace(other: Tensor<S, D>): void {
+    this._checkValid()
+    other._checkValid()
+    const lib = getLib()
+
+    withError((err) => lib.ts_tensor_sub_inplace(this._handle, other._handle, err))
+  }
+
+  /**
+   * In-place scaled addition: this.data += scalar * other
+   *
+   * Modifies tensor data directly, bypassing autograd.
+   * Used for optimizer parameter updates (e.g., param -= lr * grad).
+   *
+   * @param other - Tensor to add (scaled)
+   * @param scalar - Scalar multiplier
+   *
+   * @example
+   * ```ts
+   * param.addScaledInplace(gradient, -learningRate);  // param -= lr * grad
+   * ```
+   */
+  addScaledInplace(other: Tensor<S, D>, scalar: number): void {
+    this._checkValid()
+    other._checkValid()
+    const lib = getLib()
+
+    withError((err) => lib.ts_tensor_add_scaled_inplace(this._handle, other._handle, scalar, err))
   }
 
   // ==================== Module Integration ====================

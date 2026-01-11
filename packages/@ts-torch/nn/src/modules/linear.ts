@@ -139,6 +139,8 @@ export class Linear<
     init: 'kaiming_uniform' | 'kaiming_normal' | 'xavier_uniform' | 'xavier_normal' | 'zeros',
   ): Parameter<readonly [OutFeatures, InFeatures], D> {
     const shape = [this.outFeatures, this.inFeatures] as const
+    const fanIn = this.inFeatures
+    const fanOut = this.outFeatures
 
     let weight: Tensor<readonly [OutFeatures, InFeatures], D>
 
@@ -146,15 +148,20 @@ export class Linear<
       case 'kaiming_uniform':
       case 'kaiming_normal': {
         // Kaiming/He initialization for ReLU activations
-        // Use randn (approximate - we'd need scalar mul for exact scaling)
-        weight = torch.randn(shape) as unknown as Tensor<readonly [OutFeatures, InFeatures], D>
+        // std = sqrt(2 / fan_in) for ReLU
+        const std = Math.sqrt(2.0 / fanIn)
+        const randWeight = torch.randn(shape)
+        weight = (randWeight as any).mulScalar(std) as Tensor<readonly [OutFeatures, InFeatures], D>
         break
       }
 
       case 'xavier_uniform':
       case 'xavier_normal': {
         // Xavier/Glorot initialization for tanh/sigmoid
-        weight = torch.randn(shape) as unknown as Tensor<readonly [OutFeatures, InFeatures], D>
+        // std = sqrt(2 / (fan_in + fan_out))
+        const std = Math.sqrt(2.0 / (fanIn + fanOut))
+        const randWeight = torch.randn(shape)
+        weight = (randWeight as any).mulScalar(std) as Tensor<readonly [OutFeatures, InFeatures], D>
         break
       }
 
@@ -165,8 +172,10 @@ export class Linear<
       }
 
       default: {
-        // Default to randn
-        weight = torch.randn(shape) as unknown as Tensor<readonly [OutFeatures, InFeatures], D>
+        // Default to Kaiming normal
+        const std = Math.sqrt(2.0 / fanIn)
+        const randWeight = torch.randn(shape)
+        weight = (randWeight as any).mulScalar(std) as Tensor<readonly [OutFeatures, InFeatures], D>
       }
     }
 

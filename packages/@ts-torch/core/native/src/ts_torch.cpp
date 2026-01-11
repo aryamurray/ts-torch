@@ -1150,6 +1150,44 @@ ts_TensorHandle ts_tensor_mse_loss(
     }
 }
 
+// In-place operations (for optimizer updates)
+void ts_tensor_sub_inplace(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !other) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+
+        // Use .data() to bypass autograd and modify in-place
+        tensor->tensor.data().sub_(other->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_add_scaled_inplace(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    double scalar,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !other) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+
+        // Use .data() to bypass autograd: tensor.data += scalar * other
+        tensor->tensor.data().add_(other->tensor, scalar);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
 // Comparison operations
 ts_TensorHandle ts_tensor_eq(
     ts_TensorHandle a,

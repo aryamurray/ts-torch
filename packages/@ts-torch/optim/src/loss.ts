@@ -56,6 +56,24 @@ export function crossEntropyLoss<B extends number, C extends number, D extends D
 ): Tensor<readonly [], D> | Tensor<readonly [B], D> {
   const reduction = options?.reduction ?? 'mean'
 
+  // Use native crossEntropyLoss if available (preferred - more efficient)
+  if (
+    'crossEntropyLoss' in logits &&
+    typeof (logits as unknown as { crossEntropyLoss?: Function }).crossEntropyLoss === 'function'
+  ) {
+    const loss = (logits as unknown as { crossEntropyLoss: (targets: Tensor) => Tensor }).crossEntropyLoss(
+      targets as Tensor,
+    ) as Tensor
+
+    // Native implementation returns mean reduction by default
+    // For other reductions, we need to recompute
+    if (reduction === 'mean') {
+      return loss as Tensor<readonly [], D>
+    }
+    // For 'sum' or 'none', fall through to manual implementation
+  }
+
+  // Fallback: manual computation using basic tensor ops
   // Compute log softmax: log(exp(x_i) / sum(exp(x_j)))
   // For numerical stability: log_softmax(x) = x - log(sum(exp(x)))
   let logSoftmax: Tensor
@@ -103,9 +121,20 @@ export function crossEntropyLoss<B extends number, C extends number, D extends D
     if ('mul' in nll && typeof (nll as { mul?: Function }).mul === 'function') {
       nll = (nll.mul as any)(-1) as Tensor
     }
+  } else if (
+    'nllLoss' in logSoftmax &&
+    typeof (logSoftmax as unknown as { nllLoss?: Function }).nllLoss === 'function'
+  ) {
+    // Use native nllLoss on log softmax
+    return (logSoftmax as unknown as { nllLoss: (targets: Tensor) => Tensor }).nllLoss(targets as Tensor) as Tensor<
+      readonly [],
+      D
+    >
   } else {
-    // Fallback: manual indexing (less efficient)
-    throw new Error('Gather operation not available on Tensor')
+    throw new Error(
+      'Cannot compute cross entropy: neither gather nor nllLoss available. ' +
+        'Ensure you are using a Tensor from @ts-torch/core.',
+    )
   }
 
   // Apply reduction
