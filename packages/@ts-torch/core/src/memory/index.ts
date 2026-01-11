@@ -31,11 +31,38 @@ export { TensorPool, globalTensorPool, type PoolableTensor, type PoolStats } fro
 // ==================== ArrayBuffer Memory Pool ====================
 
 /**
+ * Configuration options for MemoryPool
+ */
+export interface MemoryPoolOptions {
+  /** Maximum number of buffers to cache per size (default: 32) */
+  maxBuffersPerSize?: number
+  /** Maximum total memory to cache in bytes (default: 256MB) */
+  maxTotalBytes?: number
+  /** Maximum buffer size to cache (default: 64MB) - larger buffers are not pooled */
+  maxBufferSize?: number
+}
+
+/**
  * Memory pool for ArrayBuffer allocations
  * Separate from TensorPool - this pools raw buffers, not tensor objects
  */
 export class MemoryPool {
   private pools: Map<number, ArrayBuffer[]> = new Map()
+  private totalCachedBytes = 0
+  private readonly maxBuffersPerSize: number
+  private readonly maxTotalBytes: number
+  private readonly maxBufferSize: number
+
+  /**
+   * Create a new memory pool
+   *
+   * @param options - Pool configuration options
+   */
+  constructor(options: MemoryPoolOptions = {}) {
+    this.maxBuffersPerSize = options.maxBuffersPerSize ?? 32
+    this.maxTotalBytes = options.maxTotalBytes ?? 256 * 1024 * 1024 // 256MB default
+    this.maxBufferSize = options.maxBufferSize ?? 64 * 1024 * 1024 // 64MB default
+  }
 
   /**
    * Allocate a buffer from the pool
@@ -44,20 +71,44 @@ export class MemoryPool {
     const pool = this.pools.get(size)
     if (pool && pool.length > 0) {
       const buffer = pool.pop()
-      if (buffer) return buffer
+      if (buffer) {
+        this.totalCachedBytes -= size
+        return buffer
+      }
     }
     return new ArrayBuffer(size)
   }
 
   /**
    * Return a buffer to the pool
+   * If the pool is full or buffer is too large, the buffer is discarded (GC will reclaim it)
    */
   deallocate(buffer: ArrayBuffer): void {
     const size = buffer.byteLength
+
+    // Don't pool buffers that are too large
+    if (size > this.maxBufferSize) {
+      return // Let GC handle it
+    }
+
+    // Don't exceed total memory limit
+    if (this.totalCachedBytes + size > this.maxTotalBytes) {
+      return // Let GC handle it
+    }
+
     if (!this.pools.has(size)) {
       this.pools.set(size, [])
     }
-    this.pools.get(size)!.push(buffer)
+
+    const pool = this.pools.get(size)!
+
+    // Don't exceed per-size limit
+    if (pool.length >= this.maxBuffersPerSize) {
+      return // Let GC handle it
+    }
+
+    pool.push(buffer)
+    this.totalCachedBytes += size
   }
 
   /**
@@ -65,12 +116,43 @@ export class MemoryPool {
    */
   clear(): void {
     this.pools.clear()
+    this.totalCachedBytes = 0
+  }
+
+  /**
+   * Prune the pool to reduce memory usage
+   *
+   * @param targetBytes - Target total cached bytes (default: half current size)
+   */
+  prune(targetBytes?: number): void {
+    const target = targetBytes ?? Math.floor(this.totalCachedBytes / 2)
+
+    if (this.totalCachedBytes <= target) {
+      return
+    }
+
+    // Remove buffers from pools until we hit target
+    for (const [size, pool] of this.pools.entries()) {
+      while (pool.length > 0 && this.totalCachedBytes > target) {
+        pool.pop()
+        this.totalCachedBytes -= size
+      }
+
+      // Remove empty pools
+      if (pool.length === 0) {
+        this.pools.delete(size)
+      }
+
+      if (this.totalCachedBytes <= target) {
+        break
+      }
+    }
   }
 
   /**
    * Get memory statistics
    */
-  stats(): { totalBuffers: number; totalSize: number } {
+  stats(): { totalBuffers: number; totalSize: number; maxTotalBytes: number; maxBufferSize: number } {
     let totalBuffers = 0
     let totalSize = 0
 
@@ -79,7 +161,12 @@ export class MemoryPool {
       totalSize += size * buffers.length
     }
 
-    return { totalBuffers, totalSize }
+    return {
+      totalBuffers,
+      totalSize,
+      maxTotalBytes: this.maxTotalBytes,
+      maxBufferSize: this.maxBufferSize,
+    }
   }
 }
 

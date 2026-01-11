@@ -12,7 +12,7 @@ import type { MatMulShape, TransposeShape } from '../types/tensor.js'
 import { getLib } from '../ffi/loader.js'
 import { withError, checkNull, TorchError, ErrorCode, type Pointer } from '../ffi/error.js'
 import { BytesPerElement } from '../types/dtype.js'
-import { escapeTensor as scopeEscapeTensor, inScope } from '../memory/scope.js'
+import { escapeTensor as scopeEscapeTensor, inScope, registerTensor } from '../memory/scope.js'
 
 /**
  * Core Tensor class representing a multi-dimensional array with type-safe operations
@@ -85,8 +85,10 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * @internal
    */
   private _registerWithScope(): void {
-    // TODO: Implement scope tracking
-    // For now, tensors must be manually freed or will be GC'd
+    // Register with current scope if one exists
+    // The scope module will track this tensor and free it when the scope exits
+    // (unless the tensor is escaped via .escape())
+    registerTensor(this as unknown as { handle: Pointer; escaped: boolean; markEscaped(): void })
   }
 
   /**
@@ -155,8 +157,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     withError((err) => lib.ts_tensor_set_requires_grad(this._handle, value, err))
 
-    // Clear gradient cache
-    this._gradCache = undefined
+    // Free and clear gradient cache when requiresGrad changes
+    this._clearGradCache()
   }
 
   // ==================== Memory Management ====================
@@ -230,9 +232,25 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
       return // Already freed
     }
 
+    // Free cached gradient tensor first to prevent memory leaks
+    this._clearGradCache()
+
     const lib = getLib()
     lib.ts_tensor_delete(this._handle)
     this._freed = true
+  }
+
+  /**
+   * Clear and free the gradient cache
+   * @internal
+   */
+  private _clearGradCache(): void {
+    if (this._gradCache) {
+      this._gradCache.free()
+    }
+    // Set to undefined (not null) to invalidate cache but allow refetching from native
+    // null means "no gradient exists", undefined means "cache invalid, refetch"
+    this._gradCache = undefined
   }
 
   /**
@@ -930,6 +948,9 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     const lib = getLib()
 
     withError((err) => lib.ts_tensor_zero_grad(this._handle, err))
+
+    // Invalidate gradient cache since native gradient was zeroed
+    this._clearGradCache()
   }
 
   /**

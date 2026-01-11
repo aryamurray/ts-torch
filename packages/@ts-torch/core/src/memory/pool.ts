@@ -23,6 +23,8 @@
 
 import type { Shape } from '../types/shape.js'
 import type { DTypeName } from '../types/dtype.js'
+import { getLib } from '../ffi/loader.js'
+import type { Pointer } from '../ffi/error.js'
 
 /**
  * Minimal tensor interface for pooling
@@ -32,6 +34,21 @@ export interface PoolableTensor {
   readonly shape: Shape
   readonly dtype: DTypeName
   readonly handle: unknown
+}
+
+/**
+ * Free native tensor memory
+ * @internal
+ */
+function freeTensorNative(tensor: PoolableTensor): void {
+  if (tensor.handle !== null && tensor.handle !== 0) {
+    try {
+      const lib = getLib()
+      lib.ts_tensor_delete(tensor.handle as Pointer)
+    } catch {
+      // Silently ignore errors during cleanup (e.g., library already unloaded)
+    }
+  }
 }
 
 /**
@@ -102,7 +119,7 @@ export class TensorPool {
 
   /**
    * Release a tensor back to the pool for reuse.
-   * If the pool for this tensor type is full, the tensor is discarded.
+   * If the pool for this tensor type is full, the tensor's native memory is freed.
    *
    * @param tensor - Tensor to return to pool
    *
@@ -127,19 +144,31 @@ export class TensorPool {
     // Only cache up to maxPoolSize tensors per key
     if (pool.length < this.maxPoolSize) {
       pool.push(tensor)
+    } else {
+      // Pool is full - free native memory to prevent memory leak
+      freeTensorNative(tensor)
     }
   }
 
   /**
    * Clear all cached tensors from the pool.
-   * Does not free the tensors - they should be freed by their scopes.
+   *
+   * @param freeNativeMemory - If true, free native tensor memory (default: true)
    *
    * @example
    * ```ts
-   * pool.clear(); // Reset pool
+   * pool.clear(); // Reset pool and free native memory
+   * pool.clear(false); // Reset pool without freeing (if tensors are managed elsewhere)
    * ```
    */
-  clear(): void {
+  clear(freeNativeMemory = true): void {
+    if (freeNativeMemory) {
+      for (const pool of this.pools.values()) {
+        for (const tensor of pool) {
+          freeTensorNative(tensor)
+        }
+      }
+    }
     this.pools.clear()
     this.hitCount = 0
     this.missCount = 0
@@ -183,14 +212,23 @@ export class TensorPool {
    *
    * @param shape - Tensor shape
    * @param dtype - Tensor dtype
+   * @param freeNativeMemory - If true, free native tensor memory (default: true)
    *
    * @example
    * ```ts
    * pool.clearKey([10, 10], "float32");
    * ```
    */
-  clearKey(shape: Shape, dtype: DTypeName): void {
+  clearKey(shape: Shape, dtype: DTypeName, freeNativeMemory = true): void {
     const key = this.makeKey(shape, dtype)
+    if (freeNativeMemory) {
+      const pool = this.pools.get(key)
+      if (pool) {
+        for (const tensor of pool) {
+          freeTensorNative(tensor)
+        }
+      }
+    }
     this.pools.delete(key)
   }
 
@@ -241,6 +279,7 @@ export class TensorPool {
   /**
    * Prune the pool to reduce memory usage.
    * Removes least recently used tensors until size target is met.
+   * Native memory is freed for all pruned tensors.
    *
    * @param targetSize - Target number of tensors to keep (default: half current size)
    *
@@ -264,7 +303,10 @@ export class TensorPool {
     // Remove from pools until we hit target
     for (const [key, pool] of this.pools.entries()) {
       while (pool.length > 0 && currentSize > target) {
-        pool.pop()
+        const tensor = pool.pop()
+        if (tensor) {
+          freeTensorNative(tensor)
+        }
         currentSize--
       }
 

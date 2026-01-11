@@ -1,4 +1,5 @@
 import { torch } from '@ts-torch/core'
+import { crossEntropyLoss } from '@ts-torch/optim'
 
 console.log('Testing basic tensor...')
 const t = torch.zeros([2, 3] as const)
@@ -25,7 +26,7 @@ logits.requiresGrad = true
 const targets = torch.tensor([0, 1, 2, 3], [4] as const, torch.int64)
 console.log('Targets shape:', targets.shape)
 
-const loss = torch.nn.crossEntropyLoss(logits as any, targets as any)
+const loss = crossEntropyLoss(logits as any, targets as any)
 console.log('Loss computed')
 
 console.log('Testing backward...')

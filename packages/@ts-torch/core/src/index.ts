@@ -6,11 +6,10 @@
  */
 
 // ===============================
-// Internal Imports for Loss Functions
+// Internal Imports for CUDA Utilities
 // ===============================
 
 import { getLib } from './ffi/loader.js'
-import { withError, checkNull } from './ffi/error.js'
 
 // ===============================
 // Type Exports
@@ -427,105 +426,6 @@ export const torch = {
   int64,
   bool,
   bfloat16,
-
-  // ==================== Loss Functions ====================
-
-  /**
-   * Functional loss utilities
-   */
-  nn: {
-    /**
-     * Negative Log Likelihood Loss
-     *
-     * Takes log-probabilities (from logSoftmax) and target class indices.
-     *
-     * @param logProbs - Log probabilities of shape [N, C]
-     * @param targets - Target class indices of shape [N] (int64)
-     * @returns Scalar loss tensor
-     *
-     * @example
-     * ```ts
-     * const logits = model.forward(input);
-     * const logProbs = logits.logSoftmax(1);
-     * const loss = torch.nn.nllLoss(logProbs, targets);
-     * loss.backward();
-     * ```
-     */
-    nllLoss<D extends DType<string>>(logProbs: Tensor<Shape, D>, targets: Tensor<Shape, D>): Tensor<readonly [], D> {
-      const lib = getLib()
-
-      const handle = withError((err: any) =>
-        lib.ts_tensor_nll_loss((logProbs as any)._handle, (targets as any)._handle, err),
-      )
-
-      checkNull(handle, 'Failed to compute NLL loss')
-
-      return new Tensor<readonly [], D>(handle!, [] as const, logProbs.dtype)
-    },
-
-    /**
-     * Cross Entropy Loss
-     *
-     * Combines logSoftmax and NLL loss in a single operation.
-     * More numerically stable than computing them separately.
-     *
-     * @param logits - Raw logits of shape [N, C]
-     * @param targets - Target class indices of shape [N] (int64)
-     * @returns Scalar loss tensor
-     *
-     * @example
-     * ```ts
-     * const logits = model.forward(input);
-     * const loss = torch.nn.crossEntropyLoss(logits, targets);
-     * loss.backward();
-     * ```
-     */
-    crossEntropyLoss<D extends DType<string>>(
-      logits: Tensor<Shape, D>,
-      targets: Tensor<Shape, D>,
-    ): Tensor<readonly [], D> {
-      const lib = getLib()
-
-      const handle = withError((err: any) =>
-        lib.ts_tensor_cross_entropy_loss((logits as any)._handle, (targets as any)._handle, err),
-      )
-
-      checkNull(handle, 'Failed to compute cross entropy loss')
-
-      return new Tensor<readonly [], D>(handle!, [] as const, logits.dtype)
-    },
-
-    /**
-     * Mean Squared Error Loss
-     *
-     * Computes the mean squared error between input and target.
-     *
-     * @param input - Predicted values
-     * @param target - Target values
-     * @returns Scalar loss tensor
-     *
-     * @example
-     * ```ts
-     * const predictions = model.forward(input);
-     * const loss = torch.nn.mseLoss(predictions, targets);
-     * loss.backward();
-     * ```
-     */
-    mseLoss<S extends Shape, D extends DType<string>>(
-      input: Tensor<S, D>,
-      target: Tensor<S, D>,
-    ): Tensor<readonly [], D> {
-      const lib = getLib()
-
-      const handle = withError((err: any) =>
-        lib.ts_tensor_mse_loss((input as any)._handle, (target as any)._handle, err),
-      )
-
-      checkNull(handle, 'Failed to compute MSE loss')
-
-      return new Tensor<readonly [], D>(handle!, [] as const, input.dtype)
-    },
-  },
 }
 
 // ===============================

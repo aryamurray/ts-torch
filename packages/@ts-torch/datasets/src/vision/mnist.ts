@@ -5,8 +5,32 @@
  */
 
 import { readFileSync } from 'fs'
-import { join } from 'path'
+import { resolve, relative } from 'path'
 import { torch, type Tensor, type DType } from '@ts-torch/core'
+
+/** Maximum number of samples to prevent memory exhaustion */
+const MAX_SAMPLES = 1_000_000
+
+/** Minimum header sizes for IDX files */
+const IDX3_HEADER_SIZE = 16 // magic(4) + numImages(4) + rows(4) + cols(4)
+const IDX1_HEADER_SIZE = 8 // magic(4) + numLabels(4)
+
+/**
+ * Validate that a path is within the allowed root directory
+ * @throws Error if path traversal is detected
+ */
+function validatePath(root: string, filename: string): string {
+  const resolvedRoot = resolve(root)
+  const resolvedPath = resolve(root, filename)
+  const relativePath = relative(resolvedRoot, resolvedPath)
+
+  // Check for path traversal (path goes outside root)
+  if (relativePath.startsWith('..') || resolve(relativePath) === relativePath) {
+    throw new Error(`Path traversal detected: ${filename}`)
+  }
+
+  return resolvedPath
+}
 
 /**
  * MNIST sample containing image tensor and label
@@ -58,45 +82,121 @@ export class MNIST {
   async load(): Promise<void> {
     const prefix = this.train ? 'train' : 't10k'
 
-    const imagesPath = join(this.root, `${prefix}-images.idx3-ubyte`)
-    const labelsPath = join(this.root, `${prefix}-labels.idx1-ubyte`)
+    // Validate paths to prevent path traversal attacks
+    const imagesPath = validatePath(this.root, `${prefix}-images.idx3-ubyte`)
+    const labelsPath = validatePath(this.root, `${prefix}-labels.idx1-ubyte`)
 
-    // Load images
-    const imagesBuffer = readFileSync(imagesPath)
-    const imagesView = new DataView(imagesBuffer.buffer, imagesBuffer.byteOffset)
+    // Load and parse images in a block scope to allow buffer release
+    {
+      const imagesBuffer = readFileSync(imagesPath)
 
-    // Parse IDX3 header: magic(4), numImages(4), rows(4), cols(4)
-    const magic = imagesView.getUint32(0, false)
-    if (magic !== 0x00000803) {
-      throw new Error(`Invalid MNIST images magic number: ${magic}`)
+      // Validate buffer size before creating DataView
+      if (imagesBuffer.length < IDX3_HEADER_SIZE) {
+        throw new Error(
+          `Images file too small: ${imagesBuffer.length} bytes, minimum ${IDX3_HEADER_SIZE} required`,
+        )
+      }
+
+      const imagesView = new DataView(imagesBuffer.buffer, imagesBuffer.byteOffset, imagesBuffer.length)
+
+      // Parse IDX3 header: magic(4), numImages(4), rows(4), cols(4)
+      const magic = imagesView.getUint32(0, false)
+      if (magic !== 0x00000803) {
+        throw new Error(`Invalid MNIST images magic number: ${magic}`)
+      }
+
+      this.numSamples = imagesView.getUint32(4, false)
+
+      // Validate numSamples to prevent memory exhaustion
+      if (this.numSamples <= 0) {
+        throw new Error(`Invalid number of samples: ${this.numSamples}`)
+      }
+      if (this.numSamples > MAX_SAMPLES) {
+        throw new Error(
+          `Number of samples ${this.numSamples} exceeds maximum ${MAX_SAMPLES}`,
+        )
+      }
+
+      const rows = imagesView.getUint32(8, false)
+      const cols = imagesView.getUint32(12, false)
+
+      if (rows !== 28 || cols !== 28) {
+        throw new Error(`Unexpected MNIST image size: ${rows}x${cols}`)
+      }
+
+      // Validate file size matches expected data size
+      const expectedImageDataSize = this.numSamples * rows * cols
+      const actualImageDataSize = imagesBuffer.length - IDX3_HEADER_SIZE
+      if (actualImageDataSize < expectedImageDataSize) {
+        throw new Error(
+          `Images file size mismatch: expected ${expectedImageDataSize} bytes of pixel data, ` +
+            `but file only contains ${actualImageDataSize} bytes after header`,
+        )
+      }
+
+      // Convert pixel data to normalized Float32 [0, 1]
+      // Create a copy of the data we need, then let imagesBuffer be garbage collected
+      const pixelData = new Uint8Array(
+        imagesBuffer.buffer,
+        imagesBuffer.byteOffset + IDX3_HEADER_SIZE,
+        expectedImageDataSize,
+      )
+      this.images = new Float32Array(expectedImageDataSize)
+      for (let i = 0; i < expectedImageDataSize; i++) {
+        this.images[i] = pixelData[i]! / 255.0
+      }
+      // imagesBuffer goes out of scope here and can be garbage collected
     }
 
-    this.numSamples = imagesView.getUint32(4, false)
-    const rows = imagesView.getUint32(8, false)
-    const cols = imagesView.getUint32(12, false)
+    // Load and parse labels in a block scope to allow buffer release
+    {
+      const labelsBuffer = readFileSync(labelsPath)
 
-    if (rows !== 28 || cols !== 28) {
-      throw new Error(`Unexpected MNIST image size: ${rows}x${cols}`)
+      // Validate buffer size before creating DataView
+      if (labelsBuffer.length < IDX1_HEADER_SIZE) {
+        throw new Error(
+          `Labels file too small: ${labelsBuffer.length} bytes, minimum ${IDX1_HEADER_SIZE} required`,
+        )
+      }
+
+      const labelsView = new DataView(labelsBuffer.buffer, labelsBuffer.byteOffset, labelsBuffer.length)
+
+      // Parse IDX1 header: magic(4), numLabels(4)
+      const labelsMagic = labelsView.getUint32(0, false)
+      if (labelsMagic !== 0x00000801) {
+        throw new Error(`Invalid MNIST labels magic number: ${labelsMagic}`)
+      }
+
+      const numLabels = labelsView.getUint32(4, false)
+
+      // Validate labels count matches images count
+      if (numLabels !== this.numSamples) {
+        throw new Error(
+          `Label count ${numLabels} does not match image count ${this.numSamples}`,
+        )
+      }
+
+      // Validate file size matches expected data size
+      const expectedLabelsDataSize = this.numSamples
+      const actualLabelsDataSize = labelsBuffer.length - IDX1_HEADER_SIZE
+      if (actualLabelsDataSize < expectedLabelsDataSize) {
+        throw new Error(
+          `Labels file size mismatch: expected ${expectedLabelsDataSize} bytes of label data, ` +
+            `but file only contains ${actualLabelsDataSize} bytes after header`,
+        )
+      }
+
+      // Create a copy of the labels data (not a view) to allow labelsBuffer to be released
+      this.labels = new Uint8Array(expectedLabelsDataSize)
+      this.labels.set(
+        new Uint8Array(
+          labelsBuffer.buffer,
+          labelsBuffer.byteOffset + IDX1_HEADER_SIZE,
+          expectedLabelsDataSize,
+        ),
+      )
+      // labelsBuffer goes out of scope here and can be garbage collected
     }
-
-    // Convert pixel data to normalized Float32 [0, 1]
-    const pixelData = new Uint8Array(imagesBuffer.buffer, imagesBuffer.byteOffset + 16)
-    this.images = new Float32Array(pixelData.length)
-    for (let i = 0; i < pixelData.length; i++) {
-      this.images[i] = pixelData[i]! / 255.0
-    }
-
-    // Load labels
-    const labelsBuffer = readFileSync(labelsPath)
-    const labelsView = new DataView(labelsBuffer.buffer, labelsBuffer.byteOffset)
-
-    // Parse IDX1 header: magic(4), numLabels(4)
-    const labelsMagic = labelsView.getUint32(0, false)
-    if (labelsMagic !== 0x00000801) {
-      throw new Error(`Invalid MNIST labels magic number: ${labelsMagic}`)
-    }
-
-    this.labels = new Uint8Array(labelsBuffer.buffer, labelsBuffer.byteOffset + 8)
 
     console.log(`Loaded MNIST ${this.train ? 'train' : 'test'}: ${this.numSamples} samples`)
   }

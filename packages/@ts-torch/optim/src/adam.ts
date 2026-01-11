@@ -267,6 +267,21 @@ export class Adam extends Optimizer {
     }
   }
 
+  /**
+   * Clear optimizer state for explicit cleanup
+   * Note: WeakMap allows GC automatically, but this provides explicit control
+   */
+  clearAdamState(): void {
+    this.clearState()
+  }
+
+  /**
+   * Delete state for a specific parameter
+   */
+  deleteAdamState(param: Tensor): boolean {
+    return this.state.delete(param)
+  }
+
   override toString(): string {
     return `Adam(lr=${this.defaults.lr}, betas=${JSON.stringify(this.defaults.betas)}, eps=${this.defaults.eps})`
   }

@@ -49,6 +49,11 @@ interface ScopeContext {
 let currentScope: ScopeContext | null = null
 
 /**
+ * Counter for generating unique scope IDs
+ */
+let scopeIdCounter = 0
+
+/**
  * Execute code with scoped tensor memory management.
  * All tensors created within are automatically freed when scope exits.
  * Use tensor.escape() to keep a tensor alive after scope.
@@ -76,7 +81,7 @@ export function run<T>(fn: () => T): T {
 
   // Create JS scope context
   const newScope: ScopeContext = {
-    id: Date.now(), // Use timestamp as unique scope ID
+    id: ++scopeIdCounter, // Use counter for unique scope ID
     nativeHandle: nativeHandle as Pointer,
     tensors: new Set(),
     parent: currentScope,
@@ -130,7 +135,7 @@ export async function runAsync<T>(fn: () => Promise<T>): Promise<T> {
   const nativeHandle = lib.ts_scope_begin()
 
   const newScope: ScopeContext = {
-    id: Date.now(), // Use timestamp as unique scope ID
+    id: ++scopeIdCounter, // Use counter for unique scope ID
     nativeHandle: nativeHandle as Pointer,
     tensors: new Set(),
     parent: currentScope,

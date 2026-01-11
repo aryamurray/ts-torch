@@ -108,6 +108,41 @@ export abstract class Optimizer {
   }
 
   /**
+   * Get state for a specific parameter
+   */
+  getParamState(param: Tensor): Record<string, unknown> | undefined {
+    return this.state.get(param)
+  }
+
+  /**
+   * Set state for a specific parameter
+   */
+  setParamState(param: Tensor, state: Record<string, unknown>): void {
+    this.state.set(param, state)
+  }
+
+  /**
+   * Check if optimizer has state for a parameter
+   */
+  hasParamState(param: Tensor): boolean {
+    return this.state.has(param)
+  }
+
+  /**
+   * Delete optimizer state for a specific parameter
+   */
+  deleteParamState(param: Tensor): boolean {
+    return this.state.delete(param)
+  }
+
+  /**
+   * Clear all optimizer state
+   */
+  clearState(): void {
+    this.state.clear()
+  }
+
+  /**
    * Add a parameter group
    */
   addParamGroup(paramGroup: ParameterGroup): void {

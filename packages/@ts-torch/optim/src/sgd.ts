@@ -34,7 +34,7 @@ export interface SGDOptions extends OptimizerOptions {
 export class SGD extends Optimizer {
   declare defaults: SGDOptions
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private momentumBuffers: Map<any, any> = new Map()
+  private momentumBuffers: WeakMap<Tensor, Tensor> = new WeakMap()
 
   constructor(params: Tensor[] | ParameterGroup[], options: SGDOptions) {
     const defaults: SGDOptions = {
@@ -139,6 +139,21 @@ export class SGD extends Optimizer {
         }
       }
     }
+  }
+
+  /**
+   * Clear momentum buffers for explicit cleanup
+   * Note: WeakMap allows GC automatically, but this provides explicit control
+   */
+  clearMomentumBuffers(): void {
+    this.momentumBuffers = new WeakMap()
+  }
+
+  /**
+   * Delete momentum buffer for a specific parameter
+   */
+  deleteMomentumBuffer(param: Tensor): boolean {
+    return this.momentumBuffers.delete(param)
   }
 
   override toString(): string {

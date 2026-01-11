@@ -8,7 +8,7 @@
 import { torch } from '@ts-torch/core'
 import { Linear, ReLU } from '@ts-torch/nn'
 import { MNIST } from '@ts-torch/datasets'
-import { SGD } from '@ts-torch/optim'
+import { SGD, crossEntropyLoss } from '@ts-torch/optim'
 
 console.log('=== MNIST Classification with Autograd ===\n')
 
@@ -91,9 +91,9 @@ for (let epoch = 0; epoch < EPOCHS; epoch++) {
       const logits = forward(batch.images)
 
       if (numBatches <= 2) console.log(`    [${numBatches}] Computing loss...`)
-      // Compute cross-entropy loss using native implementation
+      // Compute cross-entropy loss
       // This properly tracks gradients through the computation graph
-      const loss = torch.nn.crossEntropyLoss(logits as any, batch.labelsTensor as any)
+      const loss = crossEntropyLoss(logits as any, batch.labelsTensor as any)
 
       if (numBatches <= 2) console.log(`    [${numBatches}] Backward pass...`)
       // Backward pass - compute gradients

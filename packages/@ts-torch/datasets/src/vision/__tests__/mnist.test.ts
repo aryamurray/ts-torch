@@ -11,11 +11,18 @@ import { MNIST } from '../mnist.js';
 const utilsModule = await import('../../../../core/src/test/utils.js');
 const { scopedTest } = utilsModule;
 
-// Mock fs module
-const readFileSyncMock = vi.fn();
-vi.mock('fs', () => ({
-  readFileSync: readFileSyncMock,
+// Mock fs module - use vi.hoisted to ensure mock is available before vi.mock hoisting
+const { readFileSyncMock } = vi.hoisted(() => ({
+  readFileSyncMock: vi.fn(),
 }));
+
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return {
+    ...actual,
+    readFileSync: readFileSyncMock,
+  };
+});
 
 /**
  * Create mock IDX3 image file buffer
