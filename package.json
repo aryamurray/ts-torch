@@ -7,6 +7,7 @@
     "packages/*",
     "packages/@ts-torch/*",
     "packages/@ts-torch-platform/*",
+    "packages/@ts-torch-cuda/*",
     "packages/shared-test-utils",
     "examples",
     "benchmark"

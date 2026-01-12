@@ -1,0 +1,23 @@
+{
+  "name": "@ts-torch/cuda",
+  "version": "0.1.0",
+  "description": "Detect CUDA and get the right ts-torch GPU package",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "ts-torch-cuda": "./bin/ts-torch-cuda"
+  },
+  "files": [
+    "src",
+    "bin"
+  ],
+  "peerDependencies": {
+    "@ts-torch/core": ">=0.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

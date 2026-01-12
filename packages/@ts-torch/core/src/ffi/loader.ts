@@ -4,9 +4,19 @@
  */
 
 import koffi from 'koffi'
-import { existsSync } from 'node:fs'
-import { resolve, join } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve, join, dirname } from 'node:path'
 import { FFI_SYMBOLS, type FFISymbols } from './symbols.js'
+
+/**
+ * Build metadata for CUDA packages
+ */
+interface BuildMeta {
+  cuda: string
+  libtorch: string
+  platform: string
+  builtAt: string
+}
 
 /**
  * Type for a koffi function
@@ -113,11 +123,99 @@ export function getPlatformPackage(): PlatformInfo {
 }
 
 /**
+ * CUDA versions to check, in order of preference (latest first)
+ */
+const CUDA_VERSIONS = ['cu124', 'cu121', 'cu118']
+
+/**
+ * Cached CUDA library path (if found)
+ */
+let cudaLibPath: string | null = null
+
+/**
+ * Check if a CUDA build is valid by verifying .build-meta.json
+ */
+function isValidCudaBuild(pkgDir: string, libFileName: string, expectedCuda: string): boolean {
+  const libPath = join(pkgDir, 'lib', libFileName)
+  const metaPath = join(pkgDir, 'lib', '.build-meta.json')
+
+  // Both lib and meta must exist
+  if (!existsSync(libPath) || !existsSync(metaPath)) {
+    return false
+  }
+
+  // Verify meta matches expected CUDA version
+  try {
+    const meta: BuildMeta = JSON.parse(readFileSync(metaPath, 'utf-8'))
+    if (meta.cuda !== expectedCuda) {
+      console.warn(`Build meta mismatch: expected ${expectedCuda}, got ${meta.cuda}`)
+      return false
+    }
+    const expectedPlatform = `${process.platform}-${process.arch}`
+    if (meta.platform !== expectedPlatform) {
+      console.warn(`Platform mismatch: expected ${expectedPlatform}, got ${meta.platform}`)
+      return false
+    }
+    return true
+  } catch {
+    console.warn(`Invalid .build-meta.json in ${pkgDir}`)
+    return false
+  }
+}
+
+/**
+ * Try to find a valid CUDA library
+ * @returns Path to CUDA library if found, null otherwise
+ */
+function findCudaLibrary(): string | null {
+  // Only Linux and Windows support CUDA
+  if (process.platform !== 'linux' && process.platform !== 'win32') {
+    return null
+  }
+
+  const platform = process.platform === 'win32' ? 'win32' : 'linux'
+  const { libraryName } = getPlatformPackage()
+  const suffix = getLibrarySuffix()
+  const libFileName = `${libraryName}.${suffix}`
+
+  // Check each CUDA version (latest first)
+  for (const cudaVer of CUDA_VERSIONS) {
+    const pkg = `@ts-torch-cuda/${platform}-x64-${cudaVer}`
+    try {
+      const pkgPath = require.resolve(`${pkg}/package.json`)
+      const pkgDir = dirname(pkgPath)
+
+      if (isValidCudaBuild(pkgDir, libFileName, cudaVer)) {
+        console.log(`Using CUDA ${cudaVer} library`)
+        cudaLibPath = join(pkgDir, 'lib', libFileName)
+        return cudaLibPath
+      }
+    } catch {
+      // Package not installed, continue to next version
+    }
+  }
+
+  // Also check development paths
+  const cwd = process.cwd()
+  for (const cudaVer of CUDA_VERSIONS) {
+    const devPath = join(cwd, 'packages', '@ts-torch-cuda', `${platform}-x64-${cudaVer}`)
+    if (existsSync(devPath) && isValidCudaBuild(devPath, libFileName, cudaVer)) {
+      console.log(`Using CUDA ${cudaVer} library (development)`)
+      cudaLibPath = join(devPath, 'lib', libFileName)
+      return cudaLibPath
+    }
+  }
+
+  return null
+}
+
+/**
  * Get the full path to the native library
  * Resolution order:
  * 1. TS_TORCH_LIB environment variable (for custom builds)
- * 2. Platform-specific package (production)
- * 3. Local development paths (workspace monorepo)
+ * 2. CUDA packages (if installed and valid)
+ * 3. CPU platform-specific package (production)
+ * 4. Local development paths (workspace monorepo)
  *
  * @throws Error if library cannot be found
  */
@@ -131,15 +229,22 @@ export function getLibraryPath(): string {
     console.warn(`TS_TORCH_LIB set but file not found: ${envPath}`)
   }
 
+  // 2. Check for CUDA packages (prefer GPU over CPU)
+  const cudaPath = findCudaLibrary()
+  if (cudaPath) {
+    return cudaPath
+  }
+
   const { packageName, libraryName } = getPlatformPackage()
   const suffix = getLibrarySuffix()
   const libFileName = `${libraryName}.${suffix}`
 
-  // 2. Try to resolve from installed platform package
+  // 3. Try to resolve from installed CPU platform package
   try {
     // Resolve the platform package's package.json
     const packagePath = require.resolve(`${packageName}/package.json`)
-    const packageDir = packagePath.replace(/\/package\.json$/, '')
+    // Handle both forward and backward slashes (Windows uses backslashes)
+    const packageDir = packagePath.replace(/[/\\]package\.json$/, '')
     const libPath = join(packageDir, libFileName)
 
     if (existsSync(libPath)) {
@@ -218,6 +323,27 @@ function findLibtorchPath(): string | null {
 }
 
 /**
+ * Find libtorch path from CUDA package (if using CUDA)
+ * CUDA packages store libtorch in their lib/libtorch directory
+ */
+function findCudaLibtorchPath(): string | null {
+  if (!cudaLibPath) {
+    return null
+  }
+
+  // CUDA lib path is like: .../lib/ts_torch.dll
+  // LibTorch is at: .../lib/libtorch/lib
+  const libDir = dirname(cudaLibPath)
+  const libtorchLib = join(libDir, 'libtorch', 'lib')
+
+  if (existsSync(libtorchLib)) {
+    return libtorchLib
+  }
+
+  return null
+}
+
+/**
  * Setup DLL search path for Windows
  * On Windows, DLL dependencies need to be in PATH or same directory
  */
@@ -226,6 +352,17 @@ function setupDllSearchPath(): void {
     return
   }
 
+  // Check CUDA libtorch path first (if using CUDA)
+  const cudaLibtorchLib = findCudaLibtorchPath()
+  if (cudaLibtorchLib) {
+    const currentPath = process.env.PATH || ''
+    if (!currentPath.includes(cudaLibtorchLib)) {
+      process.env.PATH = `${cudaLibtorchLib};${currentPath}`
+    }
+    return
+  }
+
+  // Fall back to CPU libtorch path
   const libtorchLib = findLibtorchPath()
   if (libtorchLib) {
     // Add libtorch/lib to PATH so Windows can find dependent DLLs

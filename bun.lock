@@ -43,6 +43,92 @@
         "typescript": "5.9.2",
       },
     },
+    "packages/@ts-torch-cuda/linux-x64-cu118": {
+      "name": "@ts-torch-cuda/linux-x64-cu118",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ts-torch-cuda/shared": "0.1.0",
+        "adm-zip": "^0.5.16",
+      },
+      "peerDependencies": {
+        "@ts-torch/core": ">=0.1.0",
+      },
+    },
+    "packages/@ts-torch-cuda/linux-x64-cu121": {
+      "name": "@ts-torch-cuda/linux-x64-cu121",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ts-torch-cuda/shared": "0.1.0",
+        "adm-zip": "^0.5.16",
+      },
+      "peerDependencies": {
+        "@ts-torch/core": ">=0.1.0",
+      },
+    },
+    "packages/@ts-torch-cuda/linux-x64-cu124": {
+      "name": "@ts-torch-cuda/linux-x64-cu124",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ts-torch-cuda/shared": "0.1.0",
+        "adm-zip": "^0.5.16",
+      },
+      "peerDependencies": {
+        "@ts-torch/core": ">=0.1.0",
+      },
+    },
+    "packages/@ts-torch-cuda/meta": {
+      "name": "@ts-torch/cuda",
+      "version": "0.1.0",
+      "bin": {
+        "ts-torch-cuda": "./bin/ts-torch-cuda",
+      },
+      "peerDependencies": {
+        "@ts-torch/core": ">=0.1.0",
+      },
+    },
+    "packages/@ts-torch-cuda/shared": {
+      "name": "@ts-torch-cuda/shared",
+      "version": "0.1.0",
+      "dependencies": {
+        "adm-zip": "^0.5.16",
+      },
+      "devDependencies": {
+        "@types/adm-zip": "^0.5.7",
+      },
+    },
+    "packages/@ts-torch-cuda/win32-x64-cu118": {
+      "name": "@ts-torch-cuda/win32-x64-cu118",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ts-torch-cuda/shared": "0.1.0",
+        "adm-zip": "^0.5.16",
+      },
+      "peerDependencies": {
+        "@ts-torch/core": ">=0.1.0",
+      },
+    },
+    "packages/@ts-torch-cuda/win32-x64-cu121": {
+      "name": "@ts-torch-cuda/win32-x64-cu121",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ts-torch-cuda/shared": "0.1.0",
+        "adm-zip": "^0.5.16",
+      },
+      "peerDependencies": {
+        "@ts-torch/core": ">=0.1.0",
+      },
+    },
+    "packages/@ts-torch-cuda/win32-x64-cu124": {
+      "name": "@ts-torch-cuda/win32-x64-cu124",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ts-torch-cuda/shared": "0.1.0",
+        "adm-zip": "^0.5.16",
+      },
+      "peerDependencies": {
+        "@ts-torch/core": ">=0.1.0",
+      },
+    },
     "packages/@ts-torch-platform/darwin-arm64": {
       "name": "@ts-torch-platform/darwin-arm64",
       "version": "0.1.0",
@@ -285,6 +371,20 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
+    "@ts-torch-cuda/linux-x64-cu118": ["@ts-torch-cuda/linux-x64-cu118@workspace:packages/@ts-torch-cuda/linux-x64-cu118"],
+
+    "@ts-torch-cuda/linux-x64-cu121": ["@ts-torch-cuda/linux-x64-cu121@workspace:packages/@ts-torch-cuda/linux-x64-cu121"],
+
+    "@ts-torch-cuda/linux-x64-cu124": ["@ts-torch-cuda/linux-x64-cu124@workspace:packages/@ts-torch-cuda/linux-x64-cu124"],
+
+    "@ts-torch-cuda/shared": ["@ts-torch-cuda/shared@workspace:packages/@ts-torch-cuda/shared"],
+
+    "@ts-torch-cuda/win32-x64-cu118": ["@ts-torch-cuda/win32-x64-cu118@workspace:packages/@ts-torch-cuda/win32-x64-cu118"],
+
+    "@ts-torch-cuda/win32-x64-cu121": ["@ts-torch-cuda/win32-x64-cu121@workspace:packages/@ts-torch-cuda/win32-x64-cu121"],
+
+    "@ts-torch-cuda/win32-x64-cu124": ["@ts-torch-cuda/win32-x64-cu124@workspace:packages/@ts-torch-cuda/win32-x64-cu124"],
+
     "@ts-torch-platform/darwin-arm64": ["@ts-torch-platform/darwin-arm64@workspace:packages/@ts-torch-platform/darwin-arm64"],
 
     "@ts-torch-platform/darwin-x64": ["@ts-torch-platform/darwin-x64@workspace:packages/@ts-torch-platform/darwin-x64"],
@@ -296,6 +396,8 @@
     "@ts-torch-platform/win32-x64": ["@ts-torch-platform/win32-x64@workspace:packages/@ts-torch-platform/win32-x64"],
 
     "@ts-torch/core": ["@ts-torch/core@workspace:packages/@ts-torch/core"],
+
+    "@ts-torch/cuda": ["@ts-torch/cuda@workspace:packages/@ts-torch-cuda/meta"],
 
     "@ts-torch/datasets": ["@ts-torch/datasets@workspace:packages/@ts-torch/datasets"],
 

@@ -1,0 +1,33 @@
+{
+  "name": "@ts-torch-cuda/linux-x64-cu118",
+  "version": "0.1.0",
+  "description": "CUDA 11.8 enabled ts-torch for Linux x64",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "lib",
+    "scripts"
+  ],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "scripts": {
+    "postinstall": "bun run scripts/postinstall.ts"
+  },
+  "dependencies": {
+    "@ts-torch-cuda/shared": "0.1.0",
+    "adm-zip": "^0.5.16"
+  },
+  "peerDependencies": {
+    "@ts-torch/core": ">=0.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

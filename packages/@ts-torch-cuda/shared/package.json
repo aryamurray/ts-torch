@@ -1,0 +1,20 @@
+{
+  "name": "@ts-torch-cuda/shared",
+  "version": "0.1.0",
+  "description": "Shared utilities for ts-torch CUDA packages",
+  "type": "module",
+  "main": "index.ts",
+  "license": "MIT",
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@ts-torch-cuda/win32-x64-cu124",
+  "version": "0.1.0",
+  "description": "CUDA 12.4 enabled ts-torch for Windows x64",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "lib",
+    "scripts"
+  ],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "scripts": {
+    "postinstall": "bun run scripts/postinstall.ts"
+  },
+  "dependencies": {
+    "@ts-torch-cuda/shared": "0.1.0",
+    "adm-zip": "^0.5.16"
+  },
+  "peerDependencies": {
+    "@ts-torch/core": ">=0.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
