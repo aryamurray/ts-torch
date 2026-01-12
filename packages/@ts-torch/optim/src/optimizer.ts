@@ -69,8 +69,8 @@ export abstract class Optimizer {
   zeroGrad(): void {
     for (const group of this.paramGroups) {
       for (const param of group.params) {
-        if ('grad' in param && param.grad !== null) {
-          ;(param as { grad: unknown }).grad = null
+        if ('zeroGrad' in param && typeof (param as any).zeroGrad === 'function') {
+          ;(param as any).zeroGrad()
         }
       }
     }

@@ -77,9 +77,11 @@ export class SGD extends Optimizer {
 
           if (!buf) {
             // Initialize momentum buffer with current gradient (clone)
+            // Escape from scope since we store it across epochs
             if ('clone' in d_p && typeof (d_p as any).clone === 'function') {
               const cloned = (d_p as any).clone() as Tensor
               if (cloned) {
+                if ('escape' in cloned) (cloned as any).escape()
                 buf = cloned
                 this.momentumBuffers.set(param, cloned)
               }
@@ -90,6 +92,9 @@ export class SGD extends Optimizer {
               const momentumTerm = (buf as any).mulScalar(momentum) as Tensor
               const newBuf = momentumTerm.add(d_p) as Tensor
               if (newBuf) {
+                // Escape new buffer, free old buffer
+                if ('escape' in newBuf) (newBuf as any).escape()
+                if ('free' in buf) (buf as any).free()
                 buf = newBuf
                 this.momentumBuffers.set(param, newBuf)
               }

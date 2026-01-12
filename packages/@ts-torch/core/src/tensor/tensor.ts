@@ -814,6 +814,28 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     return new Tensor<S, D>(handle!, this.shape, this.dtype)
   }
 
+  /**
+   * Element-wise square root
+   *
+   * @returns New tensor with sqrt of each element
+   *
+   * @example
+   * ```ts
+   * const a = fromArray([[1, 4], [9, 16]], [2, 2], DType.float32);
+   * const b = a.sqrt(); // [[1, 2], [3, 4]]
+   * ```
+   */
+  sqrt(): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_sqrt(this._handle, err))
+
+    checkNull(handle, 'Failed to apply sqrt')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
   // ==================== Scalar Operations ====================
 
   /**
@@ -974,12 +996,14 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     // Return cached gradient if available
     if (this._gradCache !== undefined) {
+      // console.log('grad getter: returning cached', this._gradCache === null ? 'null' : 'tensor')
       return this._gradCache
     }
 
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_grad(this._handle, err))
+    // console.log('grad getter: native returned handle', handle)
 
     // Null handle means no gradient
     if (handle === null || handle === 0) {

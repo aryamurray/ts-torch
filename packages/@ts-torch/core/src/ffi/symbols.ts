@@ -235,6 +235,12 @@ export const FFI_SYMBOLS = {
     returns: ptr,
   },
 
+  // ts_tensor_sqrt(tensor, error) -> TensorHandle
+  ts_tensor_sqrt: {
+    args: [ptr, ptr] as const,
+    returns: ptr,
+  },
+
   // ts_tensor_log_softmax(tensor, dim, error) -> TensorHandle
   ts_tensor_log_softmax: {
     args: [ptr, i32, ptr] as const,

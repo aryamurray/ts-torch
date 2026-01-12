@@ -263,6 +263,11 @@ TS_TORCH_API ts_TensorHandle ts_tensor_neg(
     ts_Error* error
 );
 
+TS_TORCH_API ts_TensorHandle ts_tensor_sqrt(
+    ts_TensorHandle tensor,
+    ts_Error* error
+);
+
 TS_TORCH_API ts_TensorHandle ts_tensor_log_softmax(
     ts_TensorHandle tensor,
     int64_t dim,

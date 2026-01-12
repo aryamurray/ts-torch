@@ -799,6 +799,23 @@ ts_TensorHandle ts_tensor_neg(ts_TensorHandle tensor, ts_Error* error) {
     }
 }
 
+ts_TensorHandle ts_tensor_sqrt(ts_TensorHandle tensor, ts_Error* error) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::sqrt(tensor->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
 ts_TensorHandle ts_tensor_log_softmax(
     ts_TensorHandle tensor,
     int64_t dim,
