@@ -276,8 +276,9 @@ export function getLib(): KoffiLibrary {
         `  - Library architecture mismatch\n` +
         `  - Missing system dependencies (libtorch, CUDA, etc.)\n` +
         `  - Corrupted library file\n\n` +
-        `Ensure libtorch is at project root: ts-tools/libtorch\n` +
-        `Or set LIBTORCH_PATH environment variable.`,
+        `Ensure libtorch is at project root: ts-torch/libtorch/\n` +
+        `Or run "bun run setup" to download and build automatically.\n` +
+        `Or set LIBTORCH or LIBTORCH_PATH environment variable.`,
     )
   }
 }

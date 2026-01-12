@@ -19,15 +19,12 @@ jobs:
           - os: ubuntu-latest
             platform: linux-x64
             lib_name: libts_torch.so
-            libtorch_url: https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.5.1%2Bcpu.zip
           - os: windows-latest
             platform: win32-x64
             lib_name: ts_torch.dll
-            libtorch_url: https://download.pytorch.org/libtorch/cpu/libtorch-win-shared-with-deps-2.5.1%2Bcpu.zip
           - os: macos-14
             platform: darwin-arm64
             lib_name: libts_torch.dylib
-            libtorch_url: https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.5.1.zip
 
     steps:
       - name: Checkout code
@@ -52,6 +49,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Cache LibTorch to avoid re-downloading on every run
       - name: Cache LibTorch
         id: cache-libtorch
         uses: actions/cache@v4
@@ -59,21 +57,7 @@ jobs:
           path: libtorch
           key: libtorch-${{ matrix.platform }}-2.5.1-cpu
 
-      - name: Download LibTorch
-        if: steps.cache-libtorch.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          mkdir -p libtorch
-          echo "Downloading LibTorch from ${{ matrix.libtorch_url }}"
-          curl -L "${{ matrix.libtorch_url }}" -o libtorch.zip
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            powershell -Command "Expand-Archive -Path libtorch.zip -DestinationPath libtorch -Force"
-          else
-            unzip -q -o libtorch.zip -d libtorch
-          fi
-          rm libtorch.zip
-          echo "LibTorch downloaded and extracted"
-
+      # Cache native build artifacts
       - name: Cache native build
         id: cache-native
         uses: actions/cache@v4
@@ -83,30 +67,30 @@ jobs:
             packages/@ts-torch-platform/${{ matrix.platform }}/lib
           key: native-${{ matrix.platform }}-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
 
-      - name: Build native library
-        if: steps.cache-native.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          cd packages/@ts-torch/core
-          bun run build:native
-        env:
-          LIBTORCH: ${{ github.workspace }}/libtorch
+      # Run setup - same script as local development for parity
+      # This downloads LibTorch (if not cached) and builds native library
+      - name: Setup LibTorch and build native library
+        if: steps.cache-libtorch.outputs.cache-hit != 'true' || steps.cache-native.outputs.cache-hit != 'true'
+        run: bun run setup
 
+      # Verify native library exists after setup or cache restore
       - name: Verify native library
         shell: bash
         run: |
           LIB_PATH="packages/@ts-torch-platform/${{ matrix.platform }}/lib/${{ matrix.lib_name }}"
           if [ -f "$LIB_PATH" ]; then
-            echo "Native library found at $LIB_PATH"
+            echo "✓ Native library found at $LIB_PATH"
             ls -la "$LIB_PATH"
           else
-            echo "ERROR: Native library not found at $LIB_PATH"
+            echo "✗ ERROR: Native library not found at $LIB_PATH"
+            echo ""
             echo "Contents of platform package:"
-            ls -la "packages/@ts-torch-platform/${{ matrix.platform }}/" || echo "Directory not found"
-            ls -la "packages/@ts-torch-platform/${{ matrix.platform }}/lib/" || echo "lib directory not found"
+            ls -la "packages/@ts-torch-platform/${{ matrix.platform }}/" || echo "  Directory not found"
+            ls -la "packages/@ts-torch-platform/${{ matrix.platform }}/lib/" || echo "  lib/ directory not found"
+            echo ""
             echo "Contents of native build directory:"
-            ls -la "packages/@ts-torch/core/native/build/" || echo "build directory not found"
-            ls -la "packages/@ts-torch/core/native/build/Release/" || echo "Release directory not found"
+            ls -la "packages/@ts-torch/core/native/build/" || echo "  build/ directory not found"
+            ls -la "packages/@ts-torch/core/native/build/Release/" || echo "  Release/ directory not found"
             exit 1
           fi
 
@@ -131,6 +115,7 @@ jobs:
       - name: Run tests
         run: bun run test
         env:
+          # Set TS_TORCH_LIB to help loader find the library
           TS_TORCH_LIB: ${{ github.workspace }}/packages/@ts-torch-platform/${{ matrix.platform }}/lib/${{ matrix.lib_name }}
         continue-on-error: true
 
@@ -139,3 +124,4 @@ jobs:
         run: |
           test -d packages/@ts-torch/core/dist || (echo "core dist not found" && exit 1)
           test -d packages/@ts-torch/nn/dist || (echo "nn dist not found" && exit 1)
+          echo "✓ All build outputs verified"
