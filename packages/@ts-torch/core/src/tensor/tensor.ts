@@ -1223,6 +1223,267 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     withError((err) => lib.ts_tensor_add_scaled_inplace(this._handle, other._handle, scalar, err))
   }
 
+  // ==================== Convolution Operations ====================
+
+  /**
+   * Apply 2D convolution
+   *
+   * @param weight - Convolution kernel [OutChannels, InChannels/groups, KernelH, KernelW]
+   * @param bias - Optional bias [OutChannels]
+   * @param stride - Stride [strideH, strideW]
+   * @param padding - Padding [paddingH, paddingW]
+   * @param dilation - Dilation [dilationH, dilationW]
+   * @param groups - Number of groups for grouped convolution
+   * @returns Convolved tensor
+   */
+  conv2d<WeightS extends Shape, BiasS extends Shape>(
+    weight: Tensor<WeightS, D>,
+    bias: Tensor<BiasS, D> | null,
+    stride: [number, number] = [1, 1],
+    padding: [number, number] = [0, 0],
+    dilation: [number, number] = [1, 1],
+    groups: number = 1,
+  ): Tensor<Shape, D> {
+    this._checkValid()
+    weight._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_conv2d(
+        this._handle,
+        weight._handle,
+        bias?._handle ?? null,
+        BigInt(stride[0]),
+        BigInt(stride[1]),
+        BigInt(padding[0]),
+        BigInt(padding[1]),
+        BigInt(dilation[0]),
+        BigInt(dilation[1]),
+        BigInt(groups),
+        err,
+      ),
+    )
+
+    checkNull(handle, 'Failed to apply conv2d')
+
+    // Compute output shape: [N, OutChannels, H_out, W_out]
+    const N = this.shape[0]!
+    const outChannels = weight.shape[0]!
+    const H_in = this.shape[2]!
+    const W_in = this.shape[3]!
+    const kernelH = weight.shape[2]!
+    const kernelW = weight.shape[3]!
+
+    const H_out = Math.floor((H_in + 2 * padding[0] - dilation[0] * (kernelH - 1) - 1) / stride[0] + 1)
+    const W_out = Math.floor((W_in + 2 * padding[1] - dilation[1] * (kernelW - 1) - 1) / stride[1] + 1)
+
+    const resultShape = [N, outChannels, H_out, W_out] as const
+
+    return new Tensor<typeof resultShape, D>(handle!, resultShape, this.dtype)
+  }
+
+  // ==================== Pooling Operations ====================
+
+  /**
+   * Apply 2D max pooling
+   *
+   * @param kernelSize - Pooling kernel [kernelH, kernelW]
+   * @param stride - Stride [strideH, strideW] (default: kernelSize)
+   * @param padding - Padding [paddingH, paddingW]
+   * @returns Pooled tensor
+   */
+  maxPool2d(
+    kernelSize: [number, number],
+    stride?: [number, number],
+    padding: [number, number] = [0, 0],
+  ): Tensor<Shape, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const actualStride = stride ?? kernelSize
+
+    const handle = withError((err) =>
+      lib.ts_tensor_max_pool2d(
+        this._handle,
+        BigInt(kernelSize[0]),
+        BigInt(kernelSize[1]),
+        BigInt(actualStride[0]),
+        BigInt(actualStride[1]),
+        BigInt(padding[0]),
+        BigInt(padding[1]),
+        err,
+      ),
+    )
+
+    checkNull(handle, 'Failed to apply max_pool2d')
+
+    // Compute output shape
+    const N = this.shape[0]!
+    const C = this.shape[1]!
+    const H_in = this.shape[2]!
+    const W_in = this.shape[3]!
+
+    const H_out = Math.floor((H_in + 2 * padding[0] - kernelSize[0]) / actualStride[0] + 1)
+    const W_out = Math.floor((W_in + 2 * padding[1] - kernelSize[1]) / actualStride[1] + 1)
+
+    const resultShape = [N, C, H_out, W_out] as const
+
+    return new Tensor<typeof resultShape, D>(handle!, resultShape, this.dtype)
+  }
+
+  /**
+   * Apply 2D average pooling
+   *
+   * @param kernelSize - Pooling kernel [kernelH, kernelW]
+   * @param stride - Stride [strideH, strideW] (default: kernelSize)
+   * @param padding - Padding [paddingH, paddingW]
+   * @returns Pooled tensor
+   */
+  avgPool2d(
+    kernelSize: [number, number],
+    stride?: [number, number],
+    padding: [number, number] = [0, 0],
+  ): Tensor<Shape, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const actualStride = stride ?? kernelSize
+
+    const handle = withError((err) =>
+      lib.ts_tensor_avg_pool2d(
+        this._handle,
+        BigInt(kernelSize[0]),
+        BigInt(kernelSize[1]),
+        BigInt(actualStride[0]),
+        BigInt(actualStride[1]),
+        BigInt(padding[0]),
+        BigInt(padding[1]),
+        err,
+      ),
+    )
+
+    checkNull(handle, 'Failed to apply avg_pool2d')
+
+    // Compute output shape
+    const N = this.shape[0]!
+    const C = this.shape[1]!
+    const H_in = this.shape[2]!
+    const W_in = this.shape[3]!
+
+    const H_out = Math.floor((H_in + 2 * padding[0] - kernelSize[0]) / actualStride[0] + 1)
+    const W_out = Math.floor((W_in + 2 * padding[1] - kernelSize[1]) / actualStride[1] + 1)
+
+    const resultShape = [N, C, H_out, W_out] as const
+
+    return new Tensor<typeof resultShape, D>(handle!, resultShape, this.dtype)
+  }
+
+  // ==================== Regularization ====================
+
+  /**
+   * Apply dropout
+   *
+   * During training, randomly zeroes some elements with probability p
+   * and scales the remaining elements by 1/(1-p).
+   *
+   * @param p - Probability of an element to be zeroed (default: 0.5)
+   * @param training - Whether in training mode (default: true)
+   * @returns Tensor with dropout applied
+   */
+  dropout(p: number = 0.5, training: boolean = true): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_dropout(this._handle, p, training ? 1 : 0, err))
+
+    checkNull(handle, 'Failed to apply dropout')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  // ==================== Normalization ====================
+
+  /**
+   * Apply batch normalization
+   *
+   * @param weight - Scale parameter (gamma)
+   * @param bias - Shift parameter (beta)
+   * @param runningMean - Running mean for inference
+   * @param runningVar - Running variance for inference
+   * @param training - Whether in training mode
+   * @param momentum - Momentum for running stats update
+   * @param eps - Small value for numerical stability
+   * @returns Normalized tensor
+   */
+  batchNorm(
+    weight: Tensor<Shape, D> | null,
+    bias: Tensor<Shape, D> | null,
+    runningMean: Tensor<Shape, D> | null,
+    runningVar: Tensor<Shape, D> | null,
+    training: boolean = true,
+    momentum: number = 0.1,
+    eps: number = 1e-5,
+  ): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_batch_norm(
+        this._handle,
+        weight?._handle ?? null,
+        bias?._handle ?? null,
+        runningMean?._handle ?? null,
+        runningVar?._handle ?? null,
+        training ? 1 : 0,
+        momentum,
+        eps,
+        err,
+      ),
+    )
+
+    checkNull(handle, 'Failed to apply batch_norm')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Apply layer normalization
+   *
+   * @param normalizedShape - Shape over which to normalize
+   * @param weight - Scale parameter (gamma)
+   * @param bias - Shift parameter (beta)
+   * @param eps - Small value for numerical stability
+   * @returns Normalized tensor
+   */
+  layerNorm(
+    normalizedShape: readonly number[],
+    weight: Tensor<Shape, D> | null,
+    bias: Tensor<Shape, D> | null,
+    eps: number = 1e-5,
+  ): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    // Convert normalized shape to BigInt64Array for FFI
+    const shapeArray = new BigInt64Array(normalizedShape.map((dim) => BigInt(dim)))
+
+    const handle = withError((err) =>
+      lib.ts_tensor_layer_norm(
+        this._handle,
+        shapeArray.buffer,
+        normalizedShape.length,
+        weight?._handle ?? null,
+        bias?._handle ?? null,
+        eps,
+        err,
+      ),
+    )
+
+    checkNull(handle, 'Failed to apply layer_norm')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
   // ==================== Module Integration ====================
 
   /**

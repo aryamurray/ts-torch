@@ -370,6 +370,116 @@ export const FFI_SYMBOLS = {
     args: [ptr, i32, i32, ptr] as const,
     returns: ptr,
   },
+
+  // ==================== Dimension-wise Reductions ====================
+
+  // ts_tensor_sum_dim(tensor, dim, keepdim, error) -> TensorHandle
+  ts_tensor_sum_dim: {
+    args: [ptr, i64, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_mean_dim(tensor, dim, keepdim, error) -> TensorHandle
+  ts_tensor_mean_dim: {
+    args: [ptr, i64, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_var(tensor, dim, unbiased, keepdim, error) -> TensorHandle
+  ts_tensor_var: {
+    args: [ptr, i64, i32, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ==================== Comparison Operations ====================
+
+  // ts_tensor_eq(a, b, error) -> TensorHandle
+  ts_tensor_eq: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_ne(a, b, error) -> TensorHandle
+  ts_tensor_ne: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_lt(a, b, error) -> TensorHandle
+  ts_tensor_lt: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_le(a, b, error) -> TensorHandle
+  ts_tensor_le: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_gt(a, b, error) -> TensorHandle
+  ts_tensor_gt: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_ge(a, b, error) -> TensorHandle
+  ts_tensor_ge: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ==================== Random Tensors ====================
+
+  // ts_tensor_rand(shape, ndim, dtype, device, device_index, error) -> TensorHandle
+  ts_tensor_rand: {
+    args: [ptr, i32, i32, i32, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ==================== Convolution Operations ====================
+
+  // ts_tensor_conv2d(input, weight, bias, stride_h, stride_w, padding_h, padding_w, dilation_h, dilation_w, groups, error) -> TensorHandle
+  ts_tensor_conv2d: {
+    args: [ptr, ptr, ptr, i64, i64, i64, i64, i64, i64, i64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ==================== Pooling Operations ====================
+
+  // ts_tensor_max_pool2d(input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, error) -> TensorHandle
+  ts_tensor_max_pool2d: {
+    args: [ptr, i64, i64, i64, i64, i64, i64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_avg_pool2d(input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, error) -> TensorHandle
+  ts_tensor_avg_pool2d: {
+    args: [ptr, i64, i64, i64, i64, i64, i64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ==================== Regularization ====================
+
+  // ts_tensor_dropout(input, p, training, error) -> TensorHandle
+  ts_tensor_dropout: {
+    args: [ptr, f64, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ==================== Normalization ====================
+
+  // ts_tensor_batch_norm(input, weight, bias, running_mean, running_var, training, momentum, eps, error) -> TensorHandle
+  ts_tensor_batch_norm: {
+    args: [ptr, ptr, ptr, ptr, ptr, i32, f64, f64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_layer_norm(input, normalized_shape, normalized_shape_len, weight, bias, eps, error) -> TensorHandle
+  ts_tensor_layer_norm: {
+    args: [ptr, ptr, i32, ptr, ptr, f64, ptr] as const,
+    returns: ptr,
+  },
 } as const
 
 export type FFISymbols = typeof FFI_SYMBOLS

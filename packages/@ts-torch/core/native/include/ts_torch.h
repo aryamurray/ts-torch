@@ -440,6 +440,96 @@ TS_TORCH_API ts_TensorHandle ts_tensor_ge(
     ts_Error* error
 );
 
+// Random tensor creation
+TS_TORCH_API ts_TensorHandle ts_tensor_rand(
+    const int64_t* shape,
+    size_t ndim,
+    ts_DType dtype,
+    ts_DeviceType device,
+    int device_index,
+    ts_Error* error
+);
+
+// Variance operation
+TS_TORCH_API ts_TensorHandle ts_tensor_var(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    int unbiased,
+    int keepdim,
+    ts_Error* error
+);
+
+// Conv2d operation
+TS_TORCH_API ts_TensorHandle ts_tensor_conv2d(
+    ts_TensorHandle input,
+    ts_TensorHandle weight,
+    ts_TensorHandle bias,
+    int64_t stride_h,
+    int64_t stride_w,
+    int64_t padding_h,
+    int64_t padding_w,
+    int64_t dilation_h,
+    int64_t dilation_w,
+    int64_t groups,
+    ts_Error* error
+);
+
+// MaxPool2d operation
+TS_TORCH_API ts_TensorHandle ts_tensor_max_pool2d(
+    ts_TensorHandle input,
+    int64_t kernel_h,
+    int64_t kernel_w,
+    int64_t stride_h,
+    int64_t stride_w,
+    int64_t padding_h,
+    int64_t padding_w,
+    ts_Error* error
+);
+
+// AvgPool2d operation
+TS_TORCH_API ts_TensorHandle ts_tensor_avg_pool2d(
+    ts_TensorHandle input,
+    int64_t kernel_h,
+    int64_t kernel_w,
+    int64_t stride_h,
+    int64_t stride_w,
+    int64_t padding_h,
+    int64_t padding_w,
+    ts_Error* error
+);
+
+// Dropout operation (training mode only - returns input * mask / (1-p))
+TS_TORCH_API ts_TensorHandle ts_tensor_dropout(
+    ts_TensorHandle input,
+    double p,
+    int training,
+    ts_Error* error
+);
+
+// BatchNorm2d operation
+TS_TORCH_API ts_TensorHandle ts_tensor_batch_norm(
+    ts_TensorHandle input,
+    ts_TensorHandle weight,
+    ts_TensorHandle bias,
+    ts_TensorHandle running_mean,
+    ts_TensorHandle running_var,
+    int training,
+    double momentum,
+    double eps,
+    ts_Error* error
+);
+
+// LayerNorm operation
+TS_TORCH_API ts_TensorHandle ts_tensor_layer_norm(
+    ts_TensorHandle input,
+    const int64_t* normalized_shape,
+    size_t normalized_shape_len,
+    ts_TensorHandle weight,
+    ts_TensorHandle bias,
+    double eps,
+    ts_Error* error
+);
+
 #ifdef __cplusplus
 }
 #endif

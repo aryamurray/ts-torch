@@ -2,8 +2,19 @@
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
   "tasks": {
+    "build:native": {
+      "cache": false,
+      "inputs": ["native/src/**", "native/include/**", "native/CMakeLists.txt"],
+      "outputs": ["native/build/**"],
+      "env": ["LIBTORCH", "LIBTORCH_PATH"]
+    },
     "build": {
       "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["dist/**"]
+    },
+    "@ts-torch/core#build": {
+      "dependsOn": ["build:native", "^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**"]
     },

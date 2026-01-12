@@ -13,6 +13,7 @@
   "scripts": {
     "setup": "bun run scripts/setup-libtorch.ts",
     "build": "turbo run build",
+    "build:native": "turbo run build:native",
     "dev": "turbo run dev",
     "lint": "oxlint --fix",
     "lint:check": "oxlint",

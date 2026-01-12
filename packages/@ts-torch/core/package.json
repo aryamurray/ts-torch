@@ -21,6 +21,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:native": "bun run scripts/build-native.ts",
     "dev": "tsc --watch",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
