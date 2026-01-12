@@ -36,8 +36,10 @@
     "bench:json": "bun run benchmark/index.ts --json"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "^25.0.5",
     "@vitest/coverage-v8": "^4.0.16",
+    "adm-zip": "^0.5.16",
     "oxfmt": "^0.23.0",
     "oxlint": "^1.38.0",
     "turbo": "^2.7.3",

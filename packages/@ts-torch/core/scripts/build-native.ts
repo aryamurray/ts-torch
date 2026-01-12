@@ -32,12 +32,11 @@ const PLATFORM_CONFIG: Record<string, { packageDir: string; libName: string; bui
 }
 
 function findLibtorchPath(): string {
-  // Check common locations
+  // Check common locations (environment variables first)
   const possiblePaths = [
-    join(ROOT_DIR, 'libtorch', 'libtorch'), // Nested (from zip extraction)
-    join(ROOT_DIR, 'libtorch'),
     process.env.LIBTORCH || '',
     process.env.LIBTORCH_PATH || '',
+    join(ROOT_DIR, 'libtorch'),
     '/usr/local/lib/libtorch',
     '/opt/libtorch',
     'C:\\libtorch',

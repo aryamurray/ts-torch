@@ -1,68 +1,53 @@
-Critical Priority
+  High Impact Options
 
-  1. Complete Incomplete Implementations
+  1. GPU Support
 
-  - Conv2d, MaxPool2d, AvgPool2d, BatchNorm2d, LayerNorm, Dropout are only structured/sketched
-  - RMSprop optimizer is incomplete
-  - Some tensor operations have TODOs (e.g., synchronize)
+  The FFI has ts_cuda_is_available() but full CUDA tensor operations may need work.
+  - Would dramatically improve training speed
+  - Essential for larger models
+  - Requires testing tensor device transfers (.cuda(), .to())
 
-  2. Testing Gaps
+  2. Model Serialization
 
-  - Current coverage threshold is 70%, but some modules lack integration tests
-  - Missing edge case tests for memory management
-  - No GPU/CUDA-specific tests
+  Save and load trained models:
+  - torch.save(model, 'model.pt')
+  - torch.load('model.pt')
+  - Essential for any real usage
 
-  3. Error Handling Improvements
+  3. More NN Modules
 
-  - Some operations silently fail or have incomplete error paths
-  - Need consistent validation at all API boundaries
-  - Add input validation for all public APIs
+  - RNN/LSTM/GRU - Sequence modeling
+  - Embedding - NLP tasks
+  - MultiheadAttention/Transformer - Modern architectures
+  - Flatten, Unflatten - Shape manipulation layers
 
-  High Priority
+  4. Advanced Tensor Operations
 
-  4. Memory Management Hardening
+  - einsum - Flexible tensor contractions
+  - Advanced indexing (tensor[mask], tensor[:, 1:3])
+  - scatter, gather - Index-based operations
+  - cat, stack, split - Tensor manipulation
 
-  - Scope system exists but edge cases need handling
-  - Potential for memory leaks if escape() is misused
-  - Add finalizers/cleanup for unmanaged tensors
+  5. Documentation & Examples
 
-  5. API Documentation
+  - API reference docs
+  - More training examples (text classification, image segmentation)
+  - Tutorial notebooks
 
-  - Good JSDoc comments exist, but no generated API reference
-  - Missing usage examples for Conv/Pooling/Normalization layers
-  - Need a "getting started" guide
+  Medium Impact Options
 
-  6. CI/CD Enhancements
+  - Learning rate schedulers (may already exist partially)
+  - Gradient clipping
+  - Mixed precision training (fp16)
+  - Data augmentation utilities
+  - Model summary (print layer shapes/params)
 
-  - Add platform-specific CI pipelines (Windows, macOS, Linux)
-  - Add CUDA testing in CI
-  - Automated package publishing workflow
+  What's your priority?
 
-  Medium Priority
+  What are you most interested in building with the library? That would help narrow down what to tackle next:
 
-  7. Performance
-
-  - Profile and optimize hot paths
-  - Add benchmarks vs PyTorch reference
-  - CUDA optimization paths
-
-  8. Developer Experience
-
-  - Better error messages with suggestions
-  - Debug mode for tensor operations
-  - Logging/tracing support
-
-  9. Packaging
-
-  - Currently version 0.1.0 - needs versioning strategy
-  - npm publishing setup
-  - Pre-built native binaries for common platforms
-
-  Lower Priority
-
-  10. Additional Features
-
-  - Model serialization (save/load weights)
-  - More loss functions
-  - Learning rate schedulers (structure exists)
-  - Distributed training support
+  - Computer Vision → More conv layers, augmentation, pretrained models
+  - NLP → Embedding, RNN/LSTM, Attention
+  - RL → Focus on inference speed, small model optimization
+  - General research → Model save/load, more tensor ops
+  - Production deployment → ONNX export, quantization

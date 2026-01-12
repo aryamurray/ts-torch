@@ -1,0 +1,21 @@
+{
+  "name": "@ts-torch-platform/darwin-x64",
+  "version": "0.1.0",
+  "description": "Native binaries for ts-torch on macOS x64 (Intel)",
+  "license": "MIT",
+  "files": [
+    "lib"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

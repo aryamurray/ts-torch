@@ -5,8 +5,10 @@
     "": {
       "name": "ts-tools",
       "devDependencies": {
+        "@types/adm-zip": "^0.5.7",
         "@types/node": "^25.0.5",
         "@vitest/coverage-v8": "^4.0.16",
+        "adm-zip": "^0.5.16",
         "oxfmt": "^0.23.0",
         "oxlint": "^1.38.0",
         "turbo": "^2.7.3",
@@ -40,6 +42,18 @@
       "devDependencies": {
         "typescript": "5.9.2",
       },
+    },
+    "packages/@ts-torch-platform/darwin-arm64": {
+      "name": "@ts-torch-platform/darwin-arm64",
+      "version": "0.1.0",
+    },
+    "packages/@ts-torch-platform/darwin-x64": {
+      "name": "@ts-torch-platform/darwin-x64",
+      "version": "0.1.0",
+    },
+    "packages/@ts-torch-platform/linux-x64": {
+      "name": "@ts-torch-platform/linux-x64",
+      "version": "0.1.0",
     },
     "packages/@ts-torch-platform/loader": {
       "name": "@ts-torch-platform/loader",
@@ -271,6 +285,12 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
+    "@ts-torch-platform/darwin-arm64": ["@ts-torch-platform/darwin-arm64@workspace:packages/@ts-torch-platform/darwin-arm64"],
+
+    "@ts-torch-platform/darwin-x64": ["@ts-torch-platform/darwin-x64@workspace:packages/@ts-torch-platform/darwin-x64"],
+
+    "@ts-torch-platform/linux-x64": ["@ts-torch-platform/linux-x64@workspace:packages/@ts-torch-platform/linux-x64"],
+
     "@ts-torch-platform/loader": ["@ts-torch-platform/loader@workspace:packages/@ts-torch-platform/loader"],
 
     "@ts-torch-platform/win32-x64": ["@ts-torch-platform/win32-x64@workspace:packages/@ts-torch-platform/win32-x64"],
@@ -284,6 +304,8 @@
     "@ts-torch/optim": ["@ts-torch/optim@workspace:packages/@ts-torch/optim"],
 
     "@ts-torch/test-utils": ["@ts-torch/test-utils@workspace:packages/shared-test-utils"],
+
+    "@types/adm-zip": ["@types/adm-zip@0.5.7", "", { "dependencies": { "@types/node": "*" } }, "sha512-DNEs/QvmyRLurdQPChqq0Md4zGvPwHerAJYWk9l2jCbD1VPpnzRJorOdiq4zsw09NFbYnhfsoEhWtxIzXpn2yw=="],
 
     "@types/chai": ["@types/chai@5.2.3", "", { "dependencies": { "@types/deep-eql": "*", "assertion-error": "^2.0.1" } }, "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA=="],
 
@@ -308,6 +330,8 @@
     "@vitest/spy": ["@vitest/spy@4.0.16", "", {}, "sha512-4jIOWjKP0ZUaEmJm00E0cOBLU+5WE0BpeNr3XN6TEF05ltro6NJqHWxXD0kA8/Zc8Nh23AT8WQxwNG+WeROupw=="],
 
     "@vitest/utils": ["@vitest/utils@4.0.16", "", { "dependencies": { "@vitest/pretty-format": "4.0.16", "tinyrainbow": "^3.0.3" } }, "sha512-h8z9yYhV3e1LEfaQ3zdypIrnAg/9hguReGZoS7Gl0aBG5xgA410zBqECqmaF/+RkTggRsfnzc1XaAHA6bmUufA=="],
+
+    "adm-zip": ["adm-zip@0.5.16", "", {}, "sha512-TGw5yVi4saajsSEgz25grObGHEUaDrniwvA2qwSC060KfqGPdglhvPMA2lPIoxs3PQIItj2iag35fONcQqgUaQ=="],
 
     "assertion-error": ["assertion-error@2.0.1", "", {}, "sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA=="],
 

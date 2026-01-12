@@ -57,17 +57,18 @@ export function getPlatformPackage(): PlatformInfo {
   const arch = process.arch
 
   // Map platform/arch to package names
+  // Package naming convention: @ts-torch-platform/{platform}-{arch}
   switch (platform) {
     case 'darwin':
       switch (arch) {
         case 'arm64':
           return {
-            packageName: '@ts-torch/darwin-arm64',
+            packageName: '@ts-torch-platform/darwin-arm64',
             libraryName: 'libts_torch',
           }
         case 'x64':
           return {
-            packageName: '@ts-torch/darwin-x64',
+            packageName: '@ts-torch-platform/darwin-x64',
             libraryName: 'libts_torch',
           }
         default:
@@ -78,12 +79,12 @@ export function getPlatformPackage(): PlatformInfo {
       switch (arch) {
         case 'x64':
           return {
-            packageName: '@ts-torch/linux-x64',
+            packageName: '@ts-torch-platform/linux-x64',
             libraryName: 'libts_torch',
           }
         case 'arm64':
           return {
-            packageName: '@ts-torch/linux-arm64',
+            packageName: '@ts-torch-platform/linux-arm64',
             libraryName: 'libts_torch',
           }
         default:
@@ -94,12 +95,12 @@ export function getPlatformPackage(): PlatformInfo {
       switch (arch) {
         case 'x64':
           return {
-            packageName: '@ts-torch/win32-x64',
+            packageName: '@ts-torch-platform/win32-x64',
             libraryName: 'ts_torch',
           }
         case 'arm64':
           return {
-            packageName: '@ts-torch/win32-arm64',
+            packageName: '@ts-torch-platform/win32-arm64',
             libraryName: 'ts_torch',
           }
         default:
@@ -150,37 +151,25 @@ export function getLibraryPath(): string {
 
   // 3. Try local development paths (workspace monorepo structure)
   const cwd = process.cwd()
+  const platformDir = packageName.replace('@ts-torch-platform/', '')
+
   const possiblePaths = [
+    // Platform package lib directory (from workspace root) - PRIMARY DEV PATH
+    join(cwd, 'packages', '@ts-torch-platform', platformDir, 'lib', libFileName),
+
     // CMake build output (from workspace root)
     join(cwd, 'packages', '@ts-torch', 'core', 'native', 'build', 'Release', libFileName),
-    join(cwd, 'packages', '@ts-torch', 'core', 'native', 'build', 'Debug', libFileName),
+    join(cwd, 'packages', '@ts-torch', 'core', 'native', 'build', libFileName),
 
-    // CMake build output (from examples/ directory - go up one level)
+    // From examples/ or benchmark/ directory (one level up from workspace root)
+    join(cwd, '..', 'packages', '@ts-torch-platform', platformDir, 'lib', libFileName),
     join(cwd, '..', 'packages', '@ts-torch', 'core', 'native', 'build', 'Release', libFileName),
-    join(cwd, '..', 'packages', '@ts-torch', 'core', 'native', 'build', 'Debug', libFileName),
+    join(cwd, '..', 'packages', '@ts-torch', 'core', 'native', 'build', libFileName),
 
-    // Relative from @ts-torch/core package
-    join(cwd, '..', '..', 'core', 'native', 'build', 'Release', libFileName),
-    join(cwd, '..', '..', 'core', 'native', 'build', 'Debug', libFileName),
-
-    // Current package's native directory (Cargo/Rust style)
-    join(cwd, 'native', 'target', 'release', libFileName),
-    join(cwd, 'native', 'target', 'debug', libFileName),
-
-    // CMake build from native directory
+    // From within a package (e.g., @ts-torch/core)
+    join(cwd, '..', '..', '@ts-torch-platform', platformDir, 'lib', libFileName),
     join(cwd, 'native', 'build', 'Release', libFileName),
-    join(cwd, 'native', 'build', 'Debug', libFileName),
-
-    // Workspace root native directory
-    join(cwd, '..', '..', '..', 'native', 'target', 'release', libFileName),
-    join(cwd, '..', '..', '..', 'native', 'target', 'debug', libFileName),
-
-    // Platform package in workspace
-    join(cwd, '..', packageName, libFileName),
-    join(cwd, '..', '..', packageName, libFileName),
-
-    // Platform package lib directory
-    join(cwd, 'packages', '@ts-torch-platform', 'win32-x64', 'lib', libFileName),
+    join(cwd, 'native', 'build', libFileName),
   ]
 
   for (const path of possiblePaths) {
@@ -210,12 +199,13 @@ function findLibtorchPath(): string | null {
 
   // Possible locations for libtorch
   const possiblePaths = [
-    // Project root /libtorch
+    // Environment variable (highest priority)
+    process.env.LIBTORCH ? join(process.env.LIBTORCH, 'lib') : '',
+    process.env.LIBTORCH_PATH ? join(process.env.LIBTORCH_PATH, 'lib') : '',
+    // Project root /libtorch/lib
     join(cwd, 'libtorch', 'lib'),
     // Relative to packages/@ts-torch/core
     join(cwd, '..', '..', '..', '..', 'libtorch', 'lib'),
-    // Environment variable
-    process.env.LIBTORCH_PATH ? join(process.env.LIBTORCH_PATH, 'lib') : '',
   ].filter(Boolean)
 
   for (const path of possiblePaths) {
