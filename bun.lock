@@ -15,6 +15,19 @@
         "vitest": "^4.0.16",
       },
     },
+    "benchmark": {
+      "name": "benchmark",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ts-torch/core": "workspace:*",
+        "@ts-torch/nn": "workspace:*",
+        "@ts-torch/optim": "workspace:*",
+        "tinybench": "^2.9.0",
+      },
+      "devDependencies": {
+        "typescript": "5.9.2",
+      },
+    },
     "examples": {
       "name": "examples",
       "version": "0.1.0",
@@ -299,6 +312,8 @@
     "assertion-error": ["assertion-error@2.0.1", "", {}, "sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA=="],
 
     "ast-v8-to-istanbul": ["ast-v8-to-istanbul@0.3.10", "", { "dependencies": { "@jridgewell/trace-mapping": "^0.3.31", "estree-walker": "^3.0.3", "js-tokens": "^9.0.1" } }, "sha512-p4K7vMz2ZSk3wN8l5o3y2bJAoZXT3VuJI5OLTATY/01CYWumWvwkUw0SqDBnNq6IiTO3qDa1eSQDibAV8g7XOQ=="],
+
+    "benchmark": ["benchmark@workspace:benchmark"],
 
     "chai": ["chai@6.2.2", "", {}, "sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg=="],
 

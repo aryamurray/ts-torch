@@ -1,0 +1,22 @@
+{
+  "name": "benchmark",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run index.ts",
+    "core": "bun run index.ts --category core",
+    "nn": "bun run index.ts --category nn",
+    "optim": "bun run index.ts --category optim",
+    "ffi": "bun run index.ts --filter ffi"
+  },
+  "dependencies": {
+    "@ts-torch/core": "workspace:*",
+    "@ts-torch/nn": "workspace:*",
+    "@ts-torch/optim": "workspace:*",
+    "tinybench": "^2.9.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}

@@ -8,7 +8,8 @@
     "packages/@ts-torch/*",
     "packages/@ts-torch-platform/*",
     "packages/shared-test-utils",
-    "examples"
+    "examples",
+    "benchmark"
   ],
   "scripts": {
     "setup": "bun run scripts/setup-libtorch.ts",
@@ -26,7 +27,13 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run --testNamePattern=unit",
-    "test:integration": "vitest run --testNamePattern=integration"
+    "test:integration": "vitest run --testNamePattern=integration",
+    "bench": "bun run benchmark/index.ts",
+    "bench:core": "bun run benchmark/index.ts --category core",
+    "bench:nn": "bun run benchmark/index.ts --category nn",
+    "bench:optim": "bun run benchmark/index.ts --category optim",
+    "bench:ffi": "bun run benchmark/index.ts --filter ffi",
+    "bench:json": "bun run benchmark/index.ts --json"
   },
   "devDependencies": {
     "@types/node": "^25.0.5",
