@@ -2,7 +2,7 @@
  * RMSprop optimizer
  */
 
-import type { Tensor } from '@ts-torch/core'
+import { type Tensor, validateRMSpropParams } from '@ts-torch/core'
 import { Optimizer, type ParameterGroup, type OptimizerOptions } from './optimizer.js'
 
 /**
@@ -70,13 +70,27 @@ export class RMSprop extends Optimizer {
   >()
 
   constructor(params: Tensor[] | ParameterGroup[], options: RMSpropOptions) {
+    const alpha = options.alpha ?? 0.99
+    const eps = options.eps ?? 1e-8
+    const weightDecay = options.weightDecay ?? 0
+    const momentum = options.momentum ?? 0
+    const centered = options.centered ?? false
+
+    validateRMSpropParams({
+      lr: options.lr,
+      alpha,
+      eps,
+      weightDecay,
+      momentum,
+    })
+
     const defaults: RMSpropOptions = {
       lr: options.lr,
-      alpha: options.alpha ?? 0.99,
-      eps: options.eps ?? 1e-8,
-      weightDecay: options.weightDecay ?? 0,
-      momentum: options.momentum ?? 0,
-      centered: options.centered ?? false,
+      alpha,
+      eps,
+      weightDecay,
+      momentum,
+      centered,
     }
 
     super(params, defaults)

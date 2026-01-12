@@ -2,6 +2,7 @@
  * DataLoader for batching and iterating over datasets
  */
 
+import { validateDataLoaderParams } from '@ts-torch/core'
 import type { Dataset } from './dataset.js'
 
 /**
@@ -32,9 +33,11 @@ export class DataLoader<T = unknown> implements AsyncIterable<T[]> {
     this.shuffle = options.shuffle ?? false
     this.dropLast = options.drop_last ?? false
 
-    if (this.batchSize < 1) {
-      throw new Error('Batch size must be positive')
-    }
+    validateDataLoaderParams({
+      batchSize: this.batchSize,
+      shuffle: this.shuffle,
+      dropLast: this.dropLast,
+    })
   }
 
   /**

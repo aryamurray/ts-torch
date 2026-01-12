@@ -3,7 +3,7 @@
  */
 
 import { Module, type Tensor, type float32 } from '../module.js'
-import type { DType, Shape } from '@ts-torch/core'
+import { validateProbability, type DType, type Shape } from '@ts-torch/core'
 
 /**
  * Dropout layer
@@ -52,10 +52,7 @@ export class Dropout<S extends Shape = Shape, D extends DType<string> = float32>
     } = {},
   ) {
     super()
-
-    if (p < 0 || p > 1) {
-      throw new Error(`Dropout probability must be between 0 and 1, got ${p}`)
-    }
+    validateProbability(p, 'p (dropout probability)')
 
     this.p = p
     this.inplace = options.inplace ?? false
@@ -112,10 +109,7 @@ export class Dropout2d<D extends DType<string> = float32> extends Module<
     } = {},
   ) {
     super()
-
-    if (p < 0 || p > 1) {
-      throw new Error(`Dropout probability must be between 0 and 1, got ${p}`)
-    }
+    validateProbability(p, 'p (dropout probability)')
 
     this.p = p
     this.inplace = options.inplace ?? false
@@ -165,10 +159,7 @@ export class Dropout1d<D extends DType<string> = float32> extends Module<
     } = {},
   ) {
     super()
-
-    if (p < 0 || p > 1) {
-      throw new Error(`Dropout probability must be between 0 and 1, got ${p}`)
-    }
+    validateProbability(p, 'p (dropout probability)')
 
     this.p = p
     this.inplace = options.inplace ?? false
@@ -216,10 +207,7 @@ export class AlphaDropout<S extends Shape = Shape, D extends DType<string> = flo
     } = {},
   ) {
     super()
-
-    if (p < 0 || p > 1) {
-      throw new Error(`Dropout probability must be between 0 and 1, got ${p}`)
-    }
+    validateProbability(p, 'p (dropout probability)')
 
     this.p = p
     this.inplace = options.inplace ?? false

@@ -2,7 +2,7 @@
  * Adam optimizer
  */
 
-import type { Tensor } from '@ts-torch/core'
+import { type Tensor, validateAdamParams } from '@ts-torch/core'
 import { Optimizer, type ParameterGroup, type OptimizerOptions } from './optimizer.js'
 
 export interface AdamOptions extends OptimizerOptions {
@@ -27,11 +27,22 @@ export class Adam extends Optimizer {
   private adamState = new Map<Tensor, { step: number; m: Tensor; v: Tensor }>()
 
   constructor(params: Tensor[] | ParameterGroup[], options: AdamOptions) {
+    const betas = options.betas ?? [0.9, 0.999]
+    const eps = options.eps ?? 1e-8
+    const weightDecay = options.weightDecay ?? 0
+
+    validateAdamParams({
+      lr: options.lr,
+      betas,
+      eps,
+      weightDecay,
+    })
+
     super(params, {
       lr: options.lr,
-      betas: options.betas ?? [0.9, 0.999],
-      eps: options.eps ?? 1e-8,
-      weightDecay: options.weightDecay ?? 0,
+      betas,
+      eps,
+      weightDecay,
     })
   }
 

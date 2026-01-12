@@ -82,8 +82,8 @@ describe('DataLoader', () => {
 
     it('should throw error for invalid batch size', () => {
       const dataset = new RangeDataset(10);
-      expect(() => new DataLoader(dataset, { batchSize: 0 })).toThrow('Batch size must be positive');
-      expect(() => new DataLoader(dataset, { batchSize: -1 })).toThrow('Batch size must be positive');
+      expect(() => new DataLoader(dataset, { batchSize: 0 })).toThrow('positive integer');
+      expect(() => new DataLoader(dataset, { batchSize: -1 })).toThrow('positive integer');
     });
   });
 

@@ -61,6 +61,39 @@ export { run, runAsync, inScope, scopeDepth } from './memory/scope.js'
 export { DebugMode } from './debug.js'
 
 // ===============================
+// Validation Utilities
+// ===============================
+
+export {
+  ValidationError,
+  validateFinite,
+  validatePositive,
+  validateNonNegative,
+  validatePositiveInt,
+  validateNonNegativeInt,
+  validateRange,
+  validateProbability,
+  validateShapesCompatible,
+  validateMatmulShapes,
+  validateDimension,
+  validateReshape,
+  validateShape,
+  validateDtype,
+  checkNull,
+  validateLinearParams,
+  validateConv2dParams,
+  validatePoolingParams,
+  validateNormParams,
+  validateSGDParams,
+  validateAdamParams,
+  validateRMSpropParams,
+  validateDataLoaderParams,
+  validateDatasetNotEmpty,
+  validateScalar,
+  validateNonZero,
+} from './validation/index.js'
+
+// ===============================
 // Device
 // ===============================
 

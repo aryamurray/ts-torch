@@ -4,7 +4,7 @@
  * Builds the ts_torch native library and copies it to the appropriate platform package
  */
 
-import { execSync, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { existsSync, copyFileSync, mkdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 

@@ -3,7 +3,7 @@
  */
 
 import { Module, Parameter, type Tensor, type float32 } from '../module.js'
-import { torch, type DType, type Shape } from '@ts-torch/core'
+import { torch, validateNormParams, type DType, type Shape } from '@ts-torch/core'
 
 /**
  * Batch normalization layer for 2D inputs (4D tensor: N, C, H, W)
@@ -79,6 +79,12 @@ export class BatchNorm2d<D extends DType<string> = float32> extends Module<
     this.momentum = options.momentum ?? 0.1
     this.affine = options.affine ?? true
     this.trackRunningStats = options.trackRunningStats ?? true
+
+    validateNormParams({
+      numFeatures,
+      eps: this.eps,
+      momentum: this.momentum,
+    })
 
     const shape = [numFeatures] as const
 
@@ -201,6 +207,11 @@ export class LayerNorm<D extends DType<string> = float32> extends Module<Shape, 
     this.eps = options.eps ?? 1e-5
     this.elementwiseAffine = options.elementwiseAffine ?? true
 
+    validateNormParams({
+      normalizedShape: this.normalizedShape,
+      eps: this.eps,
+    })
+
     // Initialize learnable parameters
     if (this.elementwiseAffine) {
       // gamma (weight) initialized to 1
@@ -286,6 +297,12 @@ export class BatchNorm1d<D extends DType<string> = float32> extends Module<
     this.momentum = options.momentum ?? 0.1
     this.affine = options.affine ?? true
     this.trackRunningStats = options.trackRunningStats ?? true
+
+    validateNormParams({
+      numFeatures,
+      eps: this.eps,
+      momentum: this.momentum,
+    })
 
     const shape = [numFeatures] as const
 

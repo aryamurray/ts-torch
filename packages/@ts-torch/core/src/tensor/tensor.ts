@@ -13,6 +13,18 @@ import { getLib } from '../ffi/loader.js'
 import { withError, checkNull, TorchError, ErrorCode, type Pointer } from '../ffi/error.js'
 import { BytesPerElement } from '../types/dtype.js'
 import { escapeTensor as scopeEscapeTensor, inScope, registerTensor } from '../memory/scope.js'
+import {
+  validateMatmulShapes,
+  validateDimension,
+  validateReshape,
+  validateScalar,
+  validateNonZero,
+  validateProbability,
+  validatePositive,
+  validateRange,
+  validatePoolingParams,
+  validatePositiveInt,
+} from '../validation/index.js'
 
 /**
  * Core Tensor class representing a multi-dimensional array with type-safe operations
@@ -496,6 +508,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
   matmul<S2 extends Shape>(other: Tensor<S2, D>): Tensor<MatMulShape<S, S2>, D> {
     this._checkValid()
     other._checkValid()
+    validateMatmulShapes(this.shape, other.shape)
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_matmul(this._handle, other._handle, err))
@@ -566,6 +579,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    */
   transpose<D0 extends number, D1 extends number>(dim0: D0, dim1: D1): Tensor<TransposeShape<S, D0, D1>, D> {
     this._checkValid()
+    validateDimension(dim0, this.ndim, 'dim0')
+    validateDimension(dim1, this.ndim, 'dim1')
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_transpose(this._handle, dim0, dim1, err))
@@ -598,6 +613,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    */
   reshape<NewS extends Shape>(shape: NewS): Tensor<NewS, D> {
     this._checkValid()
+    validateReshape(this.shape, shape)
     const lib = getLib()
 
     // Convert shape to BigInt64Array for FFI (koffi accepts ArrayBuffer directly)
@@ -716,6 +732,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    */
   softmax(dim: number): Tensor<S, D> {
     this._checkValid()
+    validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_softmax(this._handle, dim, err))
@@ -739,6 +756,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    */
   logSoftmax(dim: number): Tensor<S, D> {
     this._checkValid()
+    validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_log_softmax(this._handle, dim, err))
@@ -852,6 +870,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    */
   addScalar(scalar: number): Tensor<S, D> {
     this._checkValid()
+    validateScalar(scalar, 'scalar')
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_add_scalar(this._handle, scalar, err))
@@ -875,6 +894,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    */
   subScalar(scalar: number): Tensor<S, D> {
     this._checkValid()
+    validateScalar(scalar, 'scalar')
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_sub_scalar(this._handle, scalar, err))
@@ -898,6 +918,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    */
   mulScalar(scalar: number): Tensor<S, D> {
     this._checkValid()
+    validateScalar(scalar, 'scalar')
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_mul_scalar(this._handle, scalar, err))
@@ -921,6 +942,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    */
   divScalar(scalar: number): Tensor<S, D> {
     this._checkValid()
+    validateNonZero(scalar, 'scalar')
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_div_scalar(this._handle, scalar, err))
@@ -1298,9 +1320,13 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     padding: [number, number] = [0, 0],
   ): Tensor<Shape, D> {
     this._checkValid()
-    const lib = getLib()
-
     const actualStride = stride ?? kernelSize
+    validatePoolingParams({
+      kernelSize,
+      stride: actualStride,
+      padding,
+    })
+    const lib = getLib()
 
     const handle = withError((err) =>
       lib.ts_tensor_max_pool2d(
@@ -1345,9 +1371,13 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     padding: [number, number] = [0, 0],
   ): Tensor<Shape, D> {
     this._checkValid()
-    const lib = getLib()
-
     const actualStride = stride ?? kernelSize
+    validatePoolingParams({
+      kernelSize,
+      stride: actualStride,
+      padding,
+    })
+    const lib = getLib()
 
     const handle = withError((err) =>
       lib.ts_tensor_avg_pool2d(
@@ -1392,6 +1422,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    */
   dropout(p: number = 0.5, training: boolean = true): Tensor<S, D> {
     this._checkValid()
+    validateProbability(p, 'p (dropout probability)')
     const lib = getLib()
 
     const handle = withError((err) => lib.ts_tensor_dropout(this._handle, p, training ? 1 : 0, err))
@@ -1425,6 +1456,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     eps: number = 1e-5,
   ): Tensor<S, D> {
     this._checkValid()
+    validateRange(momentum, 0, 1, 'momentum')
+    validatePositive(eps, 'eps')
     const lib = getLib()
 
     const handle = withError((err) =>
@@ -1462,6 +1495,10 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     eps: number = 1e-5,
   ): Tensor<S, D> {
     this._checkValid()
+    validatePositive(eps, 'eps')
+    for (let i = 0; i < normalizedShape.length; i++) {
+      validatePositiveInt(normalizedShape[i]!, `normalizedShape[${i}]`)
+    }
     const lib = getLib()
 
     // Convert normalized shape to BigInt64Array for FFI

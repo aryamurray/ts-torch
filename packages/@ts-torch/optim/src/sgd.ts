@@ -2,7 +2,7 @@
  * Stochastic Gradient Descent optimizer
  */
 
-import type { Tensor } from '@ts-torch/core'
+import { type Tensor, validateSGDParams } from '@ts-torch/core'
 import { Optimizer, type ParameterGroup, type OptimizerOptions } from './optimizer.js'
 
 /**
@@ -37,10 +37,19 @@ export class SGD extends Optimizer {
   private momentumBuffers: WeakMap<Tensor, Tensor> = new WeakMap()
 
   constructor(params: Tensor[] | ParameterGroup[], options: SGDOptions) {
+    const momentum = options.momentum ?? 0
+    const weightDecay = options.weightDecay ?? 0
+
+    validateSGDParams({
+      lr: options.lr,
+      momentum,
+      weightDecay,
+    })
+
     const defaults: SGDOptions = {
       lr: options.lr,
-      momentum: options.momentum ?? 0,
-      weightDecay: options.weightDecay ?? 0,
+      momentum,
+      weightDecay,
     }
 
     super(params, defaults)

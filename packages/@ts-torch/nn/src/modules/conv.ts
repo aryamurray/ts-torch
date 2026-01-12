@@ -3,7 +3,7 @@
  */
 
 import { Module, Parameter, type Tensor, type float32 } from '../module.js'
-import { torch, type DType } from '@ts-torch/core'
+import { torch, type DType, validateConv2dParams } from '@ts-torch/core'
 
 /**
  * Helper to normalize kernel_size, stride, padding, dilation to tuple form
@@ -129,13 +129,16 @@ export class Conv2d<
 
     const { bias = true } = options
 
-    // Validate groups
-    if (inChannels % this.groups !== 0) {
-      throw new Error(`inChannels (${inChannels}) must be divisible by groups (${this.groups})`)
-    }
-    if (outChannels % this.groups !== 0) {
-      throw new Error(`outChannels (${outChannels}) must be divisible by groups (${this.groups})`)
-    }
+    // Validate all Conv2d parameters
+    validateConv2dParams({
+      inChannels,
+      outChannels,
+      kernelSize: this.kernelSize,
+      stride: this.stride,
+      padding: this.padding,
+      dilation: this.dilation,
+      groups: this.groups,
+    })
 
     // Initialize weight: [OutChannels, InChannels/groups, KernelH, KernelW]
     const inChannelsPerGroup = inChannels / this.groups

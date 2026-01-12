@@ -287,12 +287,12 @@ describe('Tensor Factory Functions - Integration', () => {
 
     it('should throw error for zero step', () =>
       scopedTest(() => {
-        expect(() => createArange(0, 10, 0)).toThrow('Step cannot be zero');
+        expect(() => createArange(0, 10, 0)).toThrow('non-zero');
       }));
 
     it('should throw error for invalid range', () =>
       scopedTest(() => {
-        expect(() => createArange(10, 0, 1)).toThrow('Invalid range');
+        expect(() => createArange(10, 0, 1)).toThrow('valid range');
       }));
   });
 

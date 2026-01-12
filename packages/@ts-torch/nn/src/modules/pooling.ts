@@ -3,7 +3,7 @@
  */
 
 import { Module, type Tensor, type float32 } from '../module.js'
-import type { DType } from '@ts-torch/core'
+import { validatePoolingParams, validatePositiveInt, type DType } from '@ts-torch/core'
 
 /**
  * Helper to normalize kernel_size, stride, padding to tuple form
@@ -65,6 +65,12 @@ export class MaxPool2d<D extends DType<string> = float32> extends Module<
     // Default stride is same as kernel size
     this.stride = options.stride !== undefined ? normalizePair(options.stride) : this.kernelSize
     this.padding = normalizePair(options.padding ?? 0)
+
+    validatePoolingParams({
+      kernelSize: this.kernelSize,
+      stride: this.stride,
+      padding: this.padding,
+    })
   }
 
   /**
@@ -135,6 +141,12 @@ export class AvgPool2d<D extends DType<string> = float32> extends Module<
     // Default stride is same as kernel size
     this.stride = options.stride !== undefined ? normalizePair(options.stride) : this.kernelSize
     this.padding = normalizePair(options.padding ?? 0)
+
+    validatePoolingParams({
+      kernelSize: this.kernelSize,
+      stride: this.stride,
+      padding: this.padding,
+    })
   }
 
   /**
@@ -188,6 +200,8 @@ export class AdaptiveAvgPool2d<D extends DType<string> = float32> extends Module
   constructor(outputSize: number | [number, number]) {
     super()
     this.outputSize = typeof outputSize === 'number' ? [outputSize, outputSize] : outputSize
+    validatePositiveInt(this.outputSize[0], 'outputSize[0]')
+    validatePositiveInt(this.outputSize[1], 'outputSize[1]')
   }
 
   /**

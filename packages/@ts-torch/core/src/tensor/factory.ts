@@ -11,6 +11,25 @@ import type { DType } from '../types/dtype.js'
 import { DType as DTypeConstants } from '../types/dtype.js'
 import { getLib } from '../ffi/loader.js'
 import { withError, checkNull } from '../ffi/error.js'
+import {
+  ValidationError,
+  validatePositiveInt,
+  validateNonZero,
+  validateFinite,
+} from '../validation/index.js'
+
+/**
+ * Validate that a shape array contains only positive integers
+ * @internal
+ */
+function validateShapeArray(shape: readonly number[], paramName: string = 'shape'): void {
+  if (shape.length === 0) {
+    throw new ValidationError(paramName, shape, 'a non-empty shape array')
+  }
+  for (let i = 0; i < shape.length; i++) {
+    validatePositiveInt(shape[i]!, `${paramName}[${i}]`)
+  }
+}
 
 /**
  * Create a tensor filled with zeros
@@ -33,6 +52,7 @@ export function zeros<S extends Shape, D extends DType<string> = DType<'float32'
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
+  validateShapeArray(shape)
   const lib = getLib()
 
   // Convert shape to BigInt64Array for FFI (koffi accepts ArrayBuffer directly)
@@ -74,6 +94,7 @@ export function ones<S extends Shape, D extends DType<string> = DType<'float32'>
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
+  validateShapeArray(shape)
   const lib = getLib()
 
   const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
@@ -116,6 +137,7 @@ export function empty<S extends Shape, D extends DType<string> = DType<'float32'
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
+  validateShapeArray(shape)
   const lib = getLib()
 
   const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
@@ -155,6 +177,7 @@ export function randn<S extends Shape, D extends DType<string> = DType<'float32'
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
+  validateShapeArray(shape)
   const lib = getLib()
 
   const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
@@ -200,12 +223,17 @@ export function fromArray<S extends Shape, D extends DType<string> = DType<'floa
   dtype: D = DTypeConstants.float32 as D,
   requiresGrad = false,
 ): Tensor<S, D> {
+  validateShapeArray(shape)
   const lib = getLib()
 
   // Validate size
   const expectedSize = shape.reduce((acc, dim) => acc * dim, 1)
   if (data.length !== expectedSize) {
-    throw new Error(`Data length ${data.length} does not match shape [${shape.join(', ')}] (expected ${expectedSize})`)
+    throw new ValidationError(
+      'data',
+      `array of length ${data.length}`,
+      `array of length ${expectedSize} to match shape [${shape.join(', ')}]`,
+    )
   }
 
   // Convert to TypedArray if needed
@@ -271,13 +299,17 @@ export function createArange<D extends DType<string> = DType<'float32'>>(
   step = 1,
   dtype: D = DTypeConstants.float32 as D,
 ): Tensor<readonly [number], D> {
-  if (step === 0) {
-    throw new Error('Step cannot be zero')
-  }
+  validateFinite(start, 'start')
+  validateFinite(end, 'end')
+  validateNonZero(step, 'step')
 
   const size = Math.ceil((end - start) / step)
   if (size <= 0) {
-    throw new Error(`Invalid range: start=${start}, end=${end}, step=${step}`)
+    throw new ValidationError(
+      'range',
+      `start=${start}, end=${end}, step=${step}`,
+      'a valid range where (end - start) / step > 0',
+    )
   }
 
   // Generate data

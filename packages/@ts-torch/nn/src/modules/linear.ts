@@ -6,7 +6,7 @@
  */
 
 import { Module, Parameter, type Tensor, type float32 } from '../module.js'
-import { torch, type DType } from '@ts-torch/core'
+import { torch, type DType, validateLinearParams } from '@ts-torch/core'
 
 /**
  * Linear options interface
@@ -86,6 +86,7 @@ export class Linear<
     options: LinearOptions<D> = {},
   ) {
     super()
+    validateLinearParams(inFeatures, outFeatures)
 
     const { bias = true, init = 'kaiming_uniform' } = options
 
