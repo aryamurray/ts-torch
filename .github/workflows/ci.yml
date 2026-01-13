@@ -104,7 +104,6 @@ jobs:
 
       - name: Run lint
         run: bun run lint:check
-        continue-on-error: true
 
       - name: Run type checking
         run: bun run check-types
@@ -112,12 +111,23 @@ jobs:
       - name: Run build
         run: bun run build
 
+      # Upload build artifacts for analysis and debugging
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ matrix.platform }}
+          path: |
+            packages/@ts-torch/core/dist
+            packages/@ts-torch/nn/dist
+            packages/@ts-torch-platform/${{ matrix.platform }}/lib
+          retention-days: 7
+          if-no-files-found: error
+
       - name: Run tests
         run: bun run test
         env:
           # Set TS_TORCH_LIB to help loader find the library
           TS_TORCH_LIB: ${{ github.workspace }}/packages/@ts-torch-platform/${{ matrix.platform }}/lib/${{ matrix.lib_name }}
-        continue-on-error: true
 
       - name: Verify outputs
         shell: bash
@@ -125,3 +135,34 @@ jobs:
           test -d packages/@ts-torch/core/dist || (echo "core dist not found" && exit 1)
           test -d packages/@ts-torch/nn/dist || (echo "nn dist not found" && exit 1)
           echo "✓ All build outputs verified"
+
+      # Bundle size reporting - only on ubuntu for consistency
+      - name: Report bundle sizes
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Package Sizes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Report core package size
+          CORE_SIZE=$(du -sh packages/@ts-torch/core/dist | cut -f1)
+          echo "- **@ts-torch/core**: $CORE_SIZE" >> $GITHUB_STEP_SUMMARY
+
+          # Report nn package size
+          NN_SIZE=$(du -sh packages/@ts-torch/nn/dist | cut -f1)
+          echo "- **@ts-torch/nn**: $NN_SIZE" >> $GITHUB_STEP_SUMMARY
+
+          # Report native library size
+          NATIVE_SIZE=$(du -sh packages/@ts-torch-platform/${{ matrix.platform }}/lib | cut -f1)
+          echo "- **Native library (${{ matrix.platform }})**: $NATIVE_SIZE" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Detailed Breakdown" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          find packages/@ts-torch/core/dist -type f -exec ls -lh {} \; | awk '{print $9, "-", $5}'
+          echo "" >> $GITHUB_STEP_SUMMARY
+          find packages/@ts-torch/nn/dist -type f -exec ls -lh {} \; | awk '{print $9, "-", $5}'
+          echo '```' >> $GITHUB_STEP_SUMMARY

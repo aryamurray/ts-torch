@@ -245,7 +245,7 @@ export class MockTensor {
     return new MockTensor(result, [...this.shape], this._requiresGrad);
   }
 
-  transpose(dim0: number, dim1: number): MockTensor {
+  transpose(_dim0: number, _dim1: number): MockTensor {
     this._checkNotFreed();
 
     if (this.shape.length !== 2) {

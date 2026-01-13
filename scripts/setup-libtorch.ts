@@ -1,5 +1,4 @@
 import { existsSync, rmSync, createWriteStream, writeFileSync, readFileSync, unlinkSync } from "fs";
-import { mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { createHash } from "crypto";
 import path from "path";
@@ -10,7 +9,7 @@ const SCRIPT_DIR = import.meta.dirname;
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, "..");
 const LIBTORCH_VERSION = "2.5.1";
 const LIBTORCH_DIR = path.join(PROJECT_ROOT, "libtorch");
-const NATIVE_DIR = path.join(PROJECT_ROOT, "packages/@ts-torch/core/native");
+const _NATIVE_DIR = path.join(PROJECT_ROOT, "packages/@ts-torch/core/native");
 const LOCK_FILE = path.join(PROJECT_ROOT, ".libtorch-setup.lock");
 const BASE_URL = "https://download.pytorch.org/libtorch/cpu";
 
@@ -77,7 +76,7 @@ function acquireLock(): boolean {
     // Create lock file with current timestamp
     writeFileSync(LOCK_FILE, Date.now().toString(), { flag: "wx" });
     return true;
-  } catch (err) {
+  } catch {
     // Another process may have created the lock between our check and create
     return false;
   }

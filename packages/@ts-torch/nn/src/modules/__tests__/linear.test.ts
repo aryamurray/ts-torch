@@ -4,9 +4,7 @@
 
 import { describe, test, expect } from 'vitest'
 import { Linear } from '../linear.js'
-import { mockTensorFactories } from '@ts-torch/test-utils'
 import { torch } from '@ts-torch/core'
-import type { Tensor } from '../../module.js'
 
 describe('Linear', () => {
   describe('constructor', () => {

@@ -6,27 +6,39 @@
     "dist"
   ],
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./src/index.ts"
     },
     "./ffi": {
       "bun": "./src/ffi/index.ts",
       "types": "./dist/ffi/index.d.ts",
-      "import": "./dist/ffi/index.js"
+      "import": "./dist/ffi/index.js",
+      "default": "./src/ffi/index.ts"
     }
   },
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aryamurray/ts-torch.git",
+    "directory": "packages/@ts-torch/core"
+  },
+  "bugs": {
+    "url": "https://github.com/aryamurray/ts-torch/issues"
+  },
+  "homepage": "https://github.com/aryamurray/ts-torch#readme",
   "scripts": {
-    "build": "tsc",
+    "build": "vite build",
     "build:native": "bun run scripts/build-native.ts",
     "build:native:cuda": "bun run ../../../scripts/build-native-cuda.ts",
     "dev": "tsc --watch",

@@ -6,21 +6,32 @@
     "dist"
   ],
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
   },
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aryamurray/ts-torch.git",
+    "directory": "packages/@ts-torch/nn"
+  },
+  "bugs": {
+    "url": "https://github.com/aryamurray/ts-torch/issues"
+  },
+  "homepage": "https://github.com/aryamurray/ts-torch#readme",
   "scripts": {
-    "build": "tsc",
+    "build": "vite build",
     "dev": "tsc --watch",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",

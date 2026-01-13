@@ -333,7 +333,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     const byteSize = this.numel * (BytesPerElement[this.dtype.name as keyof typeof BytesPerElement] || 4)
 
     let buffer: ArrayBuffer
-    let result: Float32Array | Float64Array | Int32Array | BigInt64Array
+    let result: Float32Array | Float64Array | Int32Array | BigInt64Array | Uint8Array
 
     switch (this.dtype.name) {
       case 'float32':
@@ -353,6 +353,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
       case 'int64':
         result = new BigInt64Array(this.numel)
+        buffer = result.buffer as ArrayBuffer
+        break
+
+      case 'bool':
+        result = new Uint8Array(this.numel)
         buffer = result.buffer as ArrayBuffer
         break
 
@@ -1576,5 +1581,146 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
       dtype: this.dtype.name,
       data: Array.from(this.toArray() as Iterable<number | bigint>),
     }
+  }
+
+  // ==================== Comparison Operations ====================
+
+  /**
+   * Element-wise equality comparison
+   *
+   * @param other - Tensor to compare with
+   * @returns Boolean tensor with true where elements are equal
+   *
+   * @example
+   * ```ts
+   * const a = torch.tensor([1, 2, 3], [3]);
+   * const b = torch.tensor([1, 0, 3], [3]);
+   * const eq = a.eq(b); // [true, false, true]
+   * ```
+   */
+  eq(other: Tensor<S, D>): Tensor<S, DType<'bool'>> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_eq(this._handle, other._handle, err))
+
+    checkNull(handle, 'Failed to compute eq')
+
+    const boolDtype = { name: 'bool' } as DType<'bool'>
+    return new Tensor<S, DType<'bool'>>(handle!, this.shape, boolDtype)
+  }
+
+  // ==================== Indexing Operations ====================
+
+  /**
+   * Select elements along a dimension using an index tensor
+   *
+   * This operation selects rows (or elements along any dimension) based on
+   * the indices provided. Useful for batching and data loading on GPU.
+   *
+   * @param dim - Dimension to index along
+   * @param index - 1D tensor of indices (int64)
+   * @returns New tensor with selected elements
+   *
+   * @example
+   * ```ts
+   * // Select rows 0, 2, 1 from a 4x3 tensor
+   * const data = torch.tensor([[1,2,3], [4,5,6], [7,8,9], [10,11,12]], [4, 3]);
+   * const indices = torch.tensor([0, 2, 1], [3], torch.int64);
+   * const selected = data.indexSelect(0, indices); // [[1,2,3], [7,8,9], [4,5,6]]
+   * ```
+   */
+  indexSelect<IndexS extends readonly [number]>(
+    dim: number,
+    index: Tensor<IndexS, DType<'int64'>>,
+  ): Tensor<Shape, D> {
+    this._checkValid()
+    validateDimension(dim, this.ndim, 'dim')
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_index_select(this._handle, BigInt(dim), index._handle, err),
+    )
+
+    checkNull(handle, 'Failed to apply index_select')
+
+    // Compute output shape: replace dim's size with index length
+    const newShape = [...this.shape] as number[]
+    newShape[dim] = index.shape[0]
+
+    return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
+  }
+
+  /**
+   * Returns the indices of maximum values along a dimension
+   *
+   * @param dim - Dimension to reduce
+   * @param keepdim - Whether to keep the reduced dimension
+   * @returns Tensor of indices (int64)
+   *
+   * @example
+   * ```ts
+   * const logits = torch.tensor([[1, 3, 2], [4, 2, 5]], [2, 3]);
+   * const preds = logits.argmax(1); // [1, 2] - indices of max in each row
+   * ```
+   */
+  argmax(dim: number, keepdim: boolean = false): Tensor<Shape, DType<'int64'>> {
+    this._checkValid()
+    validateDimension(dim, this.ndim, 'dim')
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_argmax(this._handle, BigInt(dim), keepdim ? 1 : 0, err),
+    )
+
+    checkNull(handle, 'Failed to apply argmax')
+
+    // Compute output shape
+    let newShape: number[]
+    if (keepdim) {
+      newShape = [...this.shape] as number[]
+      newShape[dim] = 1
+    } else {
+      newShape = (this.shape as readonly number[]).filter((_, i) => i !== dim)
+    }
+
+    // Import DType properly for int64
+    const int64Dtype = { name: 'int64' } as DType<'int64'>
+    return new Tensor<Shape, DType<'int64'>>(handle!, newShape as unknown as Shape, int64Dtype)
+  }
+
+  /**
+   * Narrow (slice) tensor along a dimension - ZERO COPY view
+   *
+   * This is the most efficient way to get a contiguous slice of a tensor.
+   * Returns a view into the same memory - no data is copied.
+   *
+   * @param dim - Dimension to narrow along
+   * @param start - Starting index
+   * @param length - Length of the slice
+   * @returns View tensor (shares memory with original)
+   *
+   * @example
+   * ```ts
+   * // Get batch 0-512 from a 60000x784 tensor
+   * const batch = allImages.narrow(0, 0, 512); // [512, 784] - zero copy!
+   * ```
+   */
+  narrow(dim: number, start: number, length: number): Tensor<Shape, D> {
+    this._checkValid()
+    validateDimension(dim, this.ndim, 'dim')
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_narrow(this._handle, BigInt(dim), BigInt(start), BigInt(length), err),
+    )
+
+    checkNull(handle, 'Failed to narrow tensor')
+
+    // Compute output shape
+    const newShape = [...this.shape] as number[]
+    newShape[dim] = length
+
+    return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
   }
 }

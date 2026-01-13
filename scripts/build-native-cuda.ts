@@ -7,7 +7,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, copyFileSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { LIBTORCH_VERSION, writeBuildMeta } from '@ts-torch-cuda/shared'
+import { writeBuildMeta } from '@ts-torch-cuda/shared'
 
 const ROOT_DIR = resolve(import.meta.dirname, '..')
 const NATIVE_DIR = join(ROOT_DIR, 'packages', '@ts-torch', 'core', 'native')

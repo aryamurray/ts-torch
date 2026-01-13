@@ -88,12 +88,36 @@ export class MNIST {
 
     // Load and parse images in a block scope to allow buffer release
     {
-      const imagesBuffer = readFileSync(imagesPath)
+      let imagesBuffer: Buffer
+      try {
+        imagesBuffer = readFileSync(imagesPath)
+      } catch (error) {
+        if (error && typeof error === 'object' && 'code' in error) {
+          const code = (error as { code: string }).code
+          if (code === 'ENOENT') {
+            throw new Error(
+              `MNIST images file not found: ${imagesPath}\n` +
+              `Please download the MNIST dataset from http://yann.lecun.com/exdb/mnist/\n` +
+              `Expected file: ${prefix}-images.idx3-ubyte`
+            )
+          } else if (code === 'EACCES') {
+            throw new Error(
+              `Permission denied reading MNIST images file: ${imagesPath}\n` +
+              `Please check file permissions.`
+            )
+          }
+        }
+        throw new Error(
+          `Failed to read MNIST images file: ${imagesPath}\n` +
+          `Error: ${error instanceof Error ? error.message : String(error)}`
+        )
+      }
 
       // Validate buffer size before creating DataView
       if (imagesBuffer.length < IDX3_HEADER_SIZE) {
         throw new Error(
-          `Images file too small: ${imagesBuffer.length} bytes, minimum ${IDX3_HEADER_SIZE} required`,
+          `Images file too small: ${imagesBuffer.length} bytes, minimum ${IDX3_HEADER_SIZE} required\n` +
+          `File: ${imagesPath}`,
         )
       }
 
@@ -102,7 +126,10 @@ export class MNIST {
       // Parse IDX3 header: magic(4), numImages(4), rows(4), cols(4)
       const magic = imagesView.getUint32(0, false)
       if (magic !== 0x00000803) {
-        throw new Error(`Invalid MNIST images magic number: ${magic}`)
+        throw new Error(
+          `Invalid MNIST images magic number: 0x${magic.toString(16).padStart(8, '0')} (expected 0x00000803)\n` +
+          `File may be corrupted or is not a valid MNIST images file: ${imagesPath}`
+        )
       }
 
       this.numSamples = imagesView.getUint32(4, false)
@@ -121,7 +148,10 @@ export class MNIST {
       const cols = imagesView.getUint32(12, false)
 
       if (rows !== 28 || cols !== 28) {
-        throw new Error(`Unexpected MNIST image size: ${rows}x${cols}`)
+        throw new Error(
+          `Unexpected MNIST image size: ${rows}x${cols} (expected 28x28)\n` +
+          `File: ${imagesPath}`
+        )
       }
 
       // Validate file size matches expected data size
@@ -130,7 +160,8 @@ export class MNIST {
       if (actualImageDataSize < expectedImageDataSize) {
         throw new Error(
           `Images file size mismatch: expected ${expectedImageDataSize} bytes of pixel data, ` +
-            `but file only contains ${actualImageDataSize} bytes after header`,
+            `but file only contains ${actualImageDataSize} bytes after header\n` +
+            `File may be truncated or corrupted: ${imagesPath}`,
         )
       }
 
@@ -150,12 +181,36 @@ export class MNIST {
 
     // Load and parse labels in a block scope to allow buffer release
     {
-      const labelsBuffer = readFileSync(labelsPath)
+      let labelsBuffer: Buffer
+      try {
+        labelsBuffer = readFileSync(labelsPath)
+      } catch (error) {
+        if (error && typeof error === 'object' && 'code' in error) {
+          const code = (error as { code: string }).code
+          if (code === 'ENOENT') {
+            throw new Error(
+              `MNIST labels file not found: ${labelsPath}\n` +
+              `Please download the MNIST dataset from http://yann.lecun.com/exdb/mnist/\n` +
+              `Expected file: ${prefix}-labels.idx1-ubyte`
+            )
+          } else if (code === 'EACCES') {
+            throw new Error(
+              `Permission denied reading MNIST labels file: ${labelsPath}\n` +
+              `Please check file permissions.`
+            )
+          }
+        }
+        throw new Error(
+          `Failed to read MNIST labels file: ${labelsPath}\n` +
+          `Error: ${error instanceof Error ? error.message : String(error)}`
+        )
+      }
 
       // Validate buffer size before creating DataView
       if (labelsBuffer.length < IDX1_HEADER_SIZE) {
         throw new Error(
-          `Labels file too small: ${labelsBuffer.length} bytes, minimum ${IDX1_HEADER_SIZE} required`,
+          `Labels file too small: ${labelsBuffer.length} bytes, minimum ${IDX1_HEADER_SIZE} required\n` +
+          `File: ${labelsPath}`,
         )
       }
 
@@ -164,7 +219,10 @@ export class MNIST {
       // Parse IDX1 header: magic(4), numLabels(4)
       const labelsMagic = labelsView.getUint32(0, false)
       if (labelsMagic !== 0x00000801) {
-        throw new Error(`Invalid MNIST labels magic number: ${labelsMagic}`)
+        throw new Error(
+          `Invalid MNIST labels magic number: 0x${labelsMagic.toString(16).padStart(8, '0')} (expected 0x00000801)\n` +
+          `File may be corrupted or is not a valid MNIST labels file: ${labelsPath}`
+        )
       }
 
       const numLabels = labelsView.getUint32(4, false)
@@ -182,7 +240,8 @@ export class MNIST {
       if (actualLabelsDataSize < expectedLabelsDataSize) {
         throw new Error(
           `Labels file size mismatch: expected ${expectedLabelsDataSize} bytes of label data, ` +
-            `but file only contains ${actualLabelsDataSize} bytes after header`,
+            `but file only contains ${actualLabelsDataSize} bytes after header\n` +
+            `File may be truncated or corrupted: ${labelsPath}`,
         )
       }
 
@@ -224,9 +283,14 @@ export class MNIST {
     const imageData = this.images.slice(start, start + 784)
     const image = torch.tensor(Array.from(imageData), [784] as const) as Tensor<readonly [784], DType<'float32'>>
 
+    const label = this.labels[index]
+    if (label === undefined) {
+      throw new Error(`Label at index ${index} is undefined. Data corruption detected.`)
+    }
+
     return {
       image,
-      label: this.labels[index]!,
+      label,
     }
   }
 
@@ -248,7 +312,11 @@ export class MNIST {
     for (let i = 0; i < actualBatchSize; i++) {
       const srcStart = (startIndex + i) * 784
       batchData.set(this.images.slice(srcStart, srcStart + 784), i * 784)
-      batchLabels.push(this.labels[startIndex + i]!)
+      const label = this.labels[startIndex + i]
+      if (label === undefined) {
+        throw new Error(`Label at index ${startIndex + i} is undefined. Data corruption detected.`)
+      }
+      batchLabels.push(label)
     }
 
     const images = torch.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<
@@ -281,7 +349,12 @@ export class MNIST {
     if (shuffle) {
       for (let i = indices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
-        ;[indices[i], indices[j]] = [indices[j]!, indices[i]!]
+        const idxI = indices[i]
+        const idxJ = indices[j]
+        if (idxI === undefined || idxJ === undefined) {
+          throw new Error(`Indices array corruption detected during shuffle at positions ${i}, ${j}`)
+        }
+        ;[indices[i], indices[j]] = [idxJ, idxI]
       }
     }
 
@@ -292,10 +365,17 @@ export class MNIST {
       const batchLabels: number[] = []
 
       for (let i = 0; i < actualBatchSize; i++) {
-        const idx = indices[start + i]!
+        const idx = indices[start + i]
+        if (idx === undefined) {
+          throw new Error(`Index at position ${start + i} is undefined. Data corruption detected.`)
+        }
         const srcStart = idx * 784
-        batchData.set(this.images!.slice(srcStart, srcStart + 784), i * 784)
-        batchLabels.push(this.labels![idx]!)
+        batchData.set(this.images.slice(srcStart, srcStart + 784), i * 784)
+        const label = this.labels[idx]
+        if (label === undefined) {
+          throw new Error(`Label at index ${idx} is undefined. Data corruption detected.`)
+        }
+        batchLabels.push(label)
       }
 
       const images = torch.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<

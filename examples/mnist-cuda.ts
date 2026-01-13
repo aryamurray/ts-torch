@@ -1,10 +1,11 @@
 /**
- * MNIST Classification with ts-torch (CUDA)
+ * MNIST Classification with ts-torch (CUDA) - Zero-Copy Batching
  *
- * Trains a simple MLP on the MNIST handwritten digits dataset
- * using proper autograd backpropagation and SGD optimizer.
- *
- * This version runs on GPU using CUDA.
+ * This version uses narrow() for TRUE zero-copy GPU batching:
+ * - Entire dataset transferred to GPU once
+ * - narrow() returns views - NO memory allocation per batch
+ * - NO CPU-GPU transfers during training
+ * - Loss read only once per epoch (single sync point)
  */
 
 import { torch } from '@ts-torch/core'
@@ -12,198 +13,164 @@ import { Linear, ReLU } from '@ts-torch/nn'
 import { MNIST } from '@ts-torch/datasets'
 import { SGD, crossEntropyLoss } from '@ts-torch/optim'
 
-console.log('=== MNIST Classification with CUDA ===\n')
+console.log('=== MNIST with CUDA (Zero-Copy Batching) ===\n')
 
-// ==================== Check CUDA Availability ====================
+// ==================== Check CUDA ====================
 const cudaAvailable = torch.cuda.isAvailable()
 console.log(`CUDA available: ${cudaAvailable}`)
-
 if (!cudaAvailable) {
-  console.error('CUDA is not available. Please ensure:')
-  console.error('  1. You have an NVIDIA GPU')
-  console.error('  2. CUDA toolkit is installed')
-  console.error('  3. You built with: bun run build:native:cuda')
+  console.error('CUDA not available')
   process.exit(1)
 }
-
-const deviceCount = torch.cuda.deviceCount()
-console.log(`CUDA devices: ${deviceCount}`)
-console.log('')
+console.log(`CUDA devices: ${torch.cuda.deviceCount()}\n`)
 
 // ==================== Load Dataset ====================
-console.log('Loading MNIST dataset...')
-
+console.log('Loading MNIST...')
 const trainData = new MNIST('./data/mnist', true)
 const testData = new MNIST('./data/mnist', false)
-
 await trainData.load()
 await testData.load()
+console.log(`Train: ${trainData.length}, Test: ${testData.length}\n`)
 
-console.log(`Training samples: ${trainData.length}`)
-console.log(`Test samples: ${testData.length}`)
-console.log('')
+// ==================== ONE-TIME GPU Transfer ====================
+console.log('Transferring to GPU (one-time)...')
+const t0 = Date.now()
 
-// ==================== Define Model ====================
-console.log('Creating model: 784 -> 128 -> 64 -> 10')
+// Collect all data into flat arrays
+const trainImages = new Float32Array(trainData.length * 784)
+const trainLabels = new BigInt64Array(trainData.length)
+for (let i = 0; i < trainData.length; i++) {
+  const s = trainData.get(i)
+  trainImages.set(s.image.toArray() as Float32Array, i * 784)
+  trainLabels[i] = BigInt(s.label)
+}
 
-// Create layers (weights automatically have requires_grad=true via Parameter class)
+const testImages = new Float32Array(testData.length * 784)
+const testLabels = new BigInt64Array(testData.length)
+for (let i = 0; i < testData.length; i++) {
+  const s = testData.get(i)
+  testImages.set(s.image.toArray() as Float32Array, i * 784)
+  testLabels[i] = BigInt(s.label)
+}
+
+// Create GPU tensors - these stay on GPU for entire training
+let gpuTrainX: any, gpuTrainY: any, gpuTestX: any, gpuTestY: any
+
+torch.run(() => {
+  const cpuTrainX = torch.tensor(Array.from(trainImages), [trainData.length, 784] as const)
+  const cpuTrainY = torch.tensor(Array.from(trainLabels).map(Number), [trainData.length] as const, torch.int64)
+  gpuTrainX = cpuTrainX.cuda().escape()
+  gpuTrainY = cpuTrainY.cuda().escape()
+
+  const cpuTestX = torch.tensor(Array.from(testImages), [testData.length, 784] as const)
+  const cpuTestY = torch.tensor(Array.from(testLabels).map(Number), [testData.length] as const, torch.int64)
+  gpuTestX = cpuTestX.cuda().escape()
+  gpuTestY = cpuTestY.cuda().escape()
+})
+
+console.log(`  Done in ${((Date.now() - t0) / 1000).toFixed(1)}s\n`)
+
+// ==================== Model ====================
+console.log('Model: 784 -> 128 -> 64 -> 10')
 const fc1 = new Linear(784, 128)
 const fc2 = new Linear(128, 64)
 const fc3 = new Linear(64, 10)
 const relu = new ReLU()
 
-// Move model to CUDA
-console.log('Moving model to CUDA...')
 fc1.to('cuda')
 fc2.to('cuda')
 fc3.to('cuda')
 
-console.log('  ' + fc1.toString())
-console.log('  ' + fc2.toString())
-console.log('  ' + fc3.toString())
-console.log('')
-
-// Forward pass function
 function forward(x: any): any {
-  let h: any = fc1.forward(x)
-  h = relu.forward(h)
-  h = fc2.forward(h)
-  h = relu.forward(h)
-  h = fc3.forward(h)
-  return h
+  return fc3.forward(relu.forward(fc2.forward(relu.forward(fc1.forward(x)))))
 }
 
-// ==================== Setup Optimizer ====================
-// Collect all parameter tensors from the model
-const allParams = [
-  ...fc1.parameters().map((p) => p.data),
-  ...fc2.parameters().map((p) => p.data),
-  ...fc3.parameters().map((p) => p.data),
+// ==================== Optimizer ====================
+const params = [
+  ...fc1.parameters().map(p => p.data),
+  ...fc2.parameters().map(p => p.data),
+  ...fc3.parameters().map(p => p.data),
 ]
-
-const LEARNING_RATE = 0.01
-const optimizer = new SGD(allParams, { lr: LEARNING_RATE })
-
-console.log(`Optimizer: ${optimizer.toString()}`)
-console.log('')
+const optimizer = new SGD(params, { lr: 0.01 })
+console.log(`Optimizer: ${optimizer.toString()}\n`)
 
 // ==================== Training ====================
 const EPOCHS = 3
-const BATCH_SIZE = 64
+const BATCH_SIZE = 512
+const numBatches = Math.ceil(trainData.length / BATCH_SIZE)
 
-console.log(`Training for ${EPOCHS} epochs, batch size ${BATCH_SIZE}`)
-console.log('')
+console.log(`Training: ${EPOCHS} epochs, batch ${BATCH_SIZE}, ${numBatches} batches/epoch`)
+console.log('Using narrow() for zero-copy batching\n')
 
 for (let epoch = 0; epoch < EPOCHS; epoch++) {
-  let totalLoss = 0
-  let numBatches = 0
-  let correct = 0
-  let total = 0
+  const epochStart = Date.now()
+  let lastLoss = 0
 
-  const startTime = Date.now()
-  console.log(`Starting epoch ${epoch + 1}...`)
+  // Single torch.run() for entire epoch - minimal scope overhead
+  torch.run(() => {
+    for (let b = 0; b < numBatches; b++) {
+      const start = b * BATCH_SIZE
+      const size = Math.min(BATCH_SIZE, trainData.length - start)
 
-  for (const batch of trainData.batches(BATCH_SIZE, true)) {
-    torch.run(() => {
-      // Move batch data to CUDA
-      const images = batch.images.cuda()
-      const labels = batch.labelsTensor.cuda()
+      // narrow() returns a VIEW - zero copy, zero allocation!
+      const batchX = gpuTrainX.narrow(0, start, size)
+      const batchY = gpuTrainY.narrow(0, start, size)
 
-      // Zero gradients
       optimizer.zeroGrad()
-
-      // Forward pass
-      const logits = forward(images)
-
-      // Compute cross-entropy loss
-      const loss = crossEntropyLoss(logits as any, labels as any)
-
-      // Backward pass - compute gradients
+      const logits = forward(batchX)
+      const loss = crossEntropyLoss(logits, batchY)
       loss.backward()
-
-      // Update weights
       optimizer.step()
 
-      // Track loss (move to CPU for reading)
-      const lossArray = loss.cpu().toArray() as Float32Array
-      totalLoss += lossArray[0] ?? 0
-      numBatches++
-
-      // Compute accuracy (move to CPU for reading)
-      const probs = logits.softmax(1)
-      const probsArray = probs.cpu().toArray() as Float32Array
-
-      for (let i = 0; i < batch.labels.length; i++) {
-        const label = batch.labels[i]!
-
-        // Argmax prediction
-        let maxProb = -1
-        let pred = 0
-        for (let c = 0; c < 10; c++) {
-          const p = probsArray[i * 10 + c]!
-          if (p > maxProb) {
-            maxProb = p
-            pred = c
-          }
-        }
-        if (pred === label) correct++
-        total++
+      // Only sync at end of epoch
+      if (b === numBatches - 1) {
+        lastLoss = loss.item()
       }
-    })
-
-    // Progress indicator every 100 batches
-    if (numBatches % 100 === 0) {
-      process.stdout.write(`\r  Batch ${numBatches}/${Math.ceil(trainData.length / BATCH_SIZE)}`)
     }
-  }
-  console.log() // New line after progress
+  })
 
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-  const avgLoss = (totalLoss / numBatches).toFixed(4)
-  const accuracy = ((correct / total) * 100).toFixed(2)
-
-  console.log(`Epoch ${epoch + 1}/${EPOCHS} | Loss: ${avgLoss} | Train Acc: ${accuracy}% | Time: ${elapsed}s`)
+  const elapsed = ((Date.now() - epochStart) / 1000).toFixed(3)
+  console.log(`Epoch ${epoch + 1}/${EPOCHS} | Loss: ${lastLoss.toFixed(4)} | Time: ${elapsed}s`)
 }
 
 console.log('')
 
 // ==================== Evaluation ====================
-console.log('Evaluating on test set...')
+console.log('Evaluating...')
+const evalStart = Date.now()
 
-let testCorrect = 0
-let testTotal = 0
+let correct = 0
+let total = 0
+const evalBatch = 1000
+const numEvalBatches = Math.ceil(testData.length / evalBatch)
 
-for (const batch of testData.batches(1000)) {
-  torch.run(() => {
-    // Move batch to CUDA
-    const images = batch.images.cuda()
+torch.run(() => {
+  for (let b = 0; b < numEvalBatches; b++) {
+    const start = b * evalBatch
+    const size = Math.min(evalBatch, testData.length - start)
 
-    const logits = forward(images)
-    const probs = logits.softmax(1)
-    const probsArray = probs.cpu().toArray() as Float32Array
+    const batchX = gpuTestX.narrow(0, start, size)
+    const batchY = gpuTestY.narrow(0, start, size)
 
-    for (let i = 0; i < batch.labels.length; i++) {
-      const label = batch.labels[i]!
+    const logits = forward(batchX)
 
-      // Argmax prediction
-      let maxProb = -1
-      let pred = 0
+    // CPU evaluation for simplicity (test set is small)
+    const logitsArr = logits.cpu().toArray() as Float32Array
+    const labelsArr = batchY.cpu().toArray() as BigInt64Array
+
+    for (let i = 0; i < size; i++) {
+      let maxVal = -Infinity, pred = 0
       for (let c = 0; c < 10; c++) {
-        const p = probsArray[i * 10 + c]!
-        if (p > maxProb) {
-          maxProb = p
-          pred = c
-        }
+        const v = logitsArr[i * 10 + c]!
+        if (v > maxVal) { maxVal = v; pred = c }
       }
-
-      if (pred === label) testCorrect++
-      testTotal++
+      if (pred === Number(labelsArr[i])) correct++
+      total++
     }
-  })
-}
+  }
+})
 
-const testAccuracy = ((testCorrect / testTotal) * 100).toFixed(2)
-console.log(`\nTest Accuracy: ${testAccuracy}%`)
-console.log(`Correct: ${testCorrect} / ${testTotal}`)
-
+const evalTime = ((Date.now() - evalStart) / 1000).toFixed(2)
+console.log(`\nAccuracy: ${((correct / total) * 100).toFixed(2)}% (${correct}/${total})`)
+console.log(`Eval time: ${evalTime}s`)
 console.log('\n=== Done ===')

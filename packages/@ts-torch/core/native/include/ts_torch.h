@@ -530,6 +530,31 @@ TS_TORCH_API ts_TensorHandle ts_tensor_layer_norm(
     ts_Error* error
 );
 
+// Index select operation - selects elements along a dimension using an index tensor
+TS_TORCH_API ts_TensorHandle ts_tensor_index_select(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    ts_TensorHandle index,
+    ts_Error* error
+);
+
+// Argmax operation - returns indices of maximum values along a dimension
+TS_TORCH_API ts_TensorHandle ts_tensor_argmax(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    int keepdim,
+    ts_Error* error
+);
+
+// Narrow operation - zero-copy slice along a dimension (returns view)
+TS_TORCH_API ts_TensorHandle ts_tensor_narrow(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    int64_t start,
+    int64_t length,
+    ts_Error* error
+);
+
 #ifdef __cplusplus
 }
 #endif

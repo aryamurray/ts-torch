@@ -1594,3 +1594,74 @@ ts_TensorHandle ts_tensor_layer_norm(
         return nullptr;
     }
 }
+
+// Index select operation
+ts_TensorHandle ts_tensor_index_select(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    ts_TensorHandle index,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !index) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::index_select(tensor->tensor, dim, index->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// Argmax operation
+ts_TensorHandle ts_tensor_argmax(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    int keepdim,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = tensor->tensor.argmax(dim, keepdim != 0);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// Narrow operation - returns a view (zero-copy slice)
+ts_TensorHandle ts_tensor_narrow(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    int64_t start,
+    int64_t length,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        // narrow returns a view - no data copy!
+        auto result = tensor->tensor.narrow(dim, start, length);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}

@@ -124,7 +124,7 @@ export class SGD extends Optimizer {
           console.warn('SGD: addScaledInplace not available, falling back to inefficient update')
           if ('mulScalar' in d_p && 'sub' in param) {
             const update = (d_p as any).mulScalar(groupLr)
-            const newParam = (param as any).sub(update)
+            void (param as any).sub(update)
             // This fallback won't work correctly - parameters won't update
             // The in-place method should always be available
           }

@@ -1,10 +1,17 @@
 import { defineConfig } from 'vitest/config';
-import { dirname } from 'path';
+import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  resolve: {
+    // Use "bun" condition to resolve workspace packages to source files
+    conditions: ['bun', 'import', 'module', 'default'],
+    alias: {
+      '@ts-torch/core': resolve(__dirname, '../core/src/index.ts'),
+    },
+  },
   test: {
     name: '@ts-torch/optim',
     root: __dirname,

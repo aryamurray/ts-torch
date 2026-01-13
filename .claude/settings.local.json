@@ -21,7 +21,9 @@
       "Bash(TS_TORCH_LIB=\"C:\\\\Users\\\\thema\\\\OneDrive\\\\Documents\\\\Code\\\\ts-torch\\\\packages\\\\@ts-torch\\\\core\\\\native\\\\build\\\\Release\\\\ts_torch.dll\" bun run:*)",
       "Bash(bun run:*)",
       "Bash(bun -e:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(bun tsc:*)",
+      "Bash(bun test:*)"
     ],
     "deny": [],
     "ask": []

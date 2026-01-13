@@ -46,6 +46,13 @@
       "env": ["TS_TORCH_LIB"],
       "cache": true
     },
+    "@ts-torch/core#test": {
+      "dependsOn": ["build:native", "^build"],
+      "inputs": ["$TURBO_DEFAULT$", "src/**/*.ts", "**/*.test.ts", "__tests__/**/*.ts", "vitest.config.ts"],
+      "outputs": ["coverage/**"],
+      "env": ["TS_TORCH_LIB"],
+      "cache": true
+    },
     "test:unit": {
       "dependsOn": [],
       "inputs": ["$TURBO_DEFAULT$", "src/**/*.ts", "**/*.unit.test.ts"],

@@ -87,8 +87,15 @@ export class DataLoader<T = unknown> implements AsyncIterable<T[]> {
       // Load batch samples
       const batch: T[] = []
       for (const idx of batchIndices) {
-        const sample = await Promise.resolve(this.dataset.getItem(idx))
-        batch.push(sample)
+        try {
+          const sample = await Promise.resolve(this.dataset.getItem(idx))
+          batch.push(sample)
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          throw new Error(
+            `Failed to load sample at index ${idx}: ${errorMessage}`,
+          )
+        }
       }
 
       yield batch

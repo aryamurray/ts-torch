@@ -11,7 +11,7 @@ import { join, resolve } from 'node:path'
 const ROOT_DIR = resolve(import.meta.dirname, '..', '..', '..', '..')
 const NATIVE_DIR = resolve(import.meta.dirname, '..', 'native')
 const BUILD_DIR = join(NATIVE_DIR, 'build')
-const CMAKE_CACHE_FILE = join(BUILD_DIR, 'CMakeCache.txt')
+const _CMAKE_CACHE_FILE = join(BUILD_DIR, 'CMakeCache.txt')
 const LIBTORCH_CACHE_FILE = join(BUILD_DIR, '.libtorch-path')
 
 // Platform-specific configuration - now arch-aware for all platforms

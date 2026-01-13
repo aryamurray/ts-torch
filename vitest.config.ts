@@ -1,6 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    // Use "bun" condition to resolve to source files during development/testing
+    conditions: ['bun', 'import', 'module', 'default'],
+  },
   test: {
     // Project mode for monorepo (Vitest 4.0+ uses 'projects' instead of 'workspace')
     projects: ['packages/@ts-torch/*/vitest.config.ts'],

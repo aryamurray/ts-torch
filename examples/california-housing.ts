@@ -18,9 +18,9 @@
  * Download from: https://www.kaggle.com/datasets/camnugent/california-housing-prices
  */
 
-import { torch, fromArray, DType } from '@ts-torch/core'
+import { torch } from '@ts-torch/core'
 import { Linear, ReLU } from '@ts-torch/nn'
-import { Adam, SGD, mseLoss } from '@ts-torch/optim'
+import { Adam, mseLoss } from '@ts-torch/optim'
 import { readFileSync, existsSync } from 'node:fs'
 
 // ==================== Configuration ====================

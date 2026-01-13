@@ -480,6 +480,26 @@ export const FFI_SYMBOLS = {
     args: [ptr, ptr, i32, ptr, ptr, f64, ptr] as const,
     returns: ptr,
   },
+
+  // ==================== Indexing Operations ====================
+
+  // ts_tensor_index_select(tensor, dim, index, error) -> TensorHandle
+  ts_tensor_index_select: {
+    args: [ptr, i64, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_argmax(tensor, dim, keepdim, error) -> TensorHandle
+  ts_tensor_argmax: {
+    args: [ptr, i64, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_narrow(tensor, dim, start, length, error) -> TensorHandle (view, zero-copy)
+  ts_tensor_narrow: {
+    args: [ptr, i64, i64, i64, ptr] as const,
+    returns: ptr,
+  },
 } as const
 
 export type FFISymbols = typeof FFI_SYMBOLS
