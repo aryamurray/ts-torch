@@ -51,10 +51,9 @@ function wrapMNIST(mnist: MNIST): Dataset<TensorPair> {
 const trainData = wrapMNIST(mnistTrain)
 const testData = wrapMNIST(mnistTest)
 
-// Create data pipelines - each item is already batched (batch size 1)
-// Note: True batching with tensor stacking will be added to pipeline in future
-const trainLoader = Data.pipeline(trainData).shuffle().to(cuda)
-const testLoader = Data.pipeline(testData).to(cuda)
+// Create data pipelines with batching and GPU transfer
+const trainLoader = Data.pipeline(trainData).shuffle().batch(64).to(cuda)
+const testLoader = Data.pipeline(testData).batch(64).to(cuda)
 
 // ==================== Model ====================
 const model = nn.mlp({ device: cuda, layers: [784, 128, 64, 10] })

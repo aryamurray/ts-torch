@@ -5,7 +5,7 @@
  */
 
 import { Module, type Tensor, type float32 } from '../module.js'
-import type { Shape, DType } from '@ts-torch/core'
+import type { Shape, DType, DeviceType } from '@ts-torch/core'
 
 /**
  * Sequential container for linear module composition
@@ -16,6 +16,7 @@ import type { Shape, DType } from '@ts-torch/core'
  * @template In - Input shape to first module
  * @template Out - Output shape from last module
  * @template D - Data type (default: float32)
+ * @template Dev - Device type (default: any device)
  *
  * @example
  * ```ts
@@ -39,8 +40,9 @@ export class Sequential<
   In extends Shape = Shape,
   Out extends Shape = Shape,
   D extends DType<string> = float32,
-> extends Module<In, Out, D> {
-  private readonly modules: Module<any, any, D>[]
+  Dev extends DeviceType = DeviceType,
+> extends Module<In, Out, D, Dev> {
+  private readonly modules: Module<any, any, D, Dev>[]
 
   /**
    * Create a new Sequential container
@@ -52,7 +54,7 @@ export class Sequential<
    * modules are passed as rest parameters. For full type safety, use
    * the explicit type parameters or use .pipe() chaining instead.
    */
-  constructor(...modules: Module<any, any, D>[]) {
+  constructor(...modules: Module<any, any, D, Dev>[]) {
     super()
 
     if (modules.length === 0) {
@@ -73,14 +75,14 @@ export class Sequential<
    * @param input - Input tensor
    * @returns Output tensor after all transformations
    */
-  forward(input: Tensor<In, D>): Tensor<Out, D> {
+  forward(input: Tensor<In, D, Dev>): Tensor<Out, D, Dev> {
     let output: any = input
 
     for (const module of this.modules) {
       output = module.forward(output)
     }
 
-    return output as Tensor<Out, D>
+    return output as Tensor<Out, D, Dev>
   }
 
   /**
@@ -89,8 +91,8 @@ export class Sequential<
    * @param module - Module to append
    * @returns New Sequential with appended module
    */
-  append<NextOut extends Shape>(module: Module<Out, NextOut, D>): Sequential<In, NextOut, D> {
-    return new Sequential<In, NextOut, D>(...this.modules, module)
+  append<NextOut extends Shape>(module: Module<Out, NextOut, D, Dev>): Sequential<In, NextOut, D, Dev> {
+    return new Sequential<In, NextOut, D, Dev>(...this.modules, module)
   }
 
   /**
@@ -99,7 +101,7 @@ export class Sequential<
    * @param index - Module index
    * @returns Module at index
    */
-  at(index: number): Module<any, any, D> | undefined {
+  at(index: number): Module<any, any, D, Dev> | undefined {
     return this.modules[index]
   }
 
@@ -113,7 +115,7 @@ export class Sequential<
   /**
    * Iterate over modules
    */
-  *[Symbol.iterator](): Iterator<Module<any, any, D>> {
+  *[Symbol.iterator](): Iterator<Module<any, any, D, Dev>> {
     yield* this.modules
   }
 
@@ -131,6 +133,7 @@ export class Sequential<
  *
  * @template In - Current input shape
  * @template D - Data type
+ * @template Dev - Device type
  *
  * @example
  * ```ts
@@ -146,12 +149,12 @@ export class Sequential<
  * // Type is: Sequential<readonly [number, 784], readonly [number, 10]>
  * ```
  */
-export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Shape, D extends DType<string> = float32> {
-  private modules: Module<any, any, D>[] = []
+export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> {
+  private modules: Module<any, any, D, Dev>[] = []
 
   private constructor(
     private readonly inputShape?: In,
-    modules: Module<any, any, D>[] = [],
+    modules: Module<any, any, D, Dev>[] = [],
   ) {
     this.modules = modules
   }
@@ -168,8 +171,8 @@ export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Sha
    * const builder = sequential<readonly [number, 784]>();
    * ```
    */
-  static create<In extends Shape, D extends DType<string> = float32>(_inputShape?: In): SequentialBuilder<In, In, D> {
-    return new SequentialBuilder<In, In, D>(_inputShape)
+  static create<In extends Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType>(_inputShape?: In): SequentialBuilder<In, In, D, Dev> {
+    return new SequentialBuilder<In, In, D, Dev>(_inputShape)
   }
 
   /**
@@ -179,8 +182,8 @@ export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Sha
    * @param module - Module to add (must accept current Out as input)
    * @returns Updated builder with new output shape
    */
-  add<NextOut extends Shape>(module: Module<Out, NextOut, D>): SequentialBuilder<In, NextOut, D> {
-    const newBuilder = new SequentialBuilder<In, NextOut, D>(this.inputShape, [...this.modules, module])
+  add<NextOut extends Shape>(module: Module<Out, NextOut, D, Dev>): SequentialBuilder<In, NextOut, D, Dev> {
+    const newBuilder = new SequentialBuilder<In, NextOut, D, Dev>(this.inputShape, [...this.modules, module])
     return newBuilder
   }
 
@@ -189,8 +192,8 @@ export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Sha
    *
    * @returns Sequential module with full type information
    */
-  build(): Sequential<In, Out, D> {
-    return new Sequential<In, Out, D>(...this.modules)
+  build(): Sequential<In, Out, D, Dev> {
+    return new Sequential<In, Out, D, Dev>(...this.modules)
   }
 }
 
@@ -199,6 +202,7 @@ export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Sha
  *
  * @template In - Input shape
  * @template D - Data type
+ * @template Dev - Device type
  * @returns Sequential builder
  *
  * @example
@@ -210,6 +214,6 @@ export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Sha
  *   .build();
  * ```
  */
-export function sequential<In extends Shape, D extends DType<string> = float32>(): SequentialBuilder<In, In, D> {
-  return SequentialBuilder.create<In, D>()
+export function sequential<In extends Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType>(): SequentialBuilder<In, In, D, Dev> {
+  return SequentialBuilder.create<In, D, Dev>()
 }

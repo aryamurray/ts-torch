@@ -3,7 +3,7 @@
  */
 
 import { Module, type Tensor, type float32 } from '../module.js'
-import { validateProbability, type DType, type Shape } from '@ts-torch/core'
+import { validateProbability, type DType, type Shape, type DeviceType } from '@ts-torch/core'
 
 /**
  * Dropout layer
@@ -31,10 +31,11 @@ import { validateProbability, type DType, type Shape } from '@ts-torch/core'
  * const output2 = dropout.forward(input);
  * ```
  */
-export class Dropout<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
+export class Dropout<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<
   S,
   S,
-  D
+  D,
+  Dev
 > {
   readonly p: number
   readonly inplace: boolean
@@ -64,7 +65,7 @@ export class Dropout<S extends Shape = Shape, D extends DType<string> = float32>
    * @param input - Input tensor
    * @returns Output tensor with dropout applied (if training)
    */
-  forward(input: Tensor<S, D>): Tensor<S, D> {
+  forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
     // In eval mode, return input unchanged
     if (!this._training || this.p === 0) {
       return input
@@ -72,7 +73,7 @@ export class Dropout<S extends Shape = Shape, D extends DType<string> = float32>
 
     // Apply dropout using native implementation
     const result = (input as any).dropout(this.p, this._training)
-    return result as Tensor<S, D>
+    return result as Tensor<S, D, Dev>
   }
 
   override toString(): string {
@@ -94,10 +95,11 @@ export class Dropout<S extends Shape = Shape, D extends DType<string> = float32>
  * const output = dropout.forward(input);
  * ```
  */
-export class Dropout2d<D extends DType<string> = float32> extends Module<
+export class Dropout2d<D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<
   readonly [number, number, number, number],
   readonly [number, number, number, number],
-  D
+  D,
+  Dev
 > {
   readonly p: number
   readonly inplace: boolean
@@ -116,15 +118,15 @@ export class Dropout2d<D extends DType<string> = float32> extends Module<
   }
 
   forward(
-    input: Tensor<readonly [number, number, number, number], D>,
-  ): Tensor<readonly [number, number, number, number], D> {
+    input: Tensor<readonly [number, number, number, number], D, Dev>,
+  ): Tensor<readonly [number, number, number, number], D, Dev> {
     if (!this._training || this.p === 0) {
       return input
     }
 
     // Apply dropout (PyTorch's dropout already handles spatial dropout for 4D inputs)
     const result = (input as any).dropout(this.p, this._training)
-    return result as Tensor<readonly [number, number, number, number], D>
+    return result as Tensor<readonly [number, number, number, number], D, Dev>
   }
 
   override toString(): string {
@@ -144,10 +146,11 @@ export class Dropout2d<D extends DType<string> = float32> extends Module<
  * const output = dropout.forward(input);
  * ```
  */
-export class Dropout1d<D extends DType<string> = float32> extends Module<
+export class Dropout1d<D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<
   readonly [number, number, number],
   readonly [number, number, number],
-  D
+  D,
+  Dev
 > {
   readonly p: number
   readonly inplace: boolean
@@ -166,14 +169,14 @@ export class Dropout1d<D extends DType<string> = float32> extends Module<
   }
 
   forward(
-    input: Tensor<readonly [number, number, number], D>,
-  ): Tensor<readonly [number, number, number], D> {
+    input: Tensor<readonly [number, number, number], D, Dev>,
+  ): Tensor<readonly [number, number, number], D, Dev> {
     if (!this._training || this.p === 0) {
       return input
     }
 
     const result = (input as any).dropout(this.p, this._training)
-    return result as Tensor<readonly [number, number, number], D>
+    return result as Tensor<readonly [number, number, number], D, Dev>
   }
 
   override toString(): string {
@@ -192,10 +195,11 @@ export class Dropout1d<D extends DType<string> = float32> extends Module<
  * const alphaDropout = new AlphaDropout(0.1);
  * ```
  */
-export class AlphaDropout<S extends Shape = Shape, D extends DType<string> = float32> extends Module<
+export class AlphaDropout<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<
   S,
   S,
-  D
+  D,
+  Dev
 > {
   readonly p: number
   readonly inplace: boolean
@@ -213,14 +217,14 @@ export class AlphaDropout<S extends Shape = Shape, D extends DType<string> = flo
     this.inplace = options.inplace ?? false
   }
 
-  forward(input: Tensor<S, D>): Tensor<S, D> {
+  forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
     if (!this._training || this.p === 0) {
       return input
     }
 
     // Use standard dropout for now (alpha dropout could be added later with specific FFI)
     const result = (input as any).dropout(this.p, this._training)
-    return result as Tensor<S, D>
+    return result as Tensor<S, D, Dev>
   }
 
   override toString(): string {

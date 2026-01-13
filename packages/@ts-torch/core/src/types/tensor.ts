@@ -9,23 +9,49 @@ import type { DTypeName } from './dtype'
 import type { Shape, Rank, SetDim, RemoveDim, InsertDim, NumElements, Reverse } from './shape'
 
 /**
- * Core tensor type combining shape and dtype information
+ * Device type for tensors
+ */
+export type DeviceType = 'cpu' | 'cuda' | 'mps'
+
+/**
+ * Core tensor type combining shape, dtype, and device information
  *
  * @template S - The shape as a tuple of dimensions
  * @template D - The data type
+ * @template Dev - The device type ('cpu' | 'cuda' | 'mps')
  *
  * @example
  * ```ts
- * type Image = TensorType<[3, 224, 224], "float32">;
- * type Embeddings = TensorType<[512, 768], "float16">;
- * type Scalar = TensorType<[], "int32">;
+ * type Image = TensorType<[3, 224, 224], "float32", "cuda">;
+ * type Embeddings = TensorType<[512, 768], "float16", "cpu">;
+ * type Scalar = TensorType<[], "int32", "cpu">;
  * ```
  */
-export interface TensorType<S extends Shape = Shape, D extends DTypeName = DTypeName> {
+export interface TensorType<S extends Shape = Shape, D extends DTypeName = DTypeName, Dev extends DeviceType = DeviceType> {
   readonly shape: S
   readonly dtype: D
+  readonly device: Dev
   readonly ndim: Rank<S>
 }
+
+/**
+ * Utility type to ensure two tensors are on the same device
+ * Returns the device type if they match, never otherwise
+ *
+ * @template Dev1 - Device of first tensor
+ * @template Dev2 - Device of second tensor
+ *
+ * @example
+ * ```ts
+ * type Same = SameDevice<'cuda', 'cuda'>; // 'cuda'
+ * type Different = SameDevice<'cpu', 'cuda'>; // never
+ * ```
+ */
+export type SameDevice<Dev1 extends DeviceType, Dev2 extends DeviceType> = Dev1 extends Dev2
+  ? Dev2 extends Dev1
+    ? Dev1
+    : never
+  : never
 
 /**
  * Computes the output shape of matrix multiplication

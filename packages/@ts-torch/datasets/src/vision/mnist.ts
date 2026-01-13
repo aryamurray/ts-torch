@@ -284,7 +284,7 @@ export class MNIST {
 
     const start = index * 784
     const imageData = this.images.slice(start, start + 784)
-    const image = cpu.tensor(Array.from(imageData), [784] as const) as Tensor<readonly [784], DType<'float32'>>
+    const image = cpu.tensor(imageData, [784] as const) as Tensor<readonly [784], DType<'float32'>>
 
     const label = this.labels[index]
     if (label === undefined) {
@@ -322,7 +322,7 @@ export class MNIST {
       batchLabels.push(label)
     }
 
-    const images = cpu.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<
+    const images = cpu.tensor(batchData, [actualBatchSize, 784] as const) as Tensor<
       readonly [number, 784],
       DType<'float32'>
     >
@@ -381,7 +381,7 @@ export class MNIST {
         batchLabels.push(label)
       }
 
-      const images = cpu.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<
+      const images = cpu.tensor(batchData, [actualBatchSize, 784] as const) as Tensor<
         readonly [number, 784],
         DType<'float32'>
       >
@@ -394,6 +394,57 @@ export class MNIST {
 
       yield { images, labels: batchLabels, labelsTensor }
     }
+  }
+
+  /**
+   * Get a batch of samples by arbitrary indices (for shuffled batching)
+   *
+   * This is more efficient than calling get() N times because it:
+   * - Creates a single Float32Array for all images
+   * - Creates a single int64 tensor for all labels
+   * - Avoids N tensor allocations
+   *
+   * @param indices - Array of sample indices to include in batch
+   */
+  getBatchByIndices(indices: number[]): {
+    images: Tensor<readonly [number, 784], DType<'float32'>>
+    labels: number[]
+    labelsTensor: Tensor<readonly [number], DType<'int64'>>
+  } {
+    if (!this.images || !this.labels) {
+      throw new Error('MNIST not loaded. Call load() first.')
+    }
+
+    const batchSize = indices.length
+    const batchData = new Float32Array(batchSize * 784)
+    const batchLabels: number[] = []
+
+    for (let i = 0; i < batchSize; i++) {
+      const idx = indices[i]
+      if (idx === undefined || idx < 0 || idx >= this.numSamples) {
+        throw new Error(`Index ${idx} out of bounds [0, ${this.numSamples})`)
+      }
+      const srcStart = idx * 784
+      batchData.set(this.images.slice(srcStart, srcStart + 784), i * 784)
+      const label = this.labels[idx]
+      if (label === undefined) {
+        throw new Error(`Label at index ${idx} is undefined. Data corruption detected.`)
+      }
+      batchLabels.push(label)
+    }
+
+    const images = cpu.tensor(batchData, [batchSize, 784] as const) as Tensor<
+      readonly [number, 784],
+      DType<'float32'>
+    >
+
+    // Create labels tensor as int64 for cross_entropy_loss
+    const labelsTensor = cpu.tensor(batchLabels, [batchSize] as const, int64) as Tensor<
+      readonly [number],
+      DType<'int64'>
+    >
+
+    return { images, labels: batchLabels, labelsTensor }
   }
 
   /**

@@ -1,0 +1,182 @@
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325515885,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325515959,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":1,"length":784},"timestamp":1768325515987,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325515997,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":1,"transferTime":0,"batchSize":64},"timestamp":1768325516015,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":1,"transferTime":0,"batchSize":64},"timestamp":1768325516076,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325516106,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325516183,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":1,"transferTime":0,"batchSize":64},"timestamp":1768325516368,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325516528,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325516546,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":1,"batchSize":64},"timestamp":1768325516617,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325516680,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325516696,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325516739,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325516843,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325516877,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517050,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517155,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":1,"batchSize":64},"timestamp":1768325517159,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517266,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325517418,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517456,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325517512,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517520,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517532,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325517574,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517657,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":1},"timestamp":1768325517713,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325517732,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517794,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325517794,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325517801,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517836,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325517904,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325517982,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325518040,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325518056,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518148,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518185,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518204,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518227,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518329,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518399,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518403,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325518413,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518438,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518615,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":0,"batchSize":64},"timestamp":1768325518642,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325518664,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325518674,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325518698,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325518704,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325518730,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325518784,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325518854,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519041,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519066,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519114,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519180,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519198,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519299,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519303,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519305,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519316,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519325,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519330,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519331,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519348,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":1},"timestamp":1768325519350,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519361,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519362,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519367,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519405,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519448,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519461,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":0,"batchSize":64},"timestamp":1768325519513,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519525,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519536,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519602,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519694,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519750,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325519869,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":1,"batchSize":64},"timestamp":1768325519901,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325519936,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325520014,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":0,"batchSize":64},"timestamp":1768325520146,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325520181,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325520188,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325520265,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325520605,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325520606,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325520613,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325520633,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325520693,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":1,"batchSize":64},"timestamp":1768325520696,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325520722,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325520722,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":1,"transferTime":0,"batchSize":64},"timestamp":1768325520799,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325520817,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325520885,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325520892,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325520916,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325520949,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325520987,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325521092,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325521097,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325521193,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325521254,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325521255,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325521294,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325521324,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325521489,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325521533,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325521587,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325521638,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325521901,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325521962,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325521988,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522102,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522169,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522257,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522279,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522285,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522344,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":1},"timestamp":1768325522356,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522402,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522403,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":1,"batchSize":64},"timestamp":1768325522415,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522426,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522459,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":1,"batchSize":64},"timestamp":1768325522494,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522505,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522536,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522571,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522596,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522603,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522625,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":0,"batchSize":64},"timestamp":1768325522645,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522686,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522698,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522707,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522768,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522833,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522853,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":1,"transferTime":0,"batchSize":64},"timestamp":1768325522866,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":1,"transferTime":0,"batchSize":64},"timestamp":1768325522875,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522890,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325522963,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325522972,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523003,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523047,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":0,"batchSize":64},"timestamp":1768325523085,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523120,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523309,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523323,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523349,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523357,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523415,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523417,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523424,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523455,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523471,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":1,"batchSize":64},"timestamp":1768325523508,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523511,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"pipeline.ts:concatTransfer","message":"Batch concat transfer","data":{"concatTime":0,"transferTime":0,"batchSize":64},"timestamp":1768325523512,"sessionId":"debug-session","hypothesisId":"pipeline_batch"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523552,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523578,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523584,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523626,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523626,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523647,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523658,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523659,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523663,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523671,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523697,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist.ts:287","message":"Array.from overhead","data":{"duration":0,"length":784},"timestamp":1768325523700,"sessionId":"debug-session","hypothesisId":"array_from"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523711,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523750,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523765,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}
+{"location":"mnist-cuda-declarative.ts:wrapMNIST","message":"wrapMNIST item","data":{"duration":0},"timestamp":1768325523780,"sessionId":"debug-session","hypothesisId":"wrap_mnist"}

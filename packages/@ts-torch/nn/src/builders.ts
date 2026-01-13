@@ -32,45 +32,63 @@ import { Linear, type LinearOptions } from './modules/linear.js'
 import { ReLU, Sigmoid, Tanh, Softmax, LeakyReLU, GELU } from './modules/activation.js'
 import { Dropout } from './modules/dropout.js'
 import { Module, type float32 } from './module.js'
-import type { DType, Shape } from '@ts-torch/core'
+import type { DType, Shape, DeviceType } from '@ts-torch/core'
+import type { DeviceContext as DeviceContextType } from '@ts-torch/core'
 
 /**
  * Device context type - matches the DeviceContext from @ts-torch/core
  */
-interface DeviceContext {
-  readonly type: 'cpu' | 'cuda' | 'mps'
-  readonly index: number
-}
+type DeviceContext<Dev extends DeviceType = DeviceType> = DeviceContextType<Dev>
 
 // ==================== Model Builders ====================
 
 /**
  * Create a Sequential model from an array of layers
  *
+ * Layers are created on CPU by default (via nn.linear(), etc.) and moved to
+ * the target device. The returned Sequential has the correct device type.
+ *
+ * @template In - Input shape
+ * @template Out - Output shape
+ * @template D - Data type
+ * @template Dev - Target device type (inferred from device parameter)
  * @param device - Device to place model on
- * @param layers - Array of modules to chain together
+ * @param layers - Array of modules to chain together (typically created on CPU)
  * @returns Sequential model on the specified device
  *
  * @example
  * ```ts
+ * const cuda = device.cuda(0)
+ *
+ * // Layers are created on CPU and moved to CUDA
  * const model = nn.sequence(cuda, [
- *   nn.linear(784, 128),
+ *   nn.linear(784, 128),  // Created on CPU
  *   nn.relu(),
  *   nn.linear(128, 10)
  * ])
+ * // model type: Sequential<..., 'cuda'>
  * ```
  */
-export function sequence<In extends Shape = Shape, Out extends Shape = Shape, D extends DType<string> = float32>(
-  device: DeviceContext,
-  layers: Module<any, any, D>[],
-): Sequential<In, Out, D> {
-  const model = new Sequential<In, Out, D>(...layers)
-  model.to(device.type)
-  return model
+export function sequence<
+  In extends Shape = Shape,
+  Out extends Shape = Shape,
+  D extends DType<string> = float32,
+  Dev extends DeviceType = DeviceType,
+>(
+  device: DeviceContext<Dev>,
+  // Accept layers with any device type - they'll be moved to target device
+  layers: Module<any, any, D, DeviceType>[],
+): Sequential<In, Out, D, Dev> {
+  // Create Sequential (inherits CPU device from layers)
+  const cpuModel = new Sequential<In, Out, D, DeviceType>(...layers)
+  // Move to target device and return with correct device type
+  return cpuModel.to(device.type) as Sequential<In, Out, D, Dev>
 }
 
 /**
  * MLP configuration
+ *
+ * @template Dev - Target device type
  *
  * @example
  * ```ts
@@ -82,9 +100,9 @@ export function sequence<In extends Shape = Shape, Out extends Shape = Shape, D 
  * })
  * ```
  */
-export interface MLPConfig {
+export interface MLPConfig<Dev extends DeviceType = DeviceType> {
   /** Device to place model on */
-  device: DeviceContext
+  device: DeviceContext<Dev>
   /** Array of layer sizes [input, hidden1, hidden2, ..., output] */
   layers: number[]
   /** Activation function between layers (default: 'relu') */
@@ -98,50 +116,57 @@ export interface MLPConfig {
 /**
  * Create a Multi-Layer Perceptron (MLP)
  *
+ * Layers are created on CPU and moved to the target device.
+ *
+ * @template Dev - Target device type (inferred from config.device)
  * @param config - MLP configuration
- * @returns Sequential model representing the MLP
+ * @returns Sequential model representing the MLP on the target device
  *
  * @example
  * ```ts
+ * const cuda = device.cuda(0)
+ *
  * const model = nn.mlp({
  *   device: cuda,
  *   layers: [784, 128, 64, 10],
  *   activation: 'gelu',
  *   dropout: 0.2
  * })
+ * // model type: Sequential<..., 'cuda'>
  * ```
  */
-export function mlp(config: MLPConfig): Sequential {
+export function mlp<Dev extends DeviceType>(config: MLPConfig<Dev>): Sequential<Shape, Shape, float32, Dev> {
   const { device, layers: layerSizes, activation = 'relu', dropout = 0, outputActivation = false } = config
 
   if (layerSizes.length < 2) {
     throw new Error('MLP requires at least 2 layer sizes (input and output)')
   }
 
-  const layers: Module<any, any, any>[] = []
+  const layers: Module<any, any, float32, 'cpu'>[] = []
 
   for (let i = 0; i < layerSizes.length - 1; i++) {
     const inSize = layerSizes[i]!
     const outSize = layerSizes[i + 1]!
     const isLastLayer = i === layerSizes.length - 2
 
-    // Add linear layer
+    // Add linear layer (created on CPU)
     layers.push(new Linear(inSize, outSize))
 
     // Add activation (skip for last layer unless outputActivation is true)
     if (!isLastLayer || outputActivation) {
-      layers.push(createActivation(activation))
+      layers.push(createActivation(activation) as Module<any, any, float32, 'cpu'>)
     }
 
     // Add dropout (skip for last layer)
     if (dropout > 0 && !isLastLayer) {
-      layers.push(new Dropout(dropout))
+      layers.push(new Dropout(dropout) as Module<any, any, float32, 'cpu'>)
     }
   }
 
-  const model = new Sequential(...layers)
-  model.to(device.type)
-  return model
+  // Create on CPU and move to target device
+  const cpuModel = new Sequential<Shape, Shape, float32, 'cpu'>(...layers)
+  // Note: .to() returns Module, cast to Sequential since we know the concrete type
+  return cpuModel.to(device.type) as unknown as Sequential<Shape, Shape, float32, Dev>
 }
 
 /**

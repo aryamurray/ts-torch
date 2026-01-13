@@ -171,6 +171,34 @@ export function getDType<N extends DTypeName>(name: N): DType<N> {
 }
 
 /**
+ * Get DType by integer value (from native FFI)
+ *
+ * @param value - The dtype value (from ts_tensor_dtype)
+ * @returns The DType constant
+ * @throws Error if value is not a valid dtype
+ */
+export function getDTypeFromValue(value: number): DType<DTypeName> {
+  switch (value) {
+    case DTypeValue.float32:
+      return DType.float32
+    case DTypeValue.float64:
+      return DType.float64
+    case DTypeValue.int32:
+      return DType.int32
+    case DTypeValue.int64:
+      return DType.int64
+    case DTypeValue.float16:
+      return DType.float16
+    case DTypeValue.bfloat16:
+      return DType.bfloat16
+    case DTypeValue.bool:
+      return DType.bool
+    default:
+      throw new Error(`Invalid dtype value: ${value}`)
+  }
+}
+
+/**
  * Determine the common dtype for mixed operations
  * Uses standard type promotion rules (int -> float, lower precision -> higher)
  *

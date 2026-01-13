@@ -19,8 +19,8 @@
  * ```
  */
 
-import type { Tensor } from '@ts-torch/core'
-import { run } from '@ts-torch/core'
+import type { Tensor, DeviceType } from '@ts-torch/core'
+import { run, cat } from '@ts-torch/core'
 import type { Module } from '@ts-torch/nn'
 import type { Optimizer } from '@ts-torch/optim'
 import { crossEntropyLoss, mseLoss, nllLoss } from '@ts-torch/optim'
@@ -164,6 +164,11 @@ export interface EvaluateOptions {
 /**
  * Declarative Trainer for neural network training
  *
+ * Provides a high-level API for training models without manual training loops.
+ * Handles optimizer setup, forward/backward passes, and metrics tracking.
+ *
+ * @template M - Model type (must extend Module with any device type)
+ *
  * @example
  * ```ts
  * // Option 1: Pass optimizer in fit()
@@ -182,7 +187,7 @@ export interface EvaluateOptions {
  * await trainer.fit(trainLoader, { epochs: 5 })
  * ```
  */
-export class Trainer<M extends Module<any, any, any>> {
+export class Trainer<M extends Module<any, any, any, DeviceType>> {
   private model: M
   private optimizer: Optimizer | null = null
   private metrics: Metric[] = []
@@ -271,6 +276,10 @@ export class Trainer<M extends Module<any, any, any>> {
       // Iterate over batches
       for await (const batch of data) {
         const batchLoss = await this.trainStep(batch, accumulate, clipGradNorm, batchIdx, debug)
+
+        // FREE batch tensors after use to prevent memory leak
+        // Batch tensors are created by the pipeline and must be explicitly freed
+        this.freeBatchTensors(batch)
 
         epochLoss += batchLoss
         batchCount++
@@ -361,6 +370,9 @@ export class Trainer<M extends Module<any, any, any>> {
             metric.update(predictions, targets, loss)
           }
         })
+
+        // FREE batch tensors after use to prevent memory leak
+        this.freeBatchTensors(batch)
       }
 
       return computeMetrics(evalMetrics)
@@ -436,14 +448,16 @@ export class Trainer<M extends Module<any, any, any>> {
       }
     })
 
-    // Optimizer step
+    // Optimizer step - wrap in scope to free intermediate tensors
     if (shouldStep) {
-      // Gradient clipping
-      if (clipGradNorm) {
-        this.clipGradients(clipGradNorm)
-      }
+      run(() => {
+        // Gradient clipping
+        if (clipGradNorm) {
+          this.clipGradients(clipGradNorm)
+        }
 
-      this.optimizer!.step()
+        this.optimizer!.step()
+      })
     }
 
     return lossValue
@@ -459,11 +473,15 @@ export class Trainer<M extends Module<any, any, any>> {
 
     // Handle different batch formats
     if (Array.isArray(batch)) {
-      // Array of {data, label} objects
+      // Array of {data, label} objects - concatenate into batch tensors
       if (batch[0] && 'data' in batch[0] && 'label' in batch[0]) {
-        // Stack batch items - for now assume pre-batched tensors
-        data = batch[0].data
-        targets = batch[0].label
+        // Extract all data and label tensors
+        const dataTensors = batch.map((item: any) => item.data)
+        const labelTensors = batch.map((item: any) => item.label)
+
+        // Concatenate along batch dimension (dim 0)
+        data = cat(dataTensors as Tensor[], 0) as Tensor
+        targets = cat(labelTensors as Tensor[], 0) as Tensor
       } else if (batch.length === 2) {
         // [data, targets] tuple
         data = batch[0]
@@ -519,6 +537,35 @@ export class Trainer<M extends Module<any, any, any>> {
           ;(grad as any).mulScalarInplace?.(clipCoef)
         }
       }
+    }
+  }
+
+  /**
+   * Free tensors in a batch to prevent memory leaks
+   *
+   * Batch tensors are created by the data pipeline and transferred to GPU.
+   * They must be explicitly freed after each training/evaluation step.
+   *
+   * @param batch - Batch to free
+   * @internal
+   */
+  private freeBatchTensors(batch: any): void {
+    if (Array.isArray(batch)) {
+      // Array of {data, label} objects
+      for (const item of batch) {
+        if (item && 'data' in item && 'label' in item) {
+          item.data?.free?.()
+          item.label?.free?.()
+        }
+      }
+    } else if (batch && 'data' in batch && 'label' in batch) {
+      // Single {data, label} object
+      batch.data?.free?.()
+      batch.label?.free?.()
+    } else if (batch && 'data' in batch && 'targets' in batch) {
+      // {data, targets} object
+      batch.data?.free?.()
+      batch.targets?.free?.()
     }
   }
 }

@@ -12,10 +12,10 @@
  */
 
 import { device, cuda, Data, int64 } from '@ts-torch/core'
-import type { Dataset, TensorPair } from '@ts-torch/core'
+import type { BatchableDataset, TensorPair } from '@ts-torch/core'
 import { nn } from '@ts-torch/nn'
 import { MNIST } from '@ts-torch/datasets'
-import { Trainer, Adam, type EpochContext } from '@ts-torch/train'
+import { Trainer, Adam } from '@ts-torch/train'
 
 async function main() {
   console.log('=== MNIST with Declarative API + CUDA ===\n')
@@ -39,22 +39,23 @@ async function main() {
   await mnistTest.load()
   console.log(`Train: ${mnistTrain.length}, Test: ${mnistTest.length}\n`)
 
-  // Adapt MNIST to Dataset interface
-  function wrapMNIST(mnist: MNIST): Dataset<TensorPair> {
+  // Adapt MNIST to BatchableDataset interface for efficient batch loading
+  function wrapMNIST(mnist: MNIST): BatchableDataset<TensorPair> {
     return {
+      // Single item access (slow path, used for non-batched iteration)
       getItem(index: number): TensorPair {
         const sample = mnist.get(index)
-        // Reshape image to [1, 784] - model expects batch dimension
         const imageBatched = sample.image.reshape([1, 784] as const)
-        // Create label tensor as [1] shape int64 for cross_entropy_loss
         const labelTensor = cpu.tensor([sample.label], [1] as const, int64)
-        // Return as TensorPair - tensors have different dtypes (float32 vs int64)
-        const pair: TensorPair = {
-          data: imageBatched,
-          label: labelTensor,
-        }
-        return pair
+        return { data: imageBatched, label: labelTensor }
       },
+
+      // Batch access (fast path, avoids N tensor allocations)
+      getBatch(indices: number[]): TensorPair {
+        const batch = mnist.getBatchByIndices(indices)
+        return { data: batch.images, label: batch.labelsTensor }
+      },
+
       get length() {
         return mnist.length
       },
@@ -64,32 +65,38 @@ async function main() {
   const trainData = wrapMNIST(mnistTrain)
   const testData = wrapMNIST(mnistTest)
 
-  // Create data pipelines with GPU transfer
-  const trainLoader = Data.pipeline(trainData).shuffle().to(gpu)
-  const testLoader = Data.pipeline(testData).to(gpu)
+  // Create data pipelines with GPU transfer and batching
+  const trainLoader = Data.pipeline(trainData).shuffle().batch(64).to(gpu)
+  const testLoader = Data.pipeline(testData).batch(64).to(gpu)
 
   // ==================== Model on GPU ====================
-  const model = nn.mlp(gpu, [784, 128, 64, 10])
+  const model = nn.mlp({ device: gpu, layers: [784, 128, 64, 10] })
   console.log('Model: 784 -> 128 -> 64 -> 10\n')
 
   // ==================== Training ====================
   const trainer = new Trainer(model)
 
   console.log('Training...\n')
+  const t0 = Date.now()
+
   await trainer.fit(trainLoader, {
     epochs: 3,
     optimizer: Adam({ lr: 1e-3 }),
     loss: 'crossEntropy',
     metrics: { loss: true, accuracy: true },
     validateOn: testLoader,
-    onEpochEnd: ({ epoch, metrics, valMetrics }: EpochContext) => {
+    onEpochEnd: ({ epoch, metrics, valMetrics }) => {
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
       console.log(
-        `Epoch ${epoch} | Loss: ${metrics.loss.toFixed(4)} | ` +
+        `Epoch ${epoch} [${elapsed}s] | Loss: ${metrics.loss.toFixed(4)} | ` +
           `Accuracy: ${metrics.accuracy?.toFixed(2) ?? 'N/A'}% | ` +
           `Val Accuracy: ${valMetrics?.accuracy?.toFixed(2) ?? 'N/A'}%`,
       )
     },
   })
+
+  const totalTime = ((Date.now() - t0) / 1000).toFixed(1)
+  console.log(`\nTotal time: ${totalTime}s`)
 
   // ==================== Final Evaluation ====================
   console.log('\nFinal Evaluation:')

@@ -35,7 +35,7 @@ import { getLib } from './ffi/loader.js'
 
 export type { Shape, ValidDim, Dim } from './types/shape.js'
 export type { DType as DTypeType, DTypeName, DTypeToTypedArray, DTypeElement } from './types/dtype.js'
-export type { TensorType, MatMulShape, TransposeShape } from './types/tensor.js'
+export type { TensorType, MatMulShape, TransposeShape, DeviceType, SameDevice } from './types/tensor.js'
 
 // ===============================
 // Runtime DType Values
@@ -54,10 +54,11 @@ export const bool = DTypeNamespace.bool
 export const bfloat16 = DTypeNamespace.bfloat16
 
 // ===============================
-// Tensor Class
+// Tensor Class & Operations
 // ===============================
 
 export { Tensor } from './tensor/tensor.js'
+export { cat } from './tensor/factory.js'
 
 // ===============================
 // Memory Management
@@ -82,7 +83,7 @@ export { device, DeviceContext } from './device/index.js'
 // ===============================
 
 export { Data, DataPipeline } from './data/index.js'
-export type { Dataset, TensorPair, Batch } from './data/index.js'
+export type { Dataset, BatchableDataset, TensorPair, Batch } from './data/index.js'
 
 // ===============================
 // CUDA Utilities

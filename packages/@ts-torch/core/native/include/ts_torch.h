@@ -202,6 +202,14 @@ TS_TORCH_API ts_TensorHandle ts_tensor_reshape(
     ts_Error* error
 );
 
+// Concatenate tensors along a dimension
+TS_TORCH_API ts_TensorHandle ts_tensor_cat(
+    ts_TensorHandle* tensors,
+    size_t num_tensors,
+    int64_t dim,
+    ts_Error* error
+);
+
 TS_TORCH_API ts_TensorHandle ts_tensor_sum(
     ts_TensorHandle tensor,
     ts_Error* error

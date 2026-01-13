@@ -25,7 +25,7 @@
 // Data types
 export type { DType, DTypeName, DTypeToTypedArray, DTypeElement, PromoteDType } from './dtype'
 
-export { DType as DTypeConstants, DTypeValue, BytesPerElement, isDTypeName, getDType } from './dtype'
+export { DType as DTypeConstants, DTypeValue, BytesPerElement, isDTypeName, getDType, getDTypeFromValue } from './dtype'
 
 // Shape types and operations
 export type {
@@ -48,6 +48,8 @@ export type {
 // Tensor types and operations
 export type {
   TensorType,
+  DeviceType,
+  SameDevice,
   MatMulShape,
   TransposeShape,
   ReshapeValid,

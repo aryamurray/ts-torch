@@ -597,6 +597,41 @@ ts_TensorHandle ts_tensor_reshape(
     }
 }
 
+ts_TensorHandle ts_tensor_cat(
+    ts_TensorHandle* tensors,
+    size_t num_tensors,
+    int64_t dim,
+    ts_Error* error
+) {
+    try {
+        if (!tensors || num_tensors == 0) {
+            set_error(error, 1, "Null or empty tensor array");
+            return nullptr;
+        }
+
+        // Build vector of torch::Tensor from handles
+        std::vector<torch::Tensor> tensor_vec;
+        tensor_vec.reserve(num_tensors);
+
+        for (size_t i = 0; i < num_tensors; i++) {
+            if (!tensors[i]) {
+                set_error(error, 1, "Null tensor in array");
+                return nullptr;
+            }
+            tensor_vec.push_back(tensors[i]->tensor);
+        }
+
+        // Concatenate tensors along specified dimension
+        auto result = torch::cat(tensor_vec, dim);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
 ts_TensorHandle ts_tensor_sum(ts_TensorHandle tensor, ts_Error* error) {
     try {
         if (!tensor) {

@@ -7,11 +7,10 @@
 
 import type { Shape } from '../types/shape.js'
 import type { DType } from '../types/dtype.js'
-import type { Device } from '../types/index.js'
-import type { MatMulShape, TransposeShape } from '../types/tensor.js'
+import type { MatMulShape, TransposeShape, DeviceType } from '../types/tensor.js'
 import { getLib } from '../ffi/loader.js'
 import { withError, checkNull, TorchError, ErrorCode, type Pointer } from '../ffi/error.js'
-import { BytesPerElement } from '../types/dtype.js'
+import { BytesPerElement, getDTypeFromValue } from '../types/dtype.js'
 import { escapeTensor as scopeEscapeTensor, inScope, registerTensor } from '../memory/scope.js'
 import {
   validateMatmulShapes,
@@ -31,14 +30,16 @@ import {
  *
  * @template S - Shape type as readonly tuple of dimensions
  * @template D - Data type
+ * @template Dev - Device type ('cpu' | 'cuda' | 'mps')
  *
  * @example
  * ```ts
- * const t = zeros([2, 3], DType.float32);
- * const result = t.add(ones([2, 3], DType.float32));
+ * const cpu = device.cpu()
+ * const t = cpu.zeros([2, 3]); // Tensor<[2,3], float32, 'cpu'>
+ * const gpuT = t.cuda(); // Tensor<[2,3], float32, 'cuda'>
  * ```
  */
-export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'float32'>> {
+export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'float32'>, Dev extends DeviceType = 'cpu'> {
   /**
    * Native tensor handle (opaque pointer)
    * @internal
@@ -54,6 +55,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * Data type of tensor elements
    */
   readonly dtype: D
+
+  /**
+   * Device where tensor is stored
+   */
+  readonly device: Dev
 
   /**
    * Internal flag tracking if tensor has been freed
@@ -79,14 +85,16 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * @param handle - Native tensor handle
    * @param shape - Tensor shape
    * @param dtype - Data type
+   * @param device - Device type
    *
    * @internal
    * Use factory functions (zeros, ones, etc.) instead of calling constructor directly
    */
-  constructor(handle: Pointer, shape: S, dtype: D) {
+  constructor(handle: Pointer, shape: S, dtype: D, device: Dev = 'cpu' as Dev) {
     this._handle = handle
     this.shape = shape
     this.dtype = dtype
+    this.device = device
 
     // Register with current scope if exists
     this._registerWithScope()
@@ -638,13 +646,17 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    *
    * @returns Scalar tensor with sum of all elements
    *
+   * @remarks
+   * The result dtype may differ from the input dtype (e.g., bool sum returns int64).
+   * This method queries the actual dtype from the native tensor.
+   *
    * @example
    * ```ts
    * const a = fromArray([[1, 2], [3, 4]], [2, 2], DType.float32);
    * const sum = a.sum(); // Tensor(10)
    * ```
    */
-  sum(): Tensor<readonly [], D> {
+  sum(): Tensor<readonly [], DType<string>> {
     this._checkValid()
     const lib = getLib()
 
@@ -652,7 +664,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     checkNull(handle, 'Failed to compute sum')
 
-    return new Tensor<readonly [], D>(handle!, [] as const, this.dtype)
+    // Query actual dtype from result tensor (may differ, e.g., bool sum -> int64)
+    const dtypeValue = withError((err) => lib.ts_tensor_dtype(handle!, err)) as number
+    const resultDtype = getDTypeFromValue(dtypeValue)
+
+    return new Tensor<readonly [], DType<string>>(handle!, [] as const, resultDtype)
   }
 
   /**
@@ -1048,16 +1064,16 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
   /**
    * Move tensor to device
    *
-   * @param device - Target device ('cpu', 'cuda', 'mps')
-   * @returns New tensor on target device
+   * @param targetDevice - Target device ('cpu', 'cuda', 'mps')
+   * @returns New tensor on target device with updated type
    *
    * @example
    * ```ts
-   * const a = zeros([2, 3], DType.float32); // CPU
-   * const b = a.to('cuda'); // CUDA device
+   * const a = cpu.zeros([2, 3]); // Tensor<[2,3], float32, 'cpu'>
+   * const b = a.to('cuda'); // Tensor<[2,3], float32, 'cuda'>
    * ```
    */
-  to(device: Device): Tensor<S, D> {
+  to<TargetDev extends DeviceType>(targetDevice: TargetDev): Tensor<S, D, TargetDev> {
     this._checkValid()
     const lib = getLib()
 
@@ -1065,7 +1081,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     let deviceType: number
     let deviceId = 0
 
-    switch (device) {
+    switch (targetDevice) {
       case 'cpu':
         deviceType = 0
         break
@@ -1076,14 +1092,14 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
         deviceType = 2
         break
       default:
-        throw new Error(`Unknown device: ${device}`)
+        throw new Error(`Unknown device: ${targetDevice}`)
     }
 
     const handle = withError((err) => lib.ts_tensor_to_device(this._handle, deviceType, deviceId, err))
 
     checkNull(handle, 'Failed to move tensor to device')
 
-    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+    return new Tensor<S, D, TargetDev>(handle!, this.shape, this.dtype, targetDevice)
   }
 
   /**
@@ -1093,11 +1109,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    *
    * @example
    * ```ts
-   * const a = zeros([2, 3], DType.float32).to('cuda');
-   * const b = a.cpu(); // Back to CPU
+   * const a = cuda.zeros([2, 3]); // Tensor<[2,3], float32, 'cuda'>
+   * const b = a.cpu(); // Tensor<[2,3], float32, 'cpu'>
    * ```
    */
-  cpu(): Tensor<S, D> {
+  cpu(): Tensor<S, D, 'cpu'> {
     return this.to('cpu')
   }
 
@@ -1109,12 +1125,12 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    *
    * @example
    * ```ts
-   * const a = zeros([2, 3], DType.float32);
-   * const b = a.cuda(); // CUDA:0
-   * const c = a.cuda(1); // CUDA:1
+   * const a = cpu.zeros([2, 3]); // Tensor<[2,3], float32, 'cpu'>
+   * const b = a.cuda(); // Tensor<[2,3], float32, 'cuda'>
+   * const c = a.cuda(1); // Tensor<[2,3], float32, 'cuda'>
    * ```
    */
-  cuda(deviceIndex = 0): Tensor<S, D> {
+  cuda(deviceIndex = 0): Tensor<S, D, 'cuda'> {
     this._checkValid()
     const lib = getLib()
 
@@ -1122,7 +1138,96 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     checkNull(handle, 'Failed to move tensor to CUDA')
 
-    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+    return new Tensor<S, D, 'cuda'>(handle!, this.shape, this.dtype, 'cuda')
+  }
+
+  // ==================== Move Operations (Transfer + Free Source) ====================
+
+  /**
+   * Move tensor to device and FREE the source (Rust-like move semantics)
+   *
+   * Unlike `.to()` which copies, `.move()` transfers ownership and frees
+   * the original tensor. More memory efficient for one-way transfers.
+   *
+   * WARNING: After calling .move(), the original tensor is INVALID.
+   * Any subsequent operations on it will throw an error.
+   *
+   * @param targetDevice - Target device ('cpu', 'cuda', 'mps')
+   * @returns New tensor on target device with updated type
+   *
+   * @example
+   * ```ts
+   * const cpuTensor = cpu.zeros([100, 100]); // Tensor<..., 'cpu'>
+   * const gpuTensor = cpuTensor.move('cuda'); // Tensor<..., 'cuda'>
+   * // cpuTensor is now INVALID - do not use!
+   * ```
+   */
+  move<TargetDev extends DeviceType>(targetDevice: TargetDev): Tensor<S, D, TargetDev> {
+    this._checkValid()
+
+    // Same device = no-op, return self with updated type
+    // Cast to string for comparison since Dev and TargetDev are different generic params
+    if ((this.device as string) === (targetDevice as string)) {
+      return this as unknown as Tensor<S, D, TargetDev>
+    }
+
+    // Create new tensor on target device
+    const newTensor = this.to(targetDevice)
+
+    // Free the source tensor
+    this.free()
+
+    return newTensor
+  }
+
+  /**
+   * Move tensor to CPU and FREE the source
+   *
+   * Shorthand for `.move('cpu')`.
+   *
+   * @returns New tensor on CPU
+   *
+   * @example
+   * ```ts
+   * const gpuTensor = cuda.zeros([100, 100]);
+   * const cpuTensor = gpuTensor.moveCpu();
+   * // gpuTensor is now INVALID
+   * ```
+   */
+  moveCpu(): Tensor<S, D, 'cpu'> {
+    return this.move('cpu')
+  }
+
+  /**
+   * Move tensor to CUDA and FREE the source
+   *
+   * Shorthand for `.move('cuda')`.
+   *
+   * @param deviceIndex - CUDA device index (default: 0)
+   * @returns New tensor on CUDA device
+   *
+   * @example
+   * ```ts
+   * const cpuTensor = cpu.zeros([100, 100]);
+   * const gpuTensor = cpuTensor.moveCuda();
+   * // cpuTensor is now INVALID
+   * ```
+   */
+  moveCuda(deviceIndex = 0): Tensor<S, D, 'cuda'> {
+    this._checkValid()
+
+    // Same device = no-op
+    if ((this.device as string) === 'cuda') {
+      return this as unknown as Tensor<S, D, 'cuda'>
+    }
+
+    // Create new tensor on CUDA
+    const newTensor = this.cuda(deviceIndex)
+
+    // Free the source tensor
+    this.free()
+
+    return newTensor
   }
 
   // ==================== Loss Functions ====================
@@ -1547,7 +1652,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    *   .pipe(linear);
    * ```
    */
-  pipe<OutS extends Shape>(module: { forward(x: Tensor<S, D>): Tensor<OutS, D> }): Tensor<OutS, D> {
+  pipe<OutS extends Shape>(module: { forward(x: Tensor<S, D, Dev>): Tensor<OutS, D, Dev> }): Tensor<OutS, D, Dev> {
     return module.forward(this)
   }
 

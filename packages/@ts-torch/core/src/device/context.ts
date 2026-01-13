@@ -49,31 +49,33 @@ function validateShapeArray(shape: readonly number[], paramName = 'shape'): void
  *
  * All tensor factory methods create tensors directly on the device,
  * avoiding expensive CPU-to-GPU transfers.
+ *
+ * @template Dev - The device type ('cpu' | 'cuda' | 'mps')
  */
-export class DeviceContext {
+export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
   /** Device type: 'cpu', 'cuda', or 'mps' */
-  readonly type: DeviceTypeName
+  readonly type: Dev
 
   /** Device index (e.g., GPU 0, GPU 1) */
   readonly index: number
 
-  private constructor(type: DeviceTypeName, index: number) {
+  private constructor(type: Dev, index: number) {
     this.type = type
     this.index = index
   }
 
   /** Create a CPU device context */
-  static cpu(): DeviceContext {
+  static cpu(): DeviceContext<'cpu'> {
     return new DeviceContext('cpu', 0)
   }
 
   /** Create a CUDA device context */
-  static cuda(index = 0): DeviceContext {
+  static cuda(index = 0): DeviceContext<'cuda'> {
     return new DeviceContext('cuda', index)
   }
 
   /** Create an MPS device context (Apple Silicon) */
-  static mps(): DeviceContext {
+  static mps(): DeviceContext<'mps'> {
     return new DeviceContext('mps', 0)
   }
 
@@ -88,14 +90,14 @@ export class DeviceContext {
    * @example
    * ```ts
    * const cuda = device.cuda(0)
-   * const x = cuda.zeros([2, 3])
+   * const x = cuda.zeros([2, 3]) // Tensor<[2,3], float32, 'cuda'>
    * ```
    */
   zeros<S extends Shape, D extends DType<string> = DType<'float32'>>(
     shape: S,
     dtype: D = DTypeConstants.float32 as D,
     requiresGrad = false,
-  ): Tensor<S, D> {
+  ): Tensor<S, D, Dev> {
     validateShapeArray(shape)
     const lib = getLib()
     const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
@@ -105,7 +107,7 @@ export class DeviceContext {
     )
 
     checkNull(handle, `Failed to create zeros tensor on ${this}`)
-    const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
     if (requiresGrad) tensor.requiresGrad = true
     return tensor
   }
@@ -123,7 +125,7 @@ export class DeviceContext {
     shape: S,
     dtype: D = DTypeConstants.float32 as D,
     requiresGrad = false,
-  ): Tensor<S, D> {
+  ): Tensor<S, D, Dev> {
     validateShapeArray(shape)
     const lib = getLib()
     const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
@@ -133,7 +135,7 @@ export class DeviceContext {
     )
 
     checkNull(handle, `Failed to create ones tensor on ${this}`)
-    const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
     if (requiresGrad) tensor.requiresGrad = true
     return tensor
   }
@@ -151,7 +153,7 @@ export class DeviceContext {
     shape: S,
     dtype: D = DTypeConstants.float32 as D,
     requiresGrad = false,
-  ): Tensor<S, D> {
+  ): Tensor<S, D, Dev> {
     validateShapeArray(shape)
     const lib = getLib()
     const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
@@ -161,7 +163,7 @@ export class DeviceContext {
     )
 
     checkNull(handle, `Failed to create randn tensor on ${this}`)
-    const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
     if (requiresGrad) tensor.requiresGrad = true
     return tensor
   }
@@ -179,7 +181,7 @@ export class DeviceContext {
     shape: S,
     dtype: D = DTypeConstants.float32 as D,
     requiresGrad = false,
-  ): Tensor<S, D> {
+  ): Tensor<S, D, Dev> {
     validateShapeArray(shape)
     const lib = getLib()
     const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
@@ -189,7 +191,7 @@ export class DeviceContext {
     )
 
     checkNull(handle, `Failed to create empty tensor on ${this}`)
-    const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
     if (requiresGrad) tensor.requiresGrad = true
     return tensor
   }
@@ -211,7 +213,7 @@ export class DeviceContext {
     shape: S,
     dtype: D = DTypeConstants.float32 as D,
     requiresGrad = false,
-  ): Tensor<S, D> {
+  ): Tensor<S, D, Dev> {
     validateShapeArray(shape)
     const lib = getLib()
 
@@ -263,7 +265,7 @@ export class DeviceContext {
     )
 
     checkNull(handle, `Failed to create tensor from array on ${this}`)
-    const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
     if (requiresGrad) tensor.requiresGrad = true
     return tensor
   }

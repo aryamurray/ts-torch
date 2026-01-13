@@ -9,7 +9,8 @@ import { Tensor } from './tensor.js'
 import type { Shape } from '../types/shape.js'
 import type { DType } from '../types/dtype.js'
 import { DType as DTypeConstants } from '../types/dtype.js'
-import { getLib } from '../ffi/loader.js'
+import type { DeviceType } from '../types/tensor.js'
+import { getLib, koffi } from '../ffi/index.js'
 import { withError, checkNull } from '../ffi/error.js'
 import {
   ValidationError,
@@ -394,4 +395,97 @@ function flattenArray(data: any): number[] {
 
   flatten(data)
   return result
+}
+
+/**
+ * Concatenate tensors along a dimension
+ *
+ * Uses native FFI to concatenate tensors, preserving device placement.
+ * All input tensors must be on the same device.
+ *
+ * @param tensors - Array of tensors to concatenate (must have same shape except along dim)
+ * @param dim - Dimension along which to concatenate (default: 0)
+ * @returns New tensor with concatenated data on the same device as inputs
+ *
+ * @example
+ * ```ts
+ * const a = fromArray([1, 2, 3], [1, 3] as const);
+ * const b = fromArray([4, 5, 6], [1, 3] as const);
+ * const c = cat([a, b], 0); // shape: [2, 3], data: [[1,2,3], [4,5,6]]
+ * ```
+ */
+export function cat<D extends DType<string> = DType<'float32'>, Dev extends DeviceType = DeviceType>(
+  tensors: Tensor<Shape, D, Dev>[],
+  dim = 0,
+): Tensor<Shape, D, Dev> {
+  if (tensors.length === 0) {
+    throw new ValidationError('tensors', 'empty array', 'at least one tensor')
+  }
+
+  if (tensors.length === 1) {
+    // Single tensor - just clone it
+    return tensors[0]!.clone() as Tensor<Shape, D, Dev>
+  }
+
+  const first = tensors[0]!
+  const dtype = first.dtype
+  const device = first.device as Dev
+  const ndim = first.shape.length
+
+  // Validate dimension
+  if (dim < 0) dim = ndim + dim
+  if (dim < 0 || dim >= ndim) {
+    throw new ValidationError('dim', dim, `a value between 0 and ${ndim - 1}`)
+  }
+
+  // Validate all tensors have compatible shapes and same device
+  const resultShape = [...first.shape] as number[]
+  for (let i = 1; i < tensors.length; i++) {
+    const t = tensors[i]!
+    if (t.device !== device) {
+      throw new ValidationError(
+        `tensors[${i}].device`,
+        t.device,
+        `same device as tensors[0] (${device})`,
+      )
+    }
+    if (t.shape.length !== ndim) {
+      throw new ValidationError(
+        `tensors[${i}].shape`,
+        t.shape,
+        `same number of dimensions as tensors[0] (${ndim})`,
+      )
+    }
+    for (let d = 0; d < ndim; d++) {
+      if (d === dim) {
+        resultShape[d]! += t.shape[d]!
+      } else if (t.shape[d] !== first.shape[d]) {
+        throw new ValidationError(
+          `tensors[${i}].shape[${d}]`,
+          t.shape[d],
+          `${first.shape[d]} (same as tensors[0])`,
+        )
+      }
+    }
+  }
+
+  const lib = getLib()
+
+  // Get raw pointer addresses from tensor handles using koffi.address()
+  // Pack them into a BigUint64Array buffer for passing to FFI
+  const handleAddresses = new BigUint64Array(tensors.length)
+  for (let i = 0; i < tensors.length; i++) {
+    const handle = tensors[i]!.handle
+    // koffi.address() returns the raw address of an opaque pointer as BigInt
+    handleAddresses[i] = koffi.address(handle)
+  }
+
+  // Call native ts_tensor_cat
+  const handle = withError((err) =>
+    lib.ts_tensor_cat(handleAddresses.buffer, tensors.length, dim, err),
+  )
+
+  checkNull(handle, 'Failed to concatenate tensors')
+
+  return new Tensor<Shape, D, Dev>(handle!, resultShape as Shape, dtype, device)
 }

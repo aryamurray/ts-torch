@@ -17,7 +17,9 @@
  */
 
 import type { Tensor } from '../tensor/tensor.js'
+import { cat } from '../tensor/factory.js'
 import type { DeviceContext } from '../device/context.js'
+import type { DeviceType } from '../types/tensor.js'
 
 /**
  * Dataset interface - source of items
@@ -28,9 +30,43 @@ export interface Dataset<T> {
 }
 
 /**
- * Tensor pair - common for supervised learning
+ * Batchable dataset interface - supports efficient batch loading
+ *
+ * Datasets implementing this interface can load multiple items at once,
+ * avoiding the "death by a thousand allocations" problem where individual
+ * items are loaded and then concatenated.
+ *
+ * @example
+ * ```ts
+ * class MyDataset implements BatchableDataset<TensorPair> {
+ *   getItem(index: number) { ... }
+ *   getBatch(indices: number[]) {
+ *     // Load all items efficiently in one operation
+ *     return { data: batchedData, label: batchedLabels }
+ *   }
+ *   get length() { return this._length }
+ * }
+ * ```
  */
-export type TensorPair = { data: Tensor; label: Tensor }
+export interface BatchableDataset<T> extends Dataset<T> {
+  /**
+   * Load multiple items at once, returning a single batched result.
+   * For TensorPair datasets, this should return tensors with shape [batchSize, ...itemShape]
+   */
+  getBatch(indices: number[]): T | Promise<T>
+}
+
+/**
+ * Tensor pair - common for supervised learning
+ * @template Dev - Device type where tensors are stored
+ */
+export type TensorPair<Dev extends DeviceType = DeviceType> = { data: Tensor<any, any, Dev>; label: Tensor<any, any, Dev> }
+
+/**
+ * Utility type to update device type in TensorPair
+ * @internal
+ */
+export type WithDevice<T, Dev extends DeviceType> = T extends TensorPair<any> ? TensorPair<Dev> : T
 
 /**
  * Batch - grouped items
@@ -51,16 +87,29 @@ interface PipelineConfig {
 /**
  * Data Pipeline - fluent API for data loading
  *
+ * Provides efficient data loading with batching, shuffling, and device transfer.
+ * When used with TensorPair datasets, the `.to()` method updates both the data
+ * and the type to reflect the target device.
+ *
+ * @template T - Item type yielded by the pipeline. For supervised learning,
+ *               typically TensorPair<Dev> where Dev is the device type.
+ *
+ * @remarks
+ * The `.to(device)` method uses the WithDevice utility type to correctly
+ * update TensorPair's device type parameter.
+ *
  * @example
  * ```ts
- * const loader = Data.pipeline(dataset)
+ * const cuda = device.cuda(0)
+ *
+ * // loader type: DataPipeline<TensorPair<'cuda'>>
+ * const loader = Data.pipeline(dataset)  // DataPipeline<TensorPair<'cpu'>>
  *   .shuffle()
  *   .batch(64)
- *   .prefetch(2)
- *   .to(cuda)
+ *   .to(cuda)  // Type updated to TensorPair<'cuda'>
  *
  * for await (const batch of loader) {
- *   // batch is on GPU, ready for training
+ *   // batch.data and batch.label are on CUDA
  * }
  * ```
  */
@@ -172,16 +221,19 @@ export class DataPipeline<T> implements AsyncIterable<T> {
    * When used with TensorPair datasets, transfers entire dataset to device
    * once and uses narrow() for zero-copy batching.
    *
+   * @template TargetDev - Target device type
    * @param device - Target device context
+   * @returns Pipeline yielding items on the target device
    *
    * @example
    * ```ts
    * const cuda = device.cuda(0)
+   * // loader type is DataPipeline<TensorPair<'cuda'>>
    * const loader = Data.pipeline(dataset).batch(64).to(cuda)
    * ```
    */
-  to(device: DeviceContext): DataPipeline<T> {
-    return new DataPipeline<T>(this.source, {
+  to<TargetDev extends DeviceType>(device: DeviceContext<TargetDev>): DataPipeline<WithDevice<T, TargetDev>> {
+    return new DataPipeline<WithDevice<T, TargetDev>>(this.source, {
       ...this.config,
       device,
     })
@@ -240,35 +292,49 @@ export class DataPipeline<T> implements AsyncIterable<T> {
     const batchSize = this.config.batchSize || 1
     const numBatches = this.numBatches
 
-    // If we have a device and the source returns TensorPairs,
-    // we can potentially do GPU-resident iteration with narrow()
-    // For now, implement basic batching with device transfer
+    // Check if source supports efficient batch loading
+    const hasBatchSupport = isBatchableDataset(this.source)
 
     for (let batchIdx = 0; batchIdx < numBatches; batchIdx++) {
       const start = batchIdx * batchSize
       const end = Math.min(start + batchSize, indices.length)
       const batchIndices = indices.slice(start, end)
 
-      // Load batch items
-      const items: any[] = []
-      for (const idx of batchIndices) {
-        const item = await Promise.resolve(this.source.getItem(idx))
-        items.push(item)
-      }
-
-      // If batching was requested, yield as batch
+      // If batching was requested
       if (this.config.batchSize > 0) {
-        // Transfer to device if specified
-        if (this.config.device && isTensorPairBatch(items)) {
-          yield transferBatchToDevice(items, this.config.device) as T
+        // FAST PATH: Use getBatch if available (avoids N tensor allocations)
+        if (hasBatchSupport) {
+          const batchableSource = this.source as BatchableDataset<any>
+          const batch = await Promise.resolve(batchableSource.getBatch(batchIndices))
+
+          // Transfer to device if specified
+          if (this.config.device && isTensorPair(batch)) {
+            yield transferToDevice(batch as TensorPair, this.config.device.type) as T
+          } else {
+            yield batch as T
+          }
         } else {
-          yield items as T
+          // SLOW PATH: Load items one-by-one and concatenate
+          const items: any[] = []
+          for (const idx of batchIndices) {
+            const item = await Promise.resolve(this.source.getItem(idx))
+            items.push(item)
+          }
+
+          // Transfer to device if specified - concatenate on CPU first for efficiency
+          if (this.config.device && isTensorPairBatch(items)) {
+            // Yields single pre-concatenated TensorPair (not array)
+            yield concatenateAndTransferBatch(items, this.config.device.type) as T
+          } else {
+            yield items as T
+          }
         }
       } else {
         // No batching - yield individual items
-        for (const item of items) {
+        for (const idx of batchIndices) {
+          const item = await Promise.resolve(this.source.getItem(idx))
           if (this.config.device && isTensorPair(item)) {
-            yield transferToDevice(item, this.config.device) as T
+            yield transferToDevice(item, this.config.device.type) as T
           } else {
             yield item as T
           }
@@ -292,31 +358,54 @@ export class DataPipeline<T> implements AsyncIterable<T> {
     const batchSize = this.config.batchSize || 1
     const numBatches = this.numBatches
 
+    // Check if source supports efficient batch loading
+    const hasBatchSupport = isBatchableDataset(this.source)
+
     for (let batchIdx = 0; batchIdx < numBatches; batchIdx++) {
       const start = batchIdx * batchSize
       const end = Math.min(start + batchSize, indices.length)
       const batchIndices = indices.slice(start, end)
 
-      // Load batch items
-      const items: any[] = []
-      for (const idx of batchIndices) {
-        const item = this.source.getItem(idx)
-        if (item instanceof Promise) {
-          throw new Error('Cannot use synchronous iterator with async dataset. Use for-await instead.')
-        }
-        items.push(item)
-      }
-
       if (this.config.batchSize > 0) {
-        if (this.config.device && isTensorPairBatch(items)) {
-          yield transferBatchToDevice(items, this.config.device) as T
+        // FAST PATH: Use getBatch if available
+        if (hasBatchSupport) {
+          const batchableSource = this.source as BatchableDataset<any>
+          const batch = batchableSource.getBatch(batchIndices)
+          if (batch instanceof Promise) {
+            throw new Error('Cannot use synchronous iterator with async dataset. Use for-await instead.')
+          }
+
+          if (this.config.device && isTensorPair(batch)) {
+            yield transferToDevice(batch as TensorPair, this.config.device.type) as T
+          } else {
+            yield batch as T
+          }
         } else {
-          yield items as T
+          // SLOW PATH: Load items one-by-one
+          const items: any[] = []
+          for (const idx of batchIndices) {
+            const item = this.source.getItem(idx)
+            if (item instanceof Promise) {
+              throw new Error('Cannot use synchronous iterator with async dataset. Use for-await instead.')
+            }
+            items.push(item)
+          }
+
+          if (this.config.device && isTensorPairBatch(items)) {
+            yield concatenateAndTransferBatch(items, this.config.device.type) as T
+          } else {
+            yield items as T
+          }
         }
       } else {
-        for (const item of items) {
+        // No batching - yield individual items
+        for (const idx of batchIndices) {
+          const item = this.source.getItem(idx)
+          if (item instanceof Promise) {
+            throw new Error('Cannot use synchronous iterator with async dataset. Use for-await instead.')
+          }
           if (this.config.device && isTensorPair(item)) {
-            yield transferToDevice(item, this.config.device) as T
+            yield transferToDevice(item, this.config.device.type) as T
           } else {
             yield item as T
           }
@@ -324,6 +413,14 @@ export class DataPipeline<T> implements AsyncIterable<T> {
       }
     }
   }
+}
+
+/**
+ * Check if dataset supports batch loading
+ * @internal
+ */
+function isBatchableDataset(dataset: any): dataset is BatchableDataset<any> {
+  return dataset && typeof dataset.getBatch === 'function'
 }
 
 /**
@@ -343,22 +440,52 @@ function isTensorPairBatch(batch: any[]): batch is TensorPair[] {
 }
 
 /**
- * Transfer a TensorPair to device
+ * Transfer a TensorPair to device and FREE the source tensors
+ *
+ * Uses move semantics to prevent memory leaks - the original CPU
+ * tensors are freed after transfer to the target device.
+ *
  * @internal
  */
-function transferToDevice(item: TensorPair, device: DeviceContext): TensorPair {
+function transferToDevice<Dev extends DeviceType>(item: TensorPair<DeviceType>, targetDevice: Dev): TensorPair<Dev> {
   return {
-    data: item.data.to(device.type),
-    label: item.label.to(device.type),
+    data: (item.data as any).move(targetDevice),
+    label: (item.label as any).move(targetDevice),
   }
 }
 
 /**
- * Transfer a batch of TensorPairs to device
+ * Concatenate and transfer a batch of TensorPairs to device
+ *
+ * OPTIMIZATION: Instead of transferring each item individually and then
+ * concatenating on GPU (expensive), we concatenate on CPU first and
+ * transfer a single batched tensor to GPU.
+ *
  * @internal
  */
-function transferBatchToDevice(batch: TensorPair[], device: DeviceContext): TensorPair[] {
-  return batch.map((item) => transferToDevice(item, device))
+function concatenateAndTransferBatch<Dev extends DeviceType>(
+  batch: TensorPair<DeviceType>[],
+  targetDevice: Dev,
+): TensorPair<Dev> {
+  // Extract all data and label tensors (still on CPU)
+  const dataTensors = batch.map((item) => item.data) as Tensor<any, any, any>[]
+  const labelTensors = batch.map((item) => item.label) as Tensor<any, any, any>[]
+
+  // Concatenate on CPU (fast, no GPU overhead)
+  const batchedData = cat(dataTensors, 0)
+  const batchedLabels = cat(labelTensors, 0)
+
+  // Free individual CPU tensors after concatenation
+  for (const item of batch) {
+    item.data?.free?.()
+    item.label?.free?.()
+  }
+
+  // Transfer single batched tensors to GPU (one transfer each)
+  return {
+    data: (batchedData as any).move(targetDevice),
+    label: (batchedLabels as any).move(targetDevice),
+  }
 }
 
 /**

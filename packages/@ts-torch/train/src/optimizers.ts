@@ -15,13 +15,14 @@
 import { Adam as AdamOptimizer, SGD as SGDOptimizer, AdamW as AdamWOptimizer, RMSprop as RMSpropOptimizer } from '@ts-torch/optim'
 import type { Optimizer } from '@ts-torch/optim'
 import type { Module } from '@ts-torch/nn'
+import type { DeviceType } from '@ts-torch/core'
 
 /**
  * Optimizer configuration - used by Trainer to create optimizer
  */
 export interface OptimizerConfig {
   /** Factory function that creates the optimizer given model parameters */
-  create: (model: Module<any, any, any>) => Optimizer
+  create: (model: Module<any, any, any, DeviceType>) => Optimizer
   /** Display name */
   name: string
 }

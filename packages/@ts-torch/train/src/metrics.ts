@@ -53,6 +53,10 @@ export class LossMetric implements Metric {
 
 /**
  * Accuracy metric - tracks classification accuracy
+ *
+ * @remarks
+ * Intermediate tensors (argmax, eq, sum) are created within the scope
+ * and will be automatically freed when the scope exits.
  */
 export class AccuracyMetric implements Metric {
   readonly name = 'accuracy'

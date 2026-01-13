@@ -177,6 +177,13 @@ export const FFI_SYMBOLS = {
     returns: ptr,
   },
 
+  // ts_tensor_cat(tensors_array, num_tensors, dim, error) -> TensorHandle
+  // Concatenates tensors along the specified dimension
+  ts_tensor_cat: {
+    args: [ptr, i32, i32, ptr] as const,
+    returns: ptr,
+  },
+
   // ==================== Reductions ====================
 
   // ts_tensor_sum(tensor, error) -> TensorHandle

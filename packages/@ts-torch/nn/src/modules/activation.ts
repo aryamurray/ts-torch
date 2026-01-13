@@ -5,7 +5,7 @@
  */
 
 import { Module, type Tensor, type float32 } from '../module.js'
-import type { Shape, DType } from '@ts-torch/core'
+import type { Shape, DType, DeviceType } from '@ts-torch/core'
 
 /**
  * Rectified Linear Unit activation: ReLU(x) = max(0, x)
@@ -14,6 +14,7 @@ import type { Shape, DType } from '@ts-torch/core'
  *
  * @template S - Tensor shape (preserved through activation)
  * @template D - Data type (default: float32)
+ * @template Dev - Device type (default: any device)
  *
  * @example
  * ```ts
@@ -27,7 +28,7 @@ import type { Shape, DType } from '@ts-torch/core'
  *   .pipe(new Linear(128, 10));
  * ```
  */
-export class ReLU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
+export class ReLU<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<S, S, D, Dev> {
   /**
    * Create a new ReLU activation
    *
@@ -43,7 +44,7 @@ export class ReLU<S extends Shape = Shape, D extends DType<string> = float32> ex
    * @param input - Input tensor
    * @returns Output tensor with same shape, all negative values set to 0
    */
-  forward(input: Tensor<S, D>): Tensor<S, D> {
+  forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
     // TODO: Implement actual ReLU when Tensor ops are ready
     // return input.relu();
     // or: return input.clamp(0, Infinity);
@@ -64,6 +65,7 @@ export class ReLU<S extends Shape = Shape, D extends DType<string> = float32> ex
  *
  * @template S - Tensor shape (preserved through activation)
  * @template D - Data type (default: float32)
+ * @template Dev - Device type (default: any device)
  *
  * @example
  * ```ts
@@ -72,14 +74,14 @@ export class ReLU<S extends Shape = Shape, D extends DType<string> = float32> ex
  * const probs = sigmoid.forward(logits); // Type: Tensor<readonly [32, 10]>
  * ```
  */
-export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
+export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<S, S, D, Dev> {
   /**
    * Forward pass: σ(x) = 1 / (1 + e^(-x))
    *
    * @param input - Input tensor
    * @returns Output tensor with same shape, values in (0, 1)
    */
-  forward(input: Tensor<S, D>): Tensor<S, D> {
+  forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
     // TODO: Implement actual Sigmoid when Tensor ops are ready
     // return input.sigmoid();
     // or: return 1 / (1 + input.neg().exp());
@@ -100,6 +102,7 @@ export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32>
  *
  * @template S - Tensor shape (preserved through activation)
  * @template D - Data type (default: float32)
+ * @template Dev - Device type (default: any device)
  *
  * @example
  * ```ts
@@ -108,14 +111,14 @@ export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32>
  * const output = tanh.forward(input); // Type: Tensor<readonly [32, 64]>
  * ```
  */
-export class Tanh<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
+export class Tanh<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<S, S, D, Dev> {
   /**
    * Forward pass: tanh(x)
    *
    * @param input - Input tensor
    * @returns Output tensor with same shape, values in (-1, 1)
    */
-  forward(input: Tensor<S, D>): Tensor<S, D> {
+  forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
     // TODO: Implement actual Tanh when Tensor ops are ready
     // return input.tanh();
 
@@ -135,6 +138,7 @@ export class Tanh<S extends Shape = Shape, D extends DType<string> = float32> ex
  *
  * @template S - Tensor shape (preserved through activation)
  * @template D - Data type (default: float32)
+ * @template Dev - Device type (default: any device)
  *
  * @example
  * ```ts
@@ -145,7 +149,7 @@ export class Tanh<S extends Shape = Shape, D extends DType<string> = float32> ex
  * // Each row sums to 1
  * ```
  */
-export class Softmax<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
+export class Softmax<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<S, S, D, Dev> {
   /**
    * Create a new Softmax activation
    *
@@ -161,7 +165,7 @@ export class Softmax<S extends Shape = Shape, D extends DType<string> = float32>
    * @param input - Input tensor
    * @returns Output tensor with same shape, values sum to 1 along dim
    */
-  forward(input: Tensor<S, D>): Tensor<S, D> {
+  forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
     // TODO: Implement actual Softmax when Tensor ops are ready
     // return input.softmax(this.dim);
     //
@@ -186,6 +190,7 @@ export class Softmax<S extends Shape = Shape, D extends DType<string> = float32>
  *
  * @template S - Tensor shape (preserved through activation)
  * @template D - Data type (default: float32)
+ * @template Dev - Device type (default: any device)
  *
  * @example
  * ```ts
@@ -194,7 +199,7 @@ export class Softmax<S extends Shape = Shape, D extends DType<string> = float32>
  * const output = leaky.forward(input); // Type: Tensor<readonly [32, 128]>
  * ```
  */
-export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
+export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<S, S, D, Dev> {
   /**
    * Create a new Leaky ReLU activation
    *
@@ -214,7 +219,7 @@ export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float3
    * @param input - Input tensor
    * @returns Output tensor with same shape
    */
-  forward(input: Tensor<S, D>): Tensor<S, D> {
+  forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
     // TODO: Implement actual LeakyReLU when Tensor ops are ready
     // return input.leaky_relu(this.negativeSlope);
     // or: return input.maximum(input.mul(this.negativeSlope));
@@ -238,6 +243,7 @@ export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float3
  *
  * @template S - Tensor shape (preserved through activation)
  * @template D - Data type (default: float32)
+ * @template Dev - Device type (default: any device)
  *
  * @example
  * ```ts
@@ -246,14 +252,14 @@ export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float3
  * const output = gelu.forward(input); // Type: Tensor<readonly [32, 768]>
  * ```
  */
-export class GELU<S extends Shape = Shape, D extends DType<string> = float32> extends Module<S, S, D> {
+export class GELU<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<S, S, D, Dev> {
   /**
    * Forward pass: GELU(x)
    *
    * @param input - Input tensor
    * @returns Output tensor with same shape
    */
-  forward(input: Tensor<S, D>): Tensor<S, D> {
+  forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
     // TODO: Implement actual GELU when Tensor ops are ready
     // return input.gelu();
     //
