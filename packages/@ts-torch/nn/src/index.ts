@@ -79,26 +79,26 @@ export * as F from './functional.js'
  */
 export * as functional from './functional.js'
 
-// ==================== Declarative Builders ====================
+// ==================== Fluent Builders ====================
 
 /**
- * Declarative model builders
+ * Fluent model builders - separates configuration from memory allocation
  *
  * @example
  * ```ts
  * import { nn } from '@ts-torch/nn';
+ * import { device } from '@ts-torch/core';
  *
- * const model = nn.sequence(cuda, [
- *   nn.linear(784, 128),
- *   nn.relu(),
- *   nn.linear(128, 10)
- * ]);
+ * // Define model (no memory allocated - just JS objects)
+ * const config = nn.sequence(784,
+ *   nn.fc(128).relu().dropout(0.2),
+ *   nn.fc(64).gelu(),
+ *   nn.fc(10)
+ * );
  *
- * const mlp = nn.mlp({
- *   device: cuda,
- *   layers: [784, 128, 10]
- * });
+ * // Initialize model on device (memory allocated here)
+ * const model = config.init(device.cuda(0));
  * ```
  */
-export { nn, sequence, mlp, linear, relu, gelu, sigmoid, tanh, softmax, leakyRelu, dropout } from './builders.js'
-export type { MLPConfig } from './builders.js'
+export { nn, sequence, fc } from './builders.js'
+export type { BlockDef, SequenceDef, ActivationType, InitStrategy } from './builders.js'

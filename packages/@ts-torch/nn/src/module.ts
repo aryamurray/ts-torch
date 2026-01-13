@@ -283,11 +283,11 @@ export abstract class Module<
    * // CORRECT: Use the returned reference
    * const model = new Linear(10, 5).to('cuda')  // model: Linear<..., 'cuda'>
    *
-   * // CORRECT: Chain calls
-   * const cudaModel = nn.sequence(cuda, [
-   *   nn.linear(784, 128),
-   *   nn.relu()
-   * ])  // sequence() calls .to() internally
+   * // CORRECT: Use fluent builders with .init()
+   * const cudaModel = nn.sequence(784,
+   *   nn.fc(128).relu(),
+   *   nn.fc(10)
+   * ).init(device.cuda(0))
    *
    * // INCORRECT: Don't use original reference after .to()
    * const cpuModel = new Linear(10, 5)  // cpuModel: Linear<..., 'cpu'>

@@ -501,6 +501,13 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
       throw new Error('Unsupported batch format')
     }
 
+    // Move data to model's device (just-in-time transfer)
+    const modelDevice = this.getModelDevice()
+    if (modelDevice && modelDevice !== 'cpu') {
+      data = this.moveToDevice(data, modelDevice)
+      targets = this.moveToDevice(targets, modelDevice)
+    }
+
     // Forward pass
     const predictions = this.model.forward(data as any) as unknown as Tensor
 
@@ -508,6 +515,38 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
     const loss = this.lossFn(predictions as any, targets as any) as Tensor
 
     return { predictions, targets, loss }
+  }
+
+  /**
+   * Get the device the model is on
+   * @internal
+   */
+  private getModelDevice(): DeviceType | undefined {
+    // Try to get device from first parameter
+    const params = this.model.parameters()
+    if (params.length > 0) {
+      const firstParam = params[0]
+      // Parameter.data is a Tensor which has a .device property
+      return (firstParam?.data as any)?.device
+    }
+    return undefined
+  }
+
+  /**
+   * Move a tensor to the specified device
+   * @internal
+   */
+  private moveToDevice(tensor: Tensor, device: DeviceType): Tensor {
+    // Tensor has a .device property (string like 'cpu' or 'cuda')
+    const currentDevice = (tensor as any).device ?? 'cpu'
+    if (currentDevice === device) {
+      return tensor
+    }
+    // Use .move() method to transfer to target device
+    if (typeof (tensor as any).move === 'function') {
+      return (tensor as any).move(device)
+    }
+    return tensor
   }
 
   /**
