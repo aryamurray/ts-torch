@@ -6,7 +6,10 @@
 
 import { readFileSync } from 'fs'
 import { resolve, relative } from 'path'
-import { torch, type Tensor, type DType } from '@ts-torch/core'
+import { device, int64, type Tensor, type DType } from '@ts-torch/core'
+
+// CPU device for tensor creation
+const cpu = device.cpu()
 
 /** Maximum number of samples to prevent memory exhaustion */
 const MAX_SAMPLES = 1_000_000
@@ -281,7 +284,7 @@ export class MNIST {
 
     const start = index * 784
     const imageData = this.images.slice(start, start + 784)
-    const image = torch.tensor(Array.from(imageData), [784] as const) as Tensor<readonly [784], DType<'float32'>>
+    const image = cpu.tensor(Array.from(imageData), [784] as const) as Tensor<readonly [784], DType<'float32'>>
 
     const label = this.labels[index]
     if (label === undefined) {
@@ -319,7 +322,7 @@ export class MNIST {
       batchLabels.push(label)
     }
 
-    const images = torch.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<
+    const images = cpu.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<
       readonly [number, 784],
       DType<'float32'>
     >
@@ -378,13 +381,13 @@ export class MNIST {
         batchLabels.push(label)
       }
 
-      const images = torch.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<
+      const images = cpu.tensor(Array.from(batchData), [actualBatchSize, 784] as const) as Tensor<
         readonly [number, 784],
         DType<'float32'>
       >
 
       // Create labels tensor as int64 for cross_entropy_loss
-      const labelsTensor = torch.tensor(batchLabels, [actualBatchSize] as const, torch.int64) as Tensor<
+      const labelsTensor = cpu.tensor(batchLabels, [actualBatchSize] as const, int64) as Tensor<
         readonly [number],
         DType<'int64'>
       >

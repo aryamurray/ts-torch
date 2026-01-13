@@ -3,7 +3,10 @@
  */
 
 import { Module, Parameter, type Tensor, type float32 } from '../module.js'
-import { torch, type DType, validateConv2dParams } from '@ts-torch/core'
+import { device, type DType, validateConv2dParams } from '@ts-torch/core'
+
+// CPU device for weight initialization
+const cpu = device.cpu()
 
 /**
  * Helper to normalize kernel_size, stride, padding, dilation to tuple form
@@ -147,7 +150,7 @@ export class Conv2d<
     // Kaiming initialization for conv layers
     const fanIn = inChannelsPerGroup * this.kernelSize[0] * this.kernelSize[1]
     const std = Math.sqrt(2.0 / fanIn)
-    const randWeight = torch.randn(weightShape)
+    const randWeight = cpu.randn(weightShape)
     const weightTensor = (randWeight as any).mulScalar(std) as Tensor<
       readonly [OutChannels, number, number, number],
       D
@@ -160,7 +163,7 @@ export class Conv2d<
     // Initialize bias if enabled
     if (bias) {
       const biasShape = [outChannels] as const
-      const biasTensor = torch.zeros(biasShape) as unknown as Tensor<readonly [OutChannels], D>
+      const biasTensor = cpu.zeros(biasShape) as unknown as Tensor<readonly [OutChannels], D>
       biasTensor.escape()
 
       this.biasParam = new Parameter(biasTensor, true)

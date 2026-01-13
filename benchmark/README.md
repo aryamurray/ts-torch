@@ -120,8 +120,10 @@ Create a new `.bench.ts` file in the appropriate category:
 
 ```typescript
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 
 export const suite: BenchmarkSuite = {
   name: 'My Benchmarks',
@@ -137,7 +139,7 @@ export const suite: BenchmarkSuite = {
       run(() => {
         // Benchmark code here
         // Use run() for proper memory management
-        const t = torch.zeros([100, 100] as const)
+        const t = cpu.zeros([100, 100] as const)
         return t.add(t)
       })
     })

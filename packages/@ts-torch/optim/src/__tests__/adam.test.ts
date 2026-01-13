@@ -4,13 +4,15 @@
 
 import { describe, test, expect } from 'vitest'
 import { Adam } from '../adam'
-import { torch, type Tensor } from '@ts-torch/core'
+import { device, run, float32, type Tensor } from '@ts-torch/core'
+
+const cpu = device.cpu()
 
 describe('Adam', () => {
   describe('constructor', () => {
     test('creates optimizer with default options', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001 })
 
         expect(optimizer.learningRate).toBe(0.001)
@@ -22,8 +24,8 @@ describe('Adam', () => {
     })
 
     test('creates optimizer with custom betas', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001, betas: [0.95, 0.9999] })
 
         expect(optimizer.defaults.betas).toEqual([0.95, 0.9999])
@@ -31,8 +33,8 @@ describe('Adam', () => {
     })
 
     test('creates optimizer with custom eps', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001, eps: 1e-10 })
 
         expect(optimizer.defaults.eps).toBe(1e-10)
@@ -40,8 +42,8 @@ describe('Adam', () => {
     })
 
     test('creates optimizer with weight decay', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001, weightDecay: 0.01 })
 
         expect(optimizer.defaults.weightDecay).toBe(0.01)
@@ -49,8 +51,8 @@ describe('Adam', () => {
     })
 
     test('creates optimizer with AMSGrad', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001, amsgrad: true })
 
         expect(optimizer.defaults.amsgrad).toBe(true)
@@ -60,8 +62,8 @@ describe('Adam', () => {
 
   describe('step', () => {
     test('updates parameters with gradient', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0, 2.0, 3.0], [3] as const, torch.float32, true)
+      run(() => {
+        const param = cpu.tensor([1.0, 2.0, 3.0], [3] as const, float32, true)
         // Simulate gradient by doing a backward pass
         const loss = param.sum()
         loss.backward()
@@ -77,8 +79,8 @@ describe('Adam', () => {
     })
 
     test('skips parameters without gradients', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0, 2.0, 3.0], [3] as const)
+      run(() => {
+        const param = cpu.tensor([1.0, 2.0, 3.0], [3] as const)
         const initialData = Array.from(param.toArray() as Float32Array)
 
         const optimizer = new Adam([param], { lr: 0.1 })
@@ -91,8 +93,8 @@ describe('Adam', () => {
     })
 
     test('maintains optimizer state across steps', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0], [1] as const, torch.float32, true)
+      run(() => {
+        const param = cpu.tensor([1.0], [1] as const, float32, true)
 
         const optimizer = new Adam([param], { lr: 0.1 })
 
@@ -125,9 +127,9 @@ describe('Adam', () => {
     })
 
     test('handles multiple parameters independently', () => {
-      torch.run(() => {
-        const param1 = torch.tensor([1.0], [1] as const, torch.float32, true)
-        const param2 = torch.tensor([2.0], [1] as const, torch.float32, true)
+      run(() => {
+        const param1 = cpu.tensor([1.0], [1] as const, float32, true)
+        const param2 = cpu.tensor([2.0], [1] as const, float32, true)
 
         const optimizer = new Adam([param1, param2], { lr: 0.1 })
 
@@ -152,8 +154,8 @@ describe('Adam', () => {
 
   describe('AMSGrad variant', () => {
     test('enables AMSGrad when specified', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0], [1] as const, torch.float32, true)
+      run(() => {
+        const param = cpu.tensor([1.0], [1] as const, float32, true)
         const loss = param.sum()
         loss.backward()
 
@@ -174,8 +176,8 @@ describe('Adam', () => {
 
   describe('learningRate getter/setter', () => {
     test('gets learning rate', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001 })
 
         expect(optimizer.learningRate).toBe(0.001)
@@ -183,8 +185,8 @@ describe('Adam', () => {
     })
 
     test('sets learning rate', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001 })
 
         optimizer.learningRate = 0.0001
@@ -195,8 +197,8 @@ describe('Adam', () => {
 
   describe('toString', () => {
     test('returns string representation', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001, betas: [0.9, 0.999], eps: 1e-8 })
 
         const str = optimizer.toString()
@@ -210,8 +212,8 @@ describe('Adam', () => {
 
   describe('state management', () => {
     test('initializes state on first step', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0], [1] as const, torch.float32, true)
+      run(() => {
+        const param = cpu.tensor([1.0], [1] as const, float32, true)
         const loss = param.sum()
         loss.backward()
 

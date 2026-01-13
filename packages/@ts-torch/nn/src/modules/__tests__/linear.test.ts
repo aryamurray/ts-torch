@@ -4,7 +4,9 @@
 
 import { describe, test, expect } from 'vitest'
 import { Linear } from '../linear.js'
-import { torch } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
+
+const cpu = device.cpu()
 
 describe('Linear', () => {
   describe('constructor', () => {
@@ -105,9 +107,9 @@ describe('Linear', () => {
 
   describe('forward pass', () => {
     test('transforms input shape correctly', () => {
-      torch.run(() => {
+      run(() => {
         const linear = new Linear<784, 128>(784, 128)
-        const input = torch.randn([32, 784] as const)
+        const input = cpu.randn([32, 784] as const)
         const output = linear.forward(input)
 
         expect(output.shape).toEqual([32, 128])
@@ -115,9 +117,9 @@ describe('Linear', () => {
     })
 
     test('handles single sample input', () => {
-      torch.run(() => {
+      run(() => {
         const linear = new Linear<10, 5>(10, 5)
-        const input = torch.randn([1, 10] as const)
+        const input = cpu.randn([1, 10] as const)
         const output = linear.forward(input)
 
         expect(output.shape).toEqual([1, 5])
@@ -125,9 +127,9 @@ describe('Linear', () => {
     })
 
     test('handles large batch input', () => {
-      torch.run(() => {
+      run(() => {
         const linear = new Linear<128, 64>(128, 64)
-        const input = torch.randn([256, 128] as const)
+        const input = cpu.randn([256, 128] as const)
         const output = linear.forward(input)
 
         expect(output.shape).toEqual([256, 64])
@@ -135,9 +137,9 @@ describe('Linear', () => {
     })
 
     test('works without bias', () => {
-      torch.run(() => {
+      run(() => {
         const linear = new Linear<10, 5>(10, 5, { bias: false })
-        const input = torch.randn([4, 10] as const)
+        const input = cpu.randn([4, 10] as const)
         const output = linear.forward(input)
 
         expect(output.shape).toEqual([4, 5])
@@ -191,7 +193,7 @@ describe('Linear', () => {
 
   describe('composition', () => {
     test('can be piped with other modules', () => {
-      torch.run(() => {
+      run(() => {
         const layer1 = new Linear<784, 128>(784, 128)
         const layer2 = new Linear<128, 64>(128, 64)
 
@@ -200,7 +202,7 @@ describe('Linear', () => {
         expect(piped).toBeDefined()
 
         // Test forward pass
-        const input = torch.randn([32, 784] as const)
+        const input = cpu.randn([32, 784] as const)
         const output = piped.forward(input)
 
         expect(output.shape).toEqual([32, 64])
@@ -208,7 +210,7 @@ describe('Linear', () => {
     })
 
     test('piped modules share training mode', () => {
-      torch.run(() => {
+      run(() => {
         const layer1 = new Linear(784, 128)
         const layer2 = new Linear(128, 64)
         const piped = layer1.pipe(layer2)
@@ -224,14 +226,14 @@ describe('Linear', () => {
     })
 
     test('can chain multiple layers', () => {
-      torch.run(() => {
+      run(() => {
         const layer1 = new Linear<784, 256>(784, 256)
         const layer2 = new Linear<256, 128>(256, 128)
         const layer3 = new Linear<128, 64>(128, 64)
 
         const piped = layer1.pipe(layer2).pipe(layer3)
 
-        const input = torch.randn([16, 784] as const)
+        const input = cpu.randn([16, 784] as const)
         const output = piped.forward(input)
 
         expect(output.shape).toEqual([16, 64])

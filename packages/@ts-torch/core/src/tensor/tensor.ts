@@ -1593,9 +1593,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    *
    * @example
    * ```ts
-   * const a = torch.tensor([1, 2, 3], [3]);
-   * const b = torch.tensor([1, 0, 3], [3]);
-   * const eq = a.eq(b); // [true, false, true]
+   * import { device } from '@ts-torch/core'
+   * const cpu = device.cpu()
+   * const a = cpu.tensor([1, 2, 3], [3] as const)
+   * const b = cpu.tensor([1, 0, 3], [3] as const)
+   * const eq = a.eq(b) // [true, false, true]
    * ```
    */
   eq(other: Tensor<S, D>): Tensor<S, DType<'bool'>> {
@@ -1624,10 +1626,12 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    *
    * @example
    * ```ts
+   * import { device, int64 } from '@ts-torch/core'
+   * const cpu = device.cpu()
    * // Select rows 0, 2, 1 from a 4x3 tensor
-   * const data = torch.tensor([[1,2,3], [4,5,6], [7,8,9], [10,11,12]], [4, 3]);
-   * const indices = torch.tensor([0, 2, 1], [3], torch.int64);
-   * const selected = data.indexSelect(0, indices); // [[1,2,3], [7,8,9], [4,5,6]]
+   * const data = cpu.tensor([[1,2,3], [4,5,6], [7,8,9], [10,11,12]], [4, 3] as const)
+   * const indices = cpu.tensor([0, 2, 1], [3] as const, int64)
+   * const selected = data.indexSelect(0, indices) // [[1,2,3], [7,8,9], [4,5,6]]
    * ```
    */
   indexSelect<IndexS extends readonly [number]>(
@@ -1660,8 +1664,10 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    *
    * @example
    * ```ts
-   * const logits = torch.tensor([[1, 3, 2], [4, 2, 5]], [2, 3]);
-   * const preds = logits.argmax(1); // [1, 2] - indices of max in each row
+   * import { device } from '@ts-torch/core'
+   * const cpu = device.cpu()
+   * const logits = cpu.tensor([[1, 3, 2], [4, 2, 5]], [2, 3] as const)
+   * const preds = logits.argmax(1) // [1, 2] - indices of max in each row
    * ```
    */
   argmax(dim: number, keepdim: boolean = false): Tensor<Shape, DType<'int64'>> {

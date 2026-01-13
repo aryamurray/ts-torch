@@ -5,7 +5,7 @@
  * using proper autograd backpropagation and SGD optimizer.
  */
 
-import { torch } from '@ts-torch/core'
+import { run } from '@ts-torch/core'
 import { Linear, ReLU } from '@ts-torch/nn'
 import { MNIST } from '@ts-torch/datasets'
 import { SGD, crossEntropyLoss } from '@ts-torch/optim'
@@ -80,7 +80,7 @@ for (let epoch = 0; epoch < EPOCHS; epoch++) {
   console.log(`Starting epoch ${epoch + 1}...`)
 
   for (const batch of trainData.batches(BATCH_SIZE, true)) {
-    torch.run(() => {
+    run(() => {
       // Zero gradients
       optimizer.zeroGrad()
 
@@ -146,7 +146,7 @@ let testCorrect = 0
 let testTotal = 0
 
 for (const batch of testData.batches(1000)) {
-  torch.run(() => {
+  run(() => {
     const logits = forward(batch.images)
     const probs = logits.softmax(1)
     const probsArray = probs.toArray() as Float32Array

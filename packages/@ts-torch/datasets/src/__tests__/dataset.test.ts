@@ -6,7 +6,9 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BaseDataset, SubsetDataset, TensorDataset } from '../dataset.js';
-import { torch } from '@ts-torch/core';
+import { device } from '@ts-torch/core';
+
+const cpu = device.cpu();
 
 // Import test utils from source
 const utilsModule = await import('../../../core/src/test/utils.js');
@@ -182,7 +184,7 @@ describe('Dataset', () => {
   describe('TensorDataset', () => {
     it('should create dataset from single tensor', () =>
       scopedTest(() => {
-        const tensor = torch.tensor([1, 2, 3, 4, 5], [5] as const);
+        const tensor = cpu.tensor([1, 2, 3, 4, 5], [5] as const);
         const dataset = new TensorDataset([tensor]);
 
         expect(dataset.length).toBe(5);
@@ -190,8 +192,8 @@ describe('Dataset', () => {
 
     it('should create dataset from multiple tensors', () =>
       scopedTest(() => {
-        const features = torch.ones([10, 4] as const);
-        const labels = torch.zeros([10, 1] as const);
+        const features = cpu.ones([10, 4] as const);
+        const labels = cpu.zeros([10, 1] as const);
         const dataset = new TensorDataset([features, labels]);
 
         expect(dataset.length).toBe(10);
@@ -203,8 +205,8 @@ describe('Dataset', () => {
 
     it('should throw error for mismatched first dimensions', () =>
       scopedTest(() => {
-        const tensor1 = torch.ones([10, 4] as const);
-        const tensor2 = torch.zeros([5, 4] as const);
+        const tensor1 = cpu.ones([10, 4] as const);
+        const tensor2 = cpu.zeros([5, 4] as const);
 
         expect(() => new TensorDataset([tensor1, tensor2])).toThrow(
           'All tensors must have the same size in the first dimension'
@@ -213,9 +215,9 @@ describe('Dataset', () => {
 
     it('should validate tensors have same batch size', () =>
       scopedTest(() => {
-        const tensor1 = torch.ones([8, 3] as const);
-        const tensor2 = torch.zeros([8, 5] as const);
-        const tensor3 = torch.randn([8, 2] as const);
+        const tensor1 = cpu.ones([8, 3] as const);
+        const tensor2 = cpu.zeros([8, 5] as const);
+        const tensor3 = cpu.randn([8, 2] as const);
 
         const dataset = new TensorDataset([tensor1, tensor2, tensor3]);
         expect(dataset.length).toBe(8);
@@ -223,7 +225,7 @@ describe('Dataset', () => {
 
     it('should get item by index', () =>
       scopedTest(() => {
-        const tensor = torch.tensor([1, 2, 3, 4, 5], [5] as const);
+        const tensor = cpu.tensor([1, 2, 3, 4, 5], [5] as const);
         const dataset = new TensorDataset([tensor]);
 
         const item = dataset.getItem(0);
@@ -232,7 +234,7 @@ describe('Dataset', () => {
 
     it('should throw error for out of bounds index', () =>
       scopedTest(() => {
-        const tensor = torch.ones([5, 4] as const);
+        const tensor = cpu.ones([5, 4] as const);
         const dataset = new TensorDataset([tensor]);
 
         expect(() => dataset.getItem(-1)).toThrow('out of bounds');
@@ -241,7 +243,7 @@ describe('Dataset', () => {
 
     it('should be iterable', () =>
       scopedTest(() => {
-        const tensor = torch.ones([3, 4] as const);
+        const tensor = cpu.ones([3, 4] as const);
         const dataset = new TensorDataset([tensor]);
 
         const items = Array.from(dataset);
@@ -253,7 +255,7 @@ describe('Dataset', () => {
 
     it('should work with subset', () =>
       scopedTest(() => {
-        const tensor = torch.ones([10, 4] as const);
+        const tensor = cpu.ones([10, 4] as const);
         const dataset = new TensorDataset([tensor]);
         const subset = dataset.subset([0, 2, 4, 6, 8]);
 
@@ -262,7 +264,7 @@ describe('Dataset', () => {
 
     it('should work with split', () =>
       scopedTest(() => {
-        const tensor = torch.ones([100, 4] as const);
+        const tensor = cpu.ones([100, 4] as const);
         const dataset = new TensorDataset([tensor]);
         const [train, test] = dataset.split(0.8);
 
@@ -272,7 +274,7 @@ describe('Dataset', () => {
 
     it('should handle 1D tensors', () =>
       scopedTest(() => {
-        const tensor = torch.tensor([1, 2, 3, 4, 5], [5] as const);
+        const tensor = cpu.tensor([1, 2, 3, 4, 5], [5] as const);
         const dataset = new TensorDataset([tensor]);
 
         expect(dataset.length).toBe(5);
@@ -280,7 +282,7 @@ describe('Dataset', () => {
 
     it('should handle 3D tensors', () =>
       scopedTest(() => {
-        const tensor = torch.ones([4, 3, 28, 28] as const);
+        const tensor = cpu.ones([4, 3, 28, 28] as const);
         const dataset = new TensorDataset([tensor]);
 
         expect(dataset.length).toBe(4);

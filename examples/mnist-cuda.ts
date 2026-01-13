@@ -8,21 +8,23 @@
  * - Loss read only once per epoch (single sync point)
  */
 
-import { torch } from '@ts-torch/core'
+import { device, run, cuda, int64 } from '@ts-torch/core'
 import { Linear, ReLU } from '@ts-torch/nn'
 import { MNIST } from '@ts-torch/datasets'
 import { SGD, crossEntropyLoss } from '@ts-torch/optim'
 
+const cpu = device.cpu()
+
 console.log('=== MNIST with CUDA (Zero-Copy Batching) ===\n')
 
 // ==================== Check CUDA ====================
-const cudaAvailable = torch.cuda.isAvailable()
+const cudaAvailable = cuda.isAvailable()
 console.log(`CUDA available: ${cudaAvailable}`)
 if (!cudaAvailable) {
   console.error('CUDA not available')
   process.exit(1)
 }
-console.log(`CUDA devices: ${torch.cuda.deviceCount()}\n`)
+console.log(`CUDA devices: ${cuda.deviceCount()}\n`)
 
 // ==================== Load Dataset ====================
 console.log('Loading MNIST...')
@@ -56,14 +58,14 @@ for (let i = 0; i < testData.length; i++) {
 // Create GPU tensors - these stay on GPU for entire training
 let gpuTrainX: any, gpuTrainY: any, gpuTestX: any, gpuTestY: any
 
-torch.run(() => {
-  const cpuTrainX = torch.tensor(Array.from(trainImages), [trainData.length, 784] as const)
-  const cpuTrainY = torch.tensor(Array.from(trainLabels).map(Number), [trainData.length] as const, torch.int64)
+run(() => {
+  const cpuTrainX = cpu.tensor(Array.from(trainImages), [trainData.length, 784] as const)
+  const cpuTrainY = cpu.tensor(Array.from(trainLabels).map(Number), [trainData.length] as const, int64)
   gpuTrainX = cpuTrainX.cuda().escape()
   gpuTrainY = cpuTrainY.cuda().escape()
 
-  const cpuTestX = torch.tensor(Array.from(testImages), [testData.length, 784] as const)
-  const cpuTestY = torch.tensor(Array.from(testLabels).map(Number), [testData.length] as const, torch.int64)
+  const cpuTestX = cpu.tensor(Array.from(testImages), [testData.length, 784] as const)
+  const cpuTestY = cpu.tensor(Array.from(testLabels).map(Number), [testData.length] as const, int64)
   gpuTestX = cpuTestX.cuda().escape()
   gpuTestY = cpuTestY.cuda().escape()
 })
@@ -106,8 +108,8 @@ for (let epoch = 0; epoch < EPOCHS; epoch++) {
   const epochStart = Date.now()
   let lastLoss = 0
 
-  // Single torch.run() for entire epoch - minimal scope overhead
-  torch.run(() => {
+  // Single run() for entire epoch - minimal scope overhead
+  run(() => {
     for (let b = 0; b < numBatches; b++) {
       const start = b * BATCH_SIZE
       const size = Math.min(BATCH_SIZE, trainData.length - start)
@@ -144,7 +146,7 @@ let total = 0
 const evalBatch = 1000
 const numEvalBatches = Math.ceil(testData.length / evalBatch)
 
-torch.run(() => {
+run(() => {
   for (let b = 0; b < numEvalBatches; b++) {
     const start = b * evalBatch
     const size = Math.min(evalBatch, testData.length - start)

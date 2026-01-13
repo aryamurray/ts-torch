@@ -48,5 +48,6 @@ export default defineConfig({
   // Vitest 4.0+ forks options at top level
   forks: {
     singleFork: true,
+    isolate: false,
   },
 });

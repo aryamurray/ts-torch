@@ -5,8 +5,10 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 
 export const suite: BenchmarkSuite = {
   name: 'Matrix Operations',
@@ -30,8 +32,8 @@ export const suite: BenchmarkSuite = {
     for (const [m, k, n] of matmulSizes) {
       bench.add(`matmul [${m}, ${k}] @ [${k}, ${n}]`, () => {
         run(() => {
-          const a = torch.randn([m, k] as const)
-          const b = torch.randn([k, n] as const)
+          const a = cpu.randn([m, k] as const)
+          const b = cpu.randn([k, n] as const)
           return a.matmul(b)
         })
       })
@@ -40,16 +42,16 @@ export const suite: BenchmarkSuite = {
     // Rectangular matrices
     bench.add('matmul [128, 64] @ [64, 256]', () => {
       run(() => {
-        const a = torch.randn([128, 64] as const)
-        const b = torch.randn([64, 256] as const)
+        const a = cpu.randn([128, 64] as const)
+        const b = cpu.randn([64, 256] as const)
         return a.matmul(b)
       })
     })
 
     bench.add('matmul [256, 128] @ [128, 64]', () => {
       run(() => {
-        const a = torch.randn([256, 128] as const)
-        const b = torch.randn([128, 64] as const)
+        const a = cpu.randn([256, 128] as const)
+        const b = cpu.randn([128, 64] as const)
         return a.matmul(b)
       })
     })
@@ -57,8 +59,8 @@ export const suite: BenchmarkSuite = {
     // Vector-matrix multiplication
     bench.add('matmul [1, 256] @ [256, 256]', () => {
       run(() => {
-        const a = torch.randn([1, 256] as const)
-        const b = torch.randn([256, 256] as const)
+        const a = cpu.randn([1, 256] as const)
+        const b = cpu.randn([256, 256] as const)
         return a.matmul(b)
       })
     })
@@ -74,7 +76,7 @@ export const suite: BenchmarkSuite = {
     for (const [m, n] of transposeSizes) {
       bench.add(`transpose [${m}, ${n}]`, () => {
         run(() => {
-          const a = torch.randn([m, n] as const)
+          const a = cpu.randn([m, n] as const)
           return a.transpose(0, 1)
         })
       })
@@ -83,21 +85,21 @@ export const suite: BenchmarkSuite = {
     // Reshape operations (should be fast, view-based)
     bench.add('reshape [256, 256] -> [65536]', () => {
       run(() => {
-        const a = torch.randn([256, 256] as const)
+        const a = cpu.randn([256, 256] as const)
         return a.reshape([65536] as const)
       })
     })
 
     bench.add('reshape [1024, 1024] -> [1, 1048576]', () => {
       run(() => {
-        const a = torch.randn([1024, 1024] as const)
+        const a = cpu.randn([1024, 1024] as const)
         return a.reshape([1, 1048576] as const)
       })
     })
 
     bench.add('reshape [256, 256] -> [64, 1024]', () => {
       run(() => {
-        const a = torch.randn([256, 256] as const)
+        const a = cpu.randn([256, 256] as const)
         return a.reshape([64, 1024] as const)
       })
     })
@@ -105,7 +107,7 @@ export const suite: BenchmarkSuite = {
     // Flatten
     bench.add('flatten [32, 32, 32]', () => {
       run(() => {
-        const a = torch.randn([32, 32, 32] as const)
+        const a = cpu.randn([32, 32, 32] as const)
         return a.flatten()
       })
     })

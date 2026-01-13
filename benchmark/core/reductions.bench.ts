@@ -5,8 +5,10 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 import { STANDARD_SIZES } from '../lib/utils.js'
 
 export const suite: BenchmarkSuite = {
@@ -27,14 +29,14 @@ export const suite: BenchmarkSuite = {
 
       bench.add(`sum ${label}`, () => {
         run(() => {
-          const a = torch.randn([m, n] as const)
+          const a = cpu.randn([m, n] as const)
           return a.sum()
         })
       })
 
       bench.add(`mean ${label}`, () => {
         run(() => {
-          const a = torch.randn([m, n] as const)
+          const a = cpu.randn([m, n] as const)
           return a.mean()
         })
       })
@@ -43,14 +45,14 @@ export const suite: BenchmarkSuite = {
     // 3D tensor reductions
     bench.add('sum [64, 128, 128]', () => {
       run(() => {
-        const a = torch.randn([64, 128, 128] as const)
+        const a = cpu.randn([64, 128, 128] as const)
         return a.sum()
       })
     })
 
     bench.add('mean [64, 128, 128]', () => {
       run(() => {
-        const a = torch.randn([64, 128, 128] as const)
+        const a = cpu.randn([64, 128, 128] as const)
         return a.mean()
       })
     })
@@ -58,14 +60,14 @@ export const suite: BenchmarkSuite = {
     // 4D tensor reductions (batch, channel, height, width)
     bench.add('sum [32, 64, 32, 32]', () => {
       run(() => {
-        const a = torch.randn([32, 64, 32, 32] as const)
+        const a = cpu.randn([32, 64, 32, 32] as const)
         return a.sum()
       })
     })
 
     bench.add('mean [32, 64, 32, 32]', () => {
       run(() => {
-        const a = torch.randn([32, 64, 32, 32] as const)
+        const a = cpu.randn([32, 64, 32, 32] as const)
         return a.mean()
       })
     })

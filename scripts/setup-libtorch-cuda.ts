@@ -284,9 +284,9 @@ async function verifySetup(): Promise<boolean> {
   try {
     // Try to load the library and check CUDA
     const verifyCode = `
-      import { torch } from '@ts-torch/core';
-      const cudaAvailable = torch.cuda.isAvailable();
-      const deviceCount = torch.cuda.deviceCount();
+      import { cuda } from '@ts-torch/core';
+      const cudaAvailable = cuda.isAvailable();
+      const deviceCount = cuda.deviceCount();
       console.log('CUDA available:', cudaAvailable);
       console.log('CUDA devices:', deviceCount);
       if (!cudaAvailable) {

@@ -1,7 +1,7 @@
 {
-  "name": "@ts-torch/core",
+  "name": "@ts-torch/train",
   "version": "0.1.0",
-  "description": "Core tensor operations & FFI bindings for ts-torch",
+  "description": "Declarative training API for ts-torch",
   "files": [
     "dist"
   ],
@@ -15,14 +15,7 @@
       "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs",
-      "default": "./src/index.ts"
-    },
-    "./ffi": {
-      "bun": "./src/ffi/index.ts",
-      "types": "./dist/ffi/index.d.ts",
-      "import": "./dist/ffi/index.js",
-      "default": "./src/ffi/index.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "publishConfig": {
@@ -31,7 +24,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aryamurray/ts-torch.git",
-    "directory": "packages/@ts-torch/core"
+    "directory": "packages/@ts-torch/train"
   },
   "bugs": {
     "url": "https://github.com/aryamurray/ts-torch/issues"
@@ -39,22 +32,23 @@
   "homepage": "https://github.com/aryamurray/ts-torch#readme",
   "scripts": {
     "build": "vite build",
-    "build:native": "bun run scripts/build-native.ts",
-    "build:native:cuda": "bun run ../../../scripts/build-native-cuda.ts",
     "dev": "tsc --watch",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest run --dangerouslyIgnoreUnhandledErrors",
-    "test:watch": "vitest",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest watch",
+    "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@ts-torch-platform/loader": "workspace:*",
-    "koffi": "^2.9.0"
+    "@ts-torch/core": "workspace:*",
+    "@ts-torch/nn": "workspace:*",
+    "@ts-torch/optim": "workspace:*"
   },
   "devDependencies": {
+    "@ts-torch/test-utils": "workspace:*",
     "typescript": "5.9.2",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.0"
   },
   "engines": {
     "node": ">=18"

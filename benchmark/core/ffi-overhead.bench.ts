@@ -10,9 +10,11 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import { getLib, createError, checkError, withError, ERROR_STRUCT_SIZE } from '@ts-torch/core/ffi'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 import { estimateFfiOverhead } from '../lib/utils.js'
 
 export const suite: BenchmarkSuite = {
@@ -63,53 +65,53 @@ export const suite: BenchmarkSuite = {
     // 5. Tensor creation at different sizes (to see FFI vs compute)
     bench.add('tensor zeros [1] (minimal)', () => {
       run(() => {
-        torch.zeros([1] as const)
+        cpu.zeros([1] as const)
       })
     })
 
     bench.add('tensor zeros [2, 2] (4 elements)', () => {
       run(() => {
-        torch.zeros([2, 2] as const)
+        cpu.zeros([2, 2] as const)
       })
     })
 
     bench.add('tensor zeros [8, 8] (64 elements)', () => {
       run(() => {
-        torch.zeros([8, 8] as const)
+        cpu.zeros([8, 8] as const)
       })
     })
 
     bench.add('tensor zeros [32, 32] (1K elements)', () => {
       run(() => {
-        torch.zeros([32, 32] as const)
+        cpu.zeros([32, 32] as const)
       })
     })
 
     bench.add('tensor zeros [128, 128] (16K elements)', () => {
       run(() => {
-        torch.zeros([128, 128] as const)
+        cpu.zeros([128, 128] as const)
       })
     })
 
     bench.add('tensor zeros [512, 512] (262K elements)', () => {
       run(() => {
-        torch.zeros([512, 512] as const)
+        cpu.zeros([512, 512] as const)
       })
     })
 
     // 6. Operation overhead: add small vs large tensors
     bench.add('add [2, 2] (FFI-dominated)', () => {
       run(() => {
-        const a = torch.ones([2, 2] as const)
-        const b = torch.ones([2, 2] as const)
+        const a = cpu.ones([2, 2] as const)
+        const b = cpu.ones([2, 2] as const)
         return a.add(b)
       })
     })
 
     bench.add('add [1024, 1024] (compute-dominated)', () => {
       run(() => {
-        const a = torch.ones([1024, 1024] as const)
-        const b = torch.ones([1024, 1024] as const)
+        const a = cpu.ones([1024, 1024] as const)
+        const b = cpu.ones([1024, 1024] as const)
         return a.add(b)
       })
     })
@@ -117,9 +119,9 @@ export const suite: BenchmarkSuite = {
     // 7. Multiple FFI calls in sequence
     bench.add('10x sequential add [100, 100]', () => {
       run(() => {
-        let t = torch.ones([100, 100] as const)
+        let t = cpu.ones([100, 100] as const)
         for (let i = 0; i < 10; i++) {
-          t = t.add(torch.ones([100, 100] as const))
+          t = t.add(cpu.ones([100, 100] as const))
         }
         return t
       })
@@ -128,25 +130,25 @@ export const suite: BenchmarkSuite = {
     // 8. Tensor creation methods comparison
     bench.add('zeros [256, 256]', () => {
       run(() => {
-        torch.zeros([256, 256] as const)
+        cpu.zeros([256, 256] as const)
       })
     })
 
     bench.add('ones [256, 256]', () => {
       run(() => {
-        torch.ones([256, 256] as const)
+        cpu.ones([256, 256] as const)
       })
     })
 
     bench.add('empty [256, 256]', () => {
       run(() => {
-        torch.empty([256, 256] as const)
+        cpu.empty([256, 256] as const)
       })
     })
 
     bench.add('randn [256, 256]', () => {
       run(() => {
-        torch.randn([256, 256] as const)
+        cpu.randn([256, 256] as const)
       })
     })
 

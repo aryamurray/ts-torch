@@ -6,7 +6,10 @@
  */
 
 import { Module, Parameter, type Tensor, type float32 } from '../module.js'
-import { torch, type DType, validateLinearParams } from '@ts-torch/core'
+import { device, type DType, validateLinearParams } from '@ts-torch/core'
+
+// CPU device for weight initialization
+const cpu = device.cpu()
 
 /**
  * Linear options interface
@@ -141,7 +144,6 @@ export class Linear<
   ): Parameter<readonly [OutFeatures, InFeatures], D> {
     const shape = [this.outFeatures, this.inFeatures] as const
     const fanIn = this.inFeatures
-    const fanOut = this.outFeatures
 
     let weight: Tensor<readonly [OutFeatures, InFeatures], D>
 
@@ -151,7 +153,7 @@ export class Linear<
         // Kaiming/He initialization for ReLU activations
         // std = sqrt(2 / fan_in) for ReLU
         const std = Math.sqrt(2.0 / fanIn)
-        const randWeight = torch.randn(shape)
+        const randWeight = cpu.randn(shape)
         weight = (randWeight as any).mulScalar(std) as Tensor<readonly [OutFeatures, InFeatures], D>
         break
       }
@@ -160,22 +162,22 @@ export class Linear<
       case 'xavier_normal': {
         // Xavier/Glorot initialization for tanh/sigmoid
         // std = sqrt(2 / (fan_in + fan_out))
-        const std = Math.sqrt(2.0 / (fanIn + fanOut))
-        const randWeight = torch.randn(shape)
+        const std = Math.sqrt(2.0 / (fanIn + this.outFeatures))
+        const randWeight = cpu.randn(shape)
         weight = (randWeight as any).mulScalar(std) as Tensor<readonly [OutFeatures, InFeatures], D>
         break
       }
 
       case 'zeros': {
         // Zero initialization (mainly for testing)
-        weight = torch.zeros(shape) as unknown as Tensor<readonly [OutFeatures, InFeatures], D>
+        weight = cpu.zeros(shape) as unknown as Tensor<readonly [OutFeatures, InFeatures], D>
         break
       }
 
       default: {
         // Default to Kaiming normal
         const std = Math.sqrt(2.0 / fanIn)
-        const randWeight = torch.randn(shape)
+        const randWeight = cpu.randn(shape)
         weight = (randWeight as any).mulScalar(std) as Tensor<readonly [OutFeatures, InFeatures], D>
       }
     }
@@ -193,7 +195,7 @@ export class Linear<
    */
   private initBias(): Parameter<readonly [OutFeatures], D> {
     const shape = [this.outFeatures] as const
-    const bias = torch.zeros(shape) as unknown as Tensor<readonly [OutFeatures], D>
+    const bias = cpu.zeros(shape) as unknown as Tensor<readonly [OutFeatures], D>
 
     // Escape bias from any scope so it persists
     bias.escape()

@@ -5,9 +5,11 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import { BatchNorm1d, BatchNorm2d, LayerNorm } from '@ts-torch/nn'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 
 export const suite: BenchmarkSuite = {
   name: 'Normalization Layers',
@@ -31,7 +33,7 @@ export const suite: BenchmarkSuite = {
       bench.add(`BatchNorm1d(${features}) batch=${batch}`, () => {
         run(() => {
           const bn = new BatchNorm1d(features)
-          const x = torch.randn([batch, features] as const)
+          const x = cpu.randn([batch, features] as const)
           return bn.forward(x)
         })
       })
@@ -49,7 +51,7 @@ export const suite: BenchmarkSuite = {
       bench.add(`BatchNorm2d(${channels}) [${batch}, ${channels}, ${size}, ${size}]`, () => {
         run(() => {
           const bn = new BatchNorm2d(channels)
-          const x = torch.randn([batch, channels, size, size] as const)
+          const x = cpu.randn([batch, channels, size, size] as const)
           return bn.forward(x)
         })
       })
@@ -66,7 +68,7 @@ export const suite: BenchmarkSuite = {
       bench.add(`LayerNorm([${hidden}]) [${batch}, ${seq}, ${hidden}]`, () => {
         run(() => {
           const ln = new LayerNorm([hidden])
-          const x = torch.randn([batch, seq, hidden] as const)
+          const x = cpu.randn([batch, seq, hidden] as const)
           return ln.forward(x)
         })
       })
@@ -76,7 +78,7 @@ export const suite: BenchmarkSuite = {
     const bn1d = new BatchNorm1d(256)
     bench.add('BatchNorm1d(256) forward only batch=128', () => {
       run(() => {
-        const x = torch.randn([128, 256] as const)
+        const x = cpu.randn([128, 256] as const)
         return bn1d.forward(x)
       })
     })
@@ -84,7 +86,7 @@ export const suite: BenchmarkSuite = {
     const bn2d = new BatchNorm2d(128)
     bench.add('BatchNorm2d(128) forward only [64, 128, 16, 16]', () => {
       run(() => {
-        const x = torch.randn([64, 128, 16, 16] as const)
+        const x = cpu.randn([64, 128, 16, 16] as const)
         return bn2d.forward(x)
       })
     })
@@ -92,7 +94,7 @@ export const suite: BenchmarkSuite = {
     const ln = new LayerNorm([512])
     bench.add('LayerNorm([512]) forward only [32, 256, 512]', () => {
       run(() => {
-        const x = torch.randn([32, 256, 512] as const)
+        const x = cpu.randn([32, 256, 512] as const)
         return ln.forward(x)
       })
     })

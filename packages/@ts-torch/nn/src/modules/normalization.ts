@@ -3,7 +3,10 @@
  */
 
 import { Module, Parameter, type Tensor, type float32 } from '../module.js'
-import { torch, validateNormParams, type DType, type Shape } from '@ts-torch/core'
+import { device, validateNormParams, type DType, type Shape } from '@ts-torch/core'
+
+// CPU device for weight initialization
+const cpu = device.cpu()
 
 /**
  * Batch normalization layer for 2D inputs (4D tensor: N, C, H, W)
@@ -91,13 +94,13 @@ export class BatchNorm2d<D extends DType<string> = float32> extends Module<
     // Initialize learnable parameters
     if (this.affine) {
       // gamma (weight) initialized to 1
-      const weightTensor = torch.ones(shape) as unknown as Tensor<readonly [number], D>
+      const weightTensor = cpu.ones(shape) as unknown as Tensor<readonly [number], D>
       weightTensor.escape()
       this.weight = new Parameter(weightTensor, true)
       this.registerParameter('weight', this.weight)
 
       // beta (bias) initialized to 0
-      const biasTensor = torch.zeros(shape) as unknown as Tensor<readonly [number], D>
+      const biasTensor = cpu.zeros(shape) as unknown as Tensor<readonly [number], D>
       biasTensor.escape()
       this.biasParam = new Parameter(biasTensor, true)
       this.registerParameter('bias', this.biasParam)
@@ -108,11 +111,11 @@ export class BatchNorm2d<D extends DType<string> = float32> extends Module<
 
     // Initialize running statistics
     if (this.trackRunningStats) {
-      const runningMeanTensor = torch.zeros(shape) as unknown as Tensor<readonly [number], D>
+      const runningMeanTensor = cpu.zeros(shape) as unknown as Tensor<readonly [number], D>
       runningMeanTensor.escape()
       this.runningMean = runningMeanTensor
 
-      const runningVarTensor = torch.ones(shape) as unknown as Tensor<readonly [number], D>
+      const runningVarTensor = cpu.ones(shape) as unknown as Tensor<readonly [number], D>
       runningVarTensor.escape()
       this.runningVar = runningVarTensor
     } else {
@@ -215,13 +218,13 @@ export class LayerNorm<D extends DType<string> = float32> extends Module<Shape, 
     // Initialize learnable parameters
     if (this.elementwiseAffine) {
       // gamma (weight) initialized to 1
-      const weightTensor = torch.ones(this.normalizedShape as number[]) as unknown as Tensor<Shape, D>
+      const weightTensor = cpu.ones(this.normalizedShape as number[]) as unknown as Tensor<Shape, D>
       weightTensor.escape()
       this.weight = new Parameter(weightTensor, true)
       this.registerParameter('weight', this.weight)
 
       // beta (bias) initialized to 0
-      const biasTensor = torch.zeros(this.normalizedShape as number[]) as unknown as Tensor<Shape, D>
+      const biasTensor = cpu.zeros(this.normalizedShape as number[]) as unknown as Tensor<Shape, D>
       biasTensor.escape()
       this.biasParam = new Parameter(biasTensor, true)
       this.registerParameter('bias', this.biasParam)
@@ -307,12 +310,12 @@ export class BatchNorm1d<D extends DType<string> = float32> extends Module<
     const shape = [numFeatures] as const
 
     if (this.affine) {
-      const weightTensor = torch.ones(shape) as unknown as Tensor<readonly [number], D>
+      const weightTensor = cpu.ones(shape) as unknown as Tensor<readonly [number], D>
       weightTensor.escape()
       this.weight = new Parameter(weightTensor, true)
       this.registerParameter('weight', this.weight)
 
-      const biasTensor = torch.zeros(shape) as unknown as Tensor<readonly [number], D>
+      const biasTensor = cpu.zeros(shape) as unknown as Tensor<readonly [number], D>
       biasTensor.escape()
       this.biasParam = new Parameter(biasTensor, true)
       this.registerParameter('bias', this.biasParam)
@@ -322,11 +325,11 @@ export class BatchNorm1d<D extends DType<string> = float32> extends Module<
     }
 
     if (this.trackRunningStats) {
-      const runningMeanTensor = torch.zeros(shape) as unknown as Tensor<readonly [number], D>
+      const runningMeanTensor = cpu.zeros(shape) as unknown as Tensor<readonly [number], D>
       runningMeanTensor.escape()
       this.runningMean = runningMeanTensor
 
-      const runningVarTensor = torch.ones(shape) as unknown as Tensor<readonly [number], D>
+      const runningVarTensor = cpu.ones(shape) as unknown as Tensor<readonly [number], D>
       runningVarTensor.escape()
       this.runningVar = runningVarTensor
     } else {

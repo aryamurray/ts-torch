@@ -5,9 +5,11 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import { Conv2d } from '@ts-torch/nn'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 
 export const suite: BenchmarkSuite = {
   name: 'Conv2d Layer',
@@ -49,7 +51,7 @@ export const suite: BenchmarkSuite = {
       bench.add(`Conv2d ${label}`, () => {
         run(() => {
           const conv = new Conv2d(inChannels, outChannels, [kernelSize, kernelSize])
-          const x = torch.randn([batch, inChannels, inputSize, inputSize] as const)
+          const x = cpu.randn([batch, inChannels, inputSize, inputSize] as const)
           return conv.forward(x)
         })
       })
@@ -62,7 +64,7 @@ export const suite: BenchmarkSuite = {
           stride: [2, 2],
           padding: [1, 1],
         })
-        const x = torch.randn([32, 3, 32, 32] as const)
+        const x = cpu.randn([32, 3, 32, 32] as const)
         return conv.forward(x)
       })
     })
@@ -71,7 +73,7 @@ export const suite: BenchmarkSuite = {
     const preCreatedConv = new Conv2d(64, 128, [3, 3], { padding: [1, 1] })
     bench.add('Conv2d forward only 64->128 k=3 p=1, 16x16 batch=32', () => {
       run(() => {
-        const x = torch.randn([32, 64, 16, 16] as const)
+        const x = cpu.randn([32, 64, 16, 16] as const)
         return preCreatedConv.forward(x)
       })
     })

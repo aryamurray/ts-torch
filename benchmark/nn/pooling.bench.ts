@@ -5,9 +5,11 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import { MaxPool2d, AvgPool2d, AdaptiveAvgPool2d } from '@ts-torch/nn'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 
 export const suite: BenchmarkSuite = {
   name: 'Pooling Layers',
@@ -32,7 +34,7 @@ export const suite: BenchmarkSuite = {
       bench.add(`MaxPool2d k=2 [${batch}, ${channels}, ${size}, ${size}]`, () => {
         run(() => {
           const pool = new MaxPool2d([2, 2])
-          const x = torch.randn([batch, channels, size, size] as const)
+          const x = cpu.randn([batch, channels, size, size] as const)
           return pool.forward(x)
         })
       })
@@ -43,7 +45,7 @@ export const suite: BenchmarkSuite = {
       bench.add(`AvgPool2d k=2 [${batch}, ${channels}, ${size}, ${size}]`, () => {
         run(() => {
           const pool = new AvgPool2d([2, 2])
-          const x = torch.randn([batch, channels, size, size] as const)
+          const x = cpu.randn([batch, channels, size, size] as const)
           return pool.forward(x)
         })
       })
@@ -60,7 +62,7 @@ export const suite: BenchmarkSuite = {
       bench.add(`AdaptiveAvgPool2d ${inputSize}x${inputSize}->${outputSize}x${outputSize} [${batch}, ${channels}]`, () => {
         run(() => {
           const pool = new AdaptiveAvgPool2d([outputSize, outputSize])
-          const x = torch.randn([batch, channels, inputSize, inputSize] as const)
+          const x = cpu.randn([batch, channels, inputSize, inputSize] as const)
           return pool.forward(x)
         })
       })
@@ -70,7 +72,7 @@ export const suite: BenchmarkSuite = {
     const maxPool = new MaxPool2d([2, 2], { stride: [2, 2] })
     bench.add('MaxPool2d forward only k=2 s=2, batch=64', () => {
       run(() => {
-        const x = torch.randn([64, 64, 32, 32] as const)
+        const x = cpu.randn([64, 64, 32, 32] as const)
         return maxPool.forward(x)
       })
     })
@@ -78,7 +80,7 @@ export const suite: BenchmarkSuite = {
     const avgPool = new AvgPool2d([2, 2], { stride: [2, 2] })
     bench.add('AvgPool2d forward only k=2 s=2, batch=64', () => {
       run(() => {
-        const x = torch.randn([64, 64, 32, 32] as const)
+        const x = cpu.randn([64, 64, 32, 32] as const)
         return avgPool.forward(x)
       })
     })

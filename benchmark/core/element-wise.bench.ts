@@ -5,9 +5,11 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
 import { STANDARD_SIZES } from '../lib/utils.js'
+
+const cpu = device.cpu()
 
 export const suite: BenchmarkSuite = {
   name: 'Element-wise Operations',
@@ -27,32 +29,32 @@ export const suite: BenchmarkSuite = {
       // Tensor + Tensor operations
       bench.add(`add ${label}`, () => {
         run(() => {
-          const a = torch.ones([m, n] as const)
-          const b = torch.ones([m, n] as const)
+          const a = cpu.ones([m, n] as const)
+          const b = cpu.ones([m, n] as const)
           return a.add(b)
         })
       })
 
       bench.add(`sub ${label}`, () => {
         run(() => {
-          const a = torch.ones([m, n] as const)
-          const b = torch.ones([m, n] as const)
+          const a = cpu.ones([m, n] as const)
+          const b = cpu.ones([m, n] as const)
           return a.sub(b)
         })
       })
 
       bench.add(`mul ${label}`, () => {
         run(() => {
-          const a = torch.ones([m, n] as const)
-          const b = torch.ones([m, n] as const)
+          const a = cpu.ones([m, n] as const)
+          const b = cpu.ones([m, n] as const)
           return a.mul(b)
         })
       })
 
       bench.add(`div ${label}`, () => {
         run(() => {
-          const a = torch.ones([m, n] as const)
-          const b = torch.ones([m, n] as const).addScalar(1) // Avoid div by zero
+          const a = cpu.ones([m, n] as const)
+          const b = cpu.ones([m, n] as const).addScalar(1) // Avoid div by zero
           return a.div(b)
         })
       })
@@ -69,21 +71,21 @@ export const suite: BenchmarkSuite = {
 
       bench.add(`addScalar ${label}`, () => {
         run(() => {
-          const a = torch.ones([m, n] as const)
+          const a = cpu.ones([m, n] as const)
           return a.addScalar(5)
         })
       })
 
       bench.add(`mulScalar ${label}`, () => {
         run(() => {
-          const a = torch.ones([m, n] as const)
+          const a = cpu.ones([m, n] as const)
           return a.mulScalar(2.5)
         })
       })
 
       bench.add(`divScalar ${label}`, () => {
         run(() => {
-          const a = torch.ones([m, n] as const)
+          const a = cpu.ones([m, n] as const)
           return a.divScalar(2)
         })
       })
@@ -92,17 +94,17 @@ export const suite: BenchmarkSuite = {
     // Chained operations
     bench.add('chain: a.add(b).mul(c) [256, 256]', () => {
       run(() => {
-        const a = torch.ones([256, 256] as const)
-        const b = torch.ones([256, 256] as const)
-        const c = torch.ones([256, 256] as const)
+        const a = cpu.ones([256, 256] as const)
+        const b = cpu.ones([256, 256] as const)
+        const c = cpu.ones([256, 256] as const)
         return a.add(b).mul(c)
       })
     })
 
     bench.add('chain: 5 ops [256, 256]', () => {
       run(() => {
-        const a = torch.ones([256, 256] as const)
-        const b = torch.ones([256, 256] as const)
+        const a = cpu.ones([256, 256] as const)
+        const b = cpu.ones([256, 256] as const)
         return a.add(b).mulScalar(2).sub(a).addScalar(1).divScalar(2)
       })
     })

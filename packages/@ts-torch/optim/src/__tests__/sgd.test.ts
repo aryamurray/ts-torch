@@ -4,13 +4,15 @@
 
 import { describe, test, expect } from 'vitest'
 import { SGD } from '../sgd'
-import { torch } from '@ts-torch/core'
+import { device, run, float32 } from '@ts-torch/core'
+
+const cpu = device.cpu()
 
 describe('SGD', () => {
   describe('constructor', () => {
     test('creates optimizer with default options', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01 })
 
         expect(optimizer.learningRate).toBe(0.01)
@@ -20,8 +22,8 @@ describe('SGD', () => {
     })
 
     test('creates optimizer with momentum', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01, momentum: 0.9 })
 
         expect(optimizer.learningRate).toBe(0.01)
@@ -30,8 +32,8 @@ describe('SGD', () => {
     })
 
     test('creates optimizer with weight decay', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01, weightDecay: 0.0001 })
 
         expect(optimizer.learningRate).toBe(0.01)
@@ -40,8 +42,8 @@ describe('SGD', () => {
     })
 
     test('creates optimizer with all options', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, {
           lr: 0.1,
           momentum: 0.95,
@@ -57,8 +59,8 @@ describe('SGD', () => {
 
   describe('step', () => {
     test('updates parameters with gradient', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0, 2.0, 3.0], [3] as const, torch.float32, true)
+      run(() => {
+        const param = cpu.tensor([1.0, 2.0, 3.0], [3] as const, float32, true)
         // Simulate gradient by doing a backward pass
         const loss = param.sum()
         loss.backward()
@@ -74,8 +76,8 @@ describe('SGD', () => {
     })
 
     test('skips parameters without gradients', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0, 2.0, 3.0], [3] as const)
+      run(() => {
+        const param = cpu.tensor([1.0, 2.0, 3.0], [3] as const)
         const initialData = Array.from(param.toArray() as Float32Array)
 
         const optimizer = new SGD([param], { lr: 0.1 })
@@ -88,8 +90,8 @@ describe('SGD', () => {
     })
 
     test('applies weight decay', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0, 2.0, 3.0], [3] as const, torch.float32, true)
+      run(() => {
+        const param = cpu.tensor([1.0, 2.0, 3.0], [3] as const, float32, true)
         const loss = param.sum()
         loss.backward()
 
@@ -104,9 +106,9 @@ describe('SGD', () => {
     })
 
     test('handles multiple parameters', () => {
-      torch.run(() => {
-        const param1 = torch.tensor([1.0, 2.0], [2] as const, torch.float32, true)
-        const param2 = torch.tensor([3.0, 4.0], [2] as const, torch.float32, true)
+      run(() => {
+        const param1 = cpu.tensor([1.0, 2.0], [2] as const, float32, true)
+        const param2 = cpu.tensor([3.0, 4.0], [2] as const, float32, true)
 
         const initial1 = Array.from(param1.toArray() as Float32Array)
         const initial2 = Array.from(param2.toArray() as Float32Array)
@@ -129,9 +131,9 @@ describe('SGD', () => {
 
   describe('zeroGrad', () => {
     test('zeros all parameter gradients', () => {
-      torch.run(() => {
-        const param1 = torch.tensor([1.0, 2.0], [2] as const, torch.float32, true)
-        const param2 = torch.tensor([3.0, 4.0], [2] as const, torch.float32, true)
+      run(() => {
+        const param1 = cpu.tensor([1.0, 2.0], [2] as const, float32, true)
+        const param2 = cpu.tensor([3.0, 4.0], [2] as const, float32, true)
 
         const loss = param1.sum().add(param2.sum())
         loss.backward()
@@ -154,8 +156,8 @@ describe('SGD', () => {
     })
 
     test('handles parameters without gradients', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0, 2.0], [2] as const)
+      run(() => {
+        const param = cpu.tensor([1.0, 2.0], [2] as const)
         const optimizer = new SGD([param], { lr: 0.1 })
 
         expect(() => {
@@ -167,8 +169,8 @@ describe('SGD', () => {
 
   describe('learningRate getter/setter', () => {
     test('gets learning rate', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01 })
 
         expect(optimizer.learningRate).toBe(0.01)
@@ -176,8 +178,8 @@ describe('SGD', () => {
     })
 
     test('sets learning rate', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01 })
 
         optimizer.learningRate = 0.001
@@ -186,8 +188,8 @@ describe('SGD', () => {
     })
 
     test('affects parameter updates', () => {
-      torch.run(() => {
-        const param = torch.tensor([1.0, 2.0, 3.0], [3] as const, torch.float32, true)
+      run(() => {
+        const param = cpu.tensor([1.0, 2.0, 3.0], [3] as const, float32, true)
         const loss = param.sum()
         loss.backward()
 
@@ -205,8 +207,8 @@ describe('SGD', () => {
 
   describe('toString', () => {
     test('returns string representation', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01, momentum: 0.9, weightDecay: 0.0001 })
 
         const str = optimizer.toString()
@@ -218,8 +220,8 @@ describe('SGD', () => {
     })
 
     test('shows default values when not specified', () => {
-      torch.run(() => {
-        const params = [torch.tensor([1, 2, 3], [3] as const)]
+      run(() => {
+        const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01 })
 
         const str = optimizer.toString()

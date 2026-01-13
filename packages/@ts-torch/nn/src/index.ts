@@ -78,3 +78,27 @@ export * as F from './functional.js'
  * ```
  */
 export * as functional from './functional.js'
+
+// ==================== Declarative Builders ====================
+
+/**
+ * Declarative model builders
+ *
+ * @example
+ * ```ts
+ * import { nn } from '@ts-torch/nn';
+ *
+ * const model = nn.sequence(cuda, [
+ *   nn.linear(784, 128),
+ *   nn.relu(),
+ *   nn.linear(128, 10)
+ * ]);
+ *
+ * const mlp = nn.mlp({
+ *   device: cuda,
+ *   layers: [784, 128, 10]
+ * });
+ * ```
+ */
+export { nn, sequence, mlp, linear, relu, gelu, sigmoid, tanh, softmax, leakyRelu, dropout } from './builders.js'
+export type { MLPConfig } from './builders.js'

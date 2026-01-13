@@ -3,19 +3,21 @@
  */
 
 import { describe, test, expect } from 'vitest'
-import { torch } from '@ts-torch/core'
+import { device, run, int64, float32 } from '@ts-torch/core'
 import {
   mseLoss,
   crossEntropyLoss,
   nllLoss,
 } from '../loss'
 
+const cpu = device.cpu()
+
 describe('Loss Functions', () => {
   describe('mseLoss', () => {
     test('computes mean squared error with default reduction', () => {
-      torch.run(() => {
-        const input = torch.tensor([2.5, 0.0, 2.0, 8.0], [4] as const)
-        const target = torch.tensor([3.0, -0.5, 2.0, 7.0], [4] as const)
+      run(() => {
+        const input = cpu.tensor([2.5, 0.0, 2.0, 8.0], [4] as const)
+        const target = cpu.tensor([3.0, -0.5, 2.0, 7.0], [4] as const)
 
         const loss = mseLoss(input, target)
 
@@ -26,9 +28,9 @@ describe('Loss Functions', () => {
     })
 
     test('handles zero error', () => {
-      torch.run(() => {
-        const input = torch.tensor([1.0, 2.0, 3.0], [3] as const)
-        const target = torch.tensor([1.0, 2.0, 3.0], [3] as const)
+      run(() => {
+        const input = cpu.tensor([1.0, 2.0, 3.0], [3] as const)
+        const target = cpu.tensor([1.0, 2.0, 3.0], [3] as const)
 
         const loss = mseLoss(input, target)
 
@@ -37,9 +39,9 @@ describe('Loss Functions', () => {
     })
 
     test('handles single element tensors', () => {
-      torch.run(() => {
-        const input = torch.tensor([1.5], [1] as const)
-        const target = torch.tensor([1.0], [1] as const)
+      run(() => {
+        const input = cpu.tensor([1.5], [1] as const)
+        const target = cpu.tensor([1.0], [1] as const)
 
         const loss = mseLoss(input, target)
 
@@ -48,9 +50,9 @@ describe('Loss Functions', () => {
     })
 
     test('handles 2D tensors', () => {
-      torch.run(() => {
-        const input = torch.tensor([1.0, 2.0, 3.0, 4.0], [2, 2] as const)
-        const target = torch.tensor([0.0, 0.0, 0.0, 0.0], [2, 2] as const)
+      run(() => {
+        const input = cpu.tensor([1.0, 2.0, 3.0, 4.0], [2, 2] as const)
+        const target = cpu.tensor([0.0, 0.0, 0.0, 0.0], [2, 2] as const)
 
         const loss = mseLoss(input, target)
 
@@ -62,10 +64,10 @@ describe('Loss Functions', () => {
 
   describe('crossEntropyLoss', () => {
     test('computes cross entropy for multi-class classification', () => {
-      torch.run(() => {
+      run(() => {
         // Logits for 2 samples, 3 classes
-        const logits = torch.tensor([2.0, 1.0, 0.1, 0.5, 2.5, 0.2], [2, 3] as const)
-        const targets = torch.tensor([0, 1], [2] as const, torch.int64)
+        const logits = cpu.tensor([2.0, 1.0, 0.1, 0.5, 2.5, 0.2], [2, 3] as const)
+        const targets = cpu.tensor([0, 1], [2] as const, int64)
 
         const loss = crossEntropyLoss(logits, targets)
 
@@ -76,9 +78,9 @@ describe('Loss Functions', () => {
     })
 
     test('computes CE for single sample', () => {
-      torch.run(() => {
-        const logits = torch.tensor([1.0, 2.0, 3.0], [1, 3] as const)
-        const targets = torch.tensor([2], [1] as const, torch.int64)
+      run(() => {
+        const logits = cpu.tensor([1.0, 2.0, 3.0], [1, 3] as const)
+        const targets = cpu.tensor([2], [1] as const, int64)
 
         const loss = crossEntropyLoss(logits, targets)
 
@@ -89,10 +91,10 @@ describe('Loss Functions', () => {
     })
 
     test('higher loss for wrong predictions', () => {
-      torch.run(() => {
+      run(() => {
         // Logits strongly predict class 0, but target is class 2
-        const logits = torch.tensor([10.0, 0.0, 0.0], [1, 3] as const)
-        const targets = torch.tensor([2], [1] as const, torch.int64)
+        const logits = cpu.tensor([10.0, 0.0, 0.0], [1, 3] as const)
+        const targets = cpu.tensor([2], [1] as const, int64)
 
         const loss = crossEntropyLoss(logits, targets)
 
@@ -102,10 +104,10 @@ describe('Loss Functions', () => {
     })
 
     test('lower loss for correct predictions', () => {
-      torch.run(() => {
+      run(() => {
         // Logits strongly predict class 0, target is class 0
-        const logits = torch.tensor([10.0, 0.0, 0.0], [1, 3] as const)
-        const targets = torch.tensor([0], [1] as const, torch.int64)
+        const logits = cpu.tensor([10.0, 0.0, 0.0], [1, 3] as const)
+        const targets = cpu.tensor([0], [1] as const, int64)
 
         const loss = crossEntropyLoss(logits, targets)
 
@@ -115,10 +117,10 @@ describe('Loss Functions', () => {
     })
 
     test('handles batch of samples', () => {
-      torch.run(() => {
+      run(() => {
         // 4 samples, 5 classes
-        const logits = torch.randn([4, 5] as const)
-        const targets = torch.tensor([0, 1, 2, 3], [4] as const, torch.int64)
+        const logits = cpu.randn([4, 5] as const)
+        const targets = cpu.tensor([0, 1, 2, 3], [4] as const, int64)
 
         const loss = crossEntropyLoss(logits, targets)
 
@@ -130,11 +132,11 @@ describe('Loss Functions', () => {
 
   describe('nllLoss', () => {
     test('computes negative log likelihood loss', () => {
-      torch.run(() => {
+      run(() => {
         // Log probabilities (output of log_softmax)
-        const logits = torch.tensor([2.0, 1.0, 0.1], [1, 3] as const)
+        const logits = cpu.tensor([2.0, 1.0, 0.1], [1, 3] as const)
         const logProbs = logits.logSoftmax(1)
-        const targets = torch.tensor([0], [1] as const, torch.int64)
+        const targets = cpu.tensor([0], [1] as const, int64)
 
         const loss = nllLoss(logProbs, targets)
 
@@ -144,10 +146,10 @@ describe('Loss Functions', () => {
     })
 
     test('handles batch of samples', () => {
-      torch.run(() => {
-        const logits = torch.randn([3, 4] as const)
+      run(() => {
+        const logits = cpu.randn([3, 4] as const)
         const logProbs = logits.logSoftmax(1)
-        const targets = torch.tensor([0, 1, 2], [3] as const, torch.int64)
+        const targets = cpu.tensor([0, 1, 2], [3] as const, int64)
 
         const loss = nllLoss(logProbs, targets)
 
@@ -159,9 +161,9 @@ describe('Loss Functions', () => {
 
   describe('gradient flow', () => {
     test('mseLoss supports backward pass', () => {
-      torch.run(() => {
-        const input = torch.tensor([1.0, 2.0, 3.0], [3] as const, torch.float32, true)
-        const target = torch.tensor([0.0, 0.0, 0.0], [3] as const)
+      run(() => {
+        const input = cpu.tensor([1.0, 2.0, 3.0], [3] as const, float32, true)
+        const target = cpu.tensor([0.0, 0.0, 0.0], [3] as const)
 
         const loss = mseLoss(input, target)
         loss.backward()
@@ -171,9 +173,9 @@ describe('Loss Functions', () => {
     })
 
     test('crossEntropyLoss supports backward pass', () => {
-      torch.run(() => {
-        const logits = torch.tensor([1.0, 2.0, 3.0], [1, 3] as const, torch.float32, true)
-        const targets = torch.tensor([0], [1] as const, torch.int64)
+      run(() => {
+        const logits = cpu.tensor([1.0, 2.0, 3.0], [1, 3] as const, float32, true)
+        const targets = cpu.tensor([0], [1] as const, int64)
 
         const loss = crossEntropyLoss(logits, targets)
         loss.backward()

@@ -5,9 +5,11 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import { Linear } from '@ts-torch/nn'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 
 export const suite: BenchmarkSuite = {
   name: 'Linear Layer',
@@ -37,7 +39,7 @@ export const suite: BenchmarkSuite = {
       bench.add(label, () => {
         run(() => {
           const layer = new Linear(inFeatures, outFeatures)
-          const x = torch.randn([batch, inFeatures] as const)
+          const x = cpu.randn([batch, inFeatures] as const)
           return layer.forward(x)
         })
       })
@@ -47,7 +49,7 @@ export const suite: BenchmarkSuite = {
     const preCreatedLayer = new Linear(256, 128)
     bench.add('Linear(256->128) forward only, batch=64', () => {
       run(() => {
-        const x = torch.randn([64, 256] as const)
+        const x = cpu.randn([64, 256] as const)
         return preCreatedLayer.forward(x)
       })
     })
@@ -56,7 +58,7 @@ export const suite: BenchmarkSuite = {
     const noBiasLayer = new Linear(256, 128, { bias: false })
     bench.add('Linear(256->128) no bias, batch=64', () => {
       run(() => {
-        const x = torch.randn([64, 256] as const)
+        const x = cpu.randn([64, 256] as const)
         return noBiasLayer.forward(x)
       })
     })
@@ -68,7 +70,7 @@ export const suite: BenchmarkSuite = {
         const l2 = new Linear(256, 128)
         const l3 = new Linear(128, 10)
 
-        const x = torch.randn([32, 784] as const)
+        const x = cpu.randn([32, 784] as const)
         let h = l1.forward(x).relu()
         h = l2.forward(h).relu()
         return l3.forward(h)

@@ -5,10 +5,12 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import { Linear } from '@ts-torch/nn'
 import { SGD, Adam, RMSprop } from '@ts-torch/optim'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 
 export const suite: BenchmarkSuite = {
   name: 'Optimizers',
@@ -38,7 +40,7 @@ export const suite: BenchmarkSuite = {
           const optimizer = new SGD(model.parameters(), { lr: 0.01 })
 
           // Simulate gradient computation by setting requires_grad
-          const x = torch.randn([32, inFeatures] as const)
+          const x = cpu.randn([32, inFeatures] as const)
           const y = model.forward(x)
           const loss = y.sum()
           loss.backward()
@@ -54,7 +56,7 @@ export const suite: BenchmarkSuite = {
           const model = createModel()
           const optimizer = new SGD(model.parameters(), { lr: 0.01, momentum: 0.9 })
 
-          const x = torch.randn([32, inFeatures] as const)
+          const x = cpu.randn([32, inFeatures] as const)
           const y = model.forward(x)
           const loss = y.sum()
           loss.backward()
@@ -70,7 +72,7 @@ export const suite: BenchmarkSuite = {
           const model = createModel()
           const optimizer = new Adam(model.parameters(), { lr: 0.001 })
 
-          const x = torch.randn([32, inFeatures] as const)
+          const x = cpu.randn([32, inFeatures] as const)
           const y = model.forward(x)
           const loss = y.sum()
           loss.backward()
@@ -86,7 +88,7 @@ export const suite: BenchmarkSuite = {
           const model = createModel()
           const optimizer = new RMSprop(model.parameters(), { lr: 0.01 })
 
-          const x = torch.randn([32, inFeatures] as const)
+          const x = cpu.randn([32, inFeatures] as const)
           const y = model.forward(x)
           const loss = y.sum()
           loss.backward()
@@ -105,7 +107,7 @@ export const suite: BenchmarkSuite = {
 
         for (let i = 0; i < 10; i++) {
           optimizer.zeroGrad()
-          const x = torch.randn([32, 256] as const)
+          const x = cpu.randn([32, 256] as const)
           const y = model.forward(x)
           const loss = y.sum()
           loss.backward()
@@ -123,7 +125,7 @@ export const suite: BenchmarkSuite = {
 
         for (let i = 0; i < 10; i++) {
           optimizer.zeroGrad()
-          const x = torch.randn([32, 256] as const)
+          const x = cpu.randn([32, 256] as const)
           const y = model.forward(x)
           const loss = y.sum()
           loss.backward()

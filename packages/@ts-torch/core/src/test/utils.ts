@@ -137,12 +137,14 @@ export function setupTensorMatchers(): void {
  *
  * @example
  * ```ts
+ * import { device } from '@ts-torch/core'
+ * const cpu = device.cpu()
  * it('should add tensors', () => scopedTest(() => {
- *   const a = torch.ones([2, 3]);
- *   const b = torch.ones([2, 3]);
- *   const c = a.add(b);
- *   expect(c).toHaveShape([2, 3]);
- * }));
+ *   const a = cpu.ones([2, 3] as const)
+ *   const b = cpu.ones([2, 3] as const)
+ *   const c = a.add(b)
+ *   expect(c).toHaveShape([2, 3])
+ * }))
  * ```
  */
 export function scopedTest<T>(fn: () => T): T {
@@ -164,11 +166,13 @@ export function scopedTest<T>(fn: () => T): T {
  *
  * @example
  * ```ts
+ * import { device } from '@ts-torch/core'
+ * const cpu = device.cpu()
  * it('should process async', async () => await scopedTestAsync(async () => {
- *   const data = await loadData();
- *   const tensor = torch.from(data);
- *   expect(tensor).toHaveShape([10, 10]);
- * }));
+ *   const data = await loadData()
+ *   const tensor = cpu.fromArray(data, [10, 10] as const)
+ *   expect(tensor).toHaveShape([10, 10])
+ * }))
  * ```
  */
 export async function scopedTestAsync<T>(fn: () => Promise<T>): Promise<T> {

@@ -5,10 +5,12 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import { Linear, Conv2d, MaxPool2d } from '@ts-torch/nn'
 import { SGD, Adam } from '@ts-torch/optim'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 
 export const suite: BenchmarkSuite = {
   name: 'Training Loop',
@@ -30,12 +32,12 @@ export const suite: BenchmarkSuite = {
         optimizer.zeroGrad()
 
         // Forward pass
-        const x = torch.randn([32, 784] as const)
+        const x = cpu.randn([32, 784] as const)
         let h = l1.forward(x).relu()
         const logits = l2.forward(h)
 
         // Compute loss (using sum as simple loss)
-        const target = torch.zeros([32, 10] as const)
+        const target = cpu.zeros([32, 10] as const)
         const loss = logits.sub(target).mul(logits.sub(target)).mean()
 
         // Backward pass
@@ -57,11 +59,11 @@ export const suite: BenchmarkSuite = {
 
         optimizer.zeroGrad()
 
-        const x = torch.randn([32, 784] as const)
+        const x = cpu.randn([32, 784] as const)
         let h = l1.forward(x).relu()
         const logits = l2.forward(h)
 
-        const target = torch.zeros([32, 10] as const)
+        const target = cpu.zeros([32, 10] as const)
         const loss = logits.sub(target).mul(logits.sub(target)).mean()
 
         loss.backward()
@@ -83,7 +85,7 @@ export const suite: BenchmarkSuite = {
 
         optimizer.zeroGrad()
 
-        const x = torch.randn([64, 784] as const)
+        const x = cpu.randn([64, 784] as const)
         let h = l1.forward(x).relu()
         h = l2.forward(h).relu()
         h = l3.forward(h).relu()
@@ -110,7 +112,7 @@ export const suite: BenchmarkSuite = {
         optimizer.zeroGrad()
 
         // Input: [batch, channels, height, width]
-        const x = torch.randn([16, 1, 28, 28] as const)
+        const x = cpu.randn([16, 1, 28, 28] as const)
 
         // Forward: conv -> pool -> flatten -> fc
         let h = conv.forward(x).relu()
@@ -135,7 +137,7 @@ export const suite: BenchmarkSuite = {
         for (let i = 0; i < 5; i++) {
           optimizer.zeroGrad()
 
-          const x = torch.randn([32, 256] as const)
+          const x = cpu.randn([32, 256] as const)
           const y = model.forward(x)
           const loss = y.sum()
 
@@ -151,7 +153,7 @@ export const suite: BenchmarkSuite = {
     bench.add('Linear(256->128) inference only, batch=32', () => {
       run(() => {
         const model = new Linear(256, 128)
-        const x = torch.randn([32, 256] as const)
+        const x = cpu.randn([32, 256] as const)
         return model.forward(x)
       })
     })
@@ -163,7 +165,7 @@ export const suite: BenchmarkSuite = {
 
         optimizer.zeroGrad()
 
-        const x = torch.randn([32, 256] as const)
+        const x = cpu.randn([32, 256] as const)
         const y = model.forward(x)
         const loss = y.sum()
 

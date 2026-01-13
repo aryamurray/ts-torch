@@ -18,10 +18,12 @@
  * Download from: https://www.kaggle.com/datasets/camnugent/california-housing-prices
  */
 
-import { torch } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import { Linear, ReLU } from '@ts-torch/nn'
 import { Adam, mseLoss } from '@ts-torch/optim'
 import { readFileSync, existsSync } from 'node:fs'
+
+const cpu = device.cpu()
 
 // ==================== Configuration ====================
 const CONFIG = {
@@ -328,8 +330,8 @@ function* batchGenerator(
       batchTargets[i] = targets[idx]!
     }
 
-    const X = torch.tensor(Array.from(batchFeatures), [size, numFeatures] as const)
-    const y = torch.tensor(Array.from(batchTargets), [size, 1] as const)
+    const X = cpu.tensor(Array.from(batchFeatures), [size, numFeatures] as const)
+    const y = cpu.tensor(Array.from(batchTargets), [size, 1] as const)
 
     yield { X, y, size }
   }
@@ -375,7 +377,7 @@ async function main() {
       split.trainSize, dataset.numFeatures,
       CONFIG.batchSize, true
     )) {
-      torch.run(() => {
+      run(() => {
         optimizer.zeroGrad()
         const pred = model.forward(batch.X)
         const loss = mseLoss(pred, batch.y)
@@ -396,7 +398,7 @@ async function main() {
       split.valSize, dataset.numFeatures,
       CONFIG.batchSize, false
     )) {
-      torch.run(() => {
+      run(() => {
         const pred = model.forward(batch.X)
         const pArr = pred.toArray() as Float32Array
         const tArr = batch.y.toArray() as Float32Array
@@ -431,7 +433,7 @@ async function main() {
     5, dataset.numFeatures, 5, false
   ).next().value!
 
-  torch.run(() => {
+  run(() => {
     const preds = model.forward(sampleBatch.X)
     const pArr = preds.toArray() as Float32Array
     const tArr = sampleBatch.y.toArray() as Float32Array

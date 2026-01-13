@@ -18,8 +18,10 @@ import type { Tensor, Shape, DType } from '@ts-torch/core'
  *
  * @example
  * ```ts
- * const logits = torch.randn([32, 10])  // 32 samples, 10 classes
- * const targets = torch.tensor([...], [32], torch.int64)
+ * import { device, int64 } from '@ts-torch/core'
+ * const cpu = device.cpu()
+ * const logits = cpu.randn([32, 10] as const)  // 32 samples, 10 classes
+ * const targets = cpu.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [32] as const, int64)
  * const loss = crossEntropyLoss(logits, targets)
  * loss.backward()
  * ```

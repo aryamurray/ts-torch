@@ -5,8 +5,10 @@
  */
 
 import { Bench } from 'tinybench'
-import { torch, run } from '@ts-torch/core'
+import { device, run } from '@ts-torch/core'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
+
+const cpu = device.cpu()
 import { STANDARD_SIZES } from '../lib/utils.js'
 
 export const suite: BenchmarkSuite = {
@@ -26,14 +28,14 @@ export const suite: BenchmarkSuite = {
 
       bench.add(`relu ${label}`, () => {
         run(() => {
-          const a = torch.randn([m, n] as const)
+          const a = cpu.randn([m, n] as const)
           return a.relu()
         })
       })
 
       bench.add(`sigmoid ${label}`, () => {
         run(() => {
-          const a = torch.randn([m, n] as const)
+          const a = cpu.randn([m, n] as const)
           return a.sigmoid()
         })
       })
@@ -45,14 +47,14 @@ export const suite: BenchmarkSuite = {
 
     bench.add(`tanh ${label}`, () => {
       run(() => {
-        const a = torch.randn(mediumSize as const)
+        const a = cpu.randn(mediumSize as const)
         return a.tanh()
       })
     })
 
     bench.add(`exp ${label}`, () => {
       run(() => {
-        const a = torch.randn(mediumSize as const)
+        const a = cpu.randn(mediumSize as const)
         return a.exp()
       })
     })
@@ -60,21 +62,21 @@ export const suite: BenchmarkSuite = {
     bench.add(`log ${label}`, () => {
       run(() => {
         // Use abs to avoid log of negative numbers
-        const a = torch.randn(mediumSize as const)
+        const a = cpu.randn(mediumSize as const)
         return a.mul(a).addScalar(0.1).log() // log(x^2 + 0.1)
       })
     })
 
     bench.add(`sqrt ${label}`, () => {
       run(() => {
-        const a = torch.randn(mediumSize as const)
+        const a = cpu.randn(mediumSize as const)
         return a.mul(a).sqrt() // sqrt(x^2) = |x|
       })
     })
 
     bench.add(`neg ${label}`, () => {
       run(() => {
-        const a = torch.randn(mediumSize as const)
+        const a = cpu.randn(mediumSize as const)
         return a.neg()
       })
     })
@@ -89,14 +91,14 @@ export const suite: BenchmarkSuite = {
     for (const [batch, classes] of softmaxSizes) {
       bench.add(`softmax [${batch}, ${classes}] dim=1`, () => {
         run(() => {
-          const a = torch.randn([batch, classes] as const)
+          const a = cpu.randn([batch, classes] as const)
           return a.softmax(1)
         })
       })
 
       bench.add(`logSoftmax [${batch}, ${classes}] dim=1`, () => {
         run(() => {
-          const a = torch.randn([batch, classes] as const)
+          const a = cpu.randn([batch, classes] as const)
           return a.logSoftmax(1)
         })
       })
