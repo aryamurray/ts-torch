@@ -5,7 +5,12 @@
  * parameter management for training.
  */
 
-import type { Shape, DType, Device } from '@ts-torch/core'
+import type { Shape, DType } from '@ts-torch/core'
+
+/**
+ * Device type for tensor placement
+ */
+type DeviceType = 'cpu' | 'cuda' | 'mps'
 
 /**
  * Tensor interface matching core implementation
@@ -25,6 +30,15 @@ export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType
   transpose(dim0: number, dim1: number): Tensor<any, D>
   escape(): this
   free(): void
+
+  // Device operations
+  to(device: DeviceType): Tensor<S, D>
+  cpu(): Tensor<S, D>
+  cuda(index?: number): Tensor<S, D>
+
+  // Gradient operations
+  detach(): Tensor<S, D>
+  requiresGrad: boolean
 }
 
 /**
@@ -243,9 +257,24 @@ export abstract class Module<
    * @param device - Target device
    * @returns this for chaining
    */
-  to(_device: Device): this {
-    // TODO: Implement device transfer
-    // For now, this is a no-op
+  to(device: DeviceType): this {
+    // Move all parameters to the device
+    // We detach first to create a fresh leaf tensor, then move and re-enable gradients
+    for (const param of this.parameters()) {
+      const wasRequiresGrad = param.data.requiresGrad
+      // Detach to break gradient history, move to device, then set as leaf with gradients
+      const moved = param.data.detach().to(device)
+      if (wasRequiresGrad) {
+        moved.requiresGrad = true
+      }
+      param.data = moved
+    }
+
+    // Recursively move submodules
+    for (const child of this._modules.values()) {
+      child.to(device)
+    }
+
     return this
   }
 

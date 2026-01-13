@@ -23,6 +23,15 @@ endif()
 # Find PyTorch/LibTorch
 # Users should set CMAKE_PREFIX_PATH to point to libtorch installation
 # Example: cmake -DCMAKE_PREFIX_PATH=/path/to/libtorch ..
+
+# Workaround for CUDA 12.x where nvToolsExt is header-only (nvtx3)
+# LibTorch's cmake expects CUDA::nvToolsExt target which doesn't exist in CUDA 12.x
+find_package(CUDAToolkit QUIET)
+if(CUDAToolkit_FOUND AND NOT TARGET CUDA::nvToolsExt)
+  add_library(CUDA::nvToolsExt INTERFACE IMPORTED)
+  target_include_directories(CUDA::nvToolsExt INTERFACE "${CUDAToolkit_INCLUDE_DIRS}")
+endif()
+
 find_package(Torch REQUIRED)
 
 # Ensure we use the same C++ ABI as PyTorch

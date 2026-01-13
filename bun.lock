@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "ts-tools",
+      "dependencies": {
+        "@ts-torch-cuda/shared": "workspace:*",
+      },
       "devDependencies": {
         "@types/adm-zip": "^0.5.7",
         "@types/node": "^25.0.5",

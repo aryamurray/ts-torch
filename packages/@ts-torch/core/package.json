@@ -11,11 +11,13 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
     "./ffi": {
+      "bun": "./src/ffi/index.ts",
       "types": "./dist/ffi/index.d.ts",
       "import": "./dist/ffi/index.js"
     }
@@ -26,6 +28,7 @@
   "scripts": {
     "build": "tsc",
     "build:native": "bun run scripts/build-native.ts",
+    "build:native:cuda": "bun run ../../../scripts/build-native-cuda.ts",
     "dev": "tsc --watch",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",

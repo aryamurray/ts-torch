@@ -8,6 +8,12 @@
       "outputs": ["native/build/**"],
       "env": ["LIBTORCH", "LIBTORCH_PATH"]
     },
+    "@ts-torch/core#build:native:cuda": {
+      "cache": false,
+      "inputs": ["native/src/**", "native/include/**", "native/CMakeLists.txt"],
+      "outputs": ["native/build-cuda/**"],
+      "env": ["LIBTORCH_CUDA", "LIBTORCH_CUDA_PATH"]
+    },
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],

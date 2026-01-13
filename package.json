@@ -14,8 +14,10 @@
   ],
   "scripts": {
     "setup": "bun run scripts/setup-libtorch.ts",
+    "setup:cuda": "bun run scripts/setup-libtorch-cuda.ts",
     "build": "turbo run build",
     "build:native": "turbo run build:native",
+    "build:native:cuda": "turbo run build:native:cuda",
     "dev": "turbo run dev",
     "lint": "oxlint --fix",
     "lint:check": "oxlint",
@@ -35,6 +37,9 @@
     "bench:optim": "bun run benchmark/index.ts --category optim",
     "bench:ffi": "bun run benchmark/index.ts --filter ffi",
     "bench:json": "bun run benchmark/index.ts --json"
+  },
+  "dependencies": {
+    "@ts-torch-cuda/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

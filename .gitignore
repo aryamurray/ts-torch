@@ -25,6 +25,7 @@ coverage
 .next/
 out/
 build
+build-cuda
 dist
 
 # TypeScript
@@ -60,3 +61,4 @@ yarn-error.log*
 #LLM
 claude.md
 .claude
+.build-meta.json
