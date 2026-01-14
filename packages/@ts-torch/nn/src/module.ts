@@ -6,6 +6,7 @@
  */
 
 import type { Shape, DType, DeviceType } from '@ts-torch/core'
+import type { StateDict } from './checkpoint.js'
 
 /**
  * Tensor interface matching core implementation
@@ -337,6 +338,136 @@ export abstract class Module<
     for (const param of this.parameters()) {
       param.zeroGrad()
     }
+  }
+
+  /**
+   * Get a serializable state dictionary containing all parameters
+   *
+   * @returns Record mapping parameter names to TensorData
+   *
+   * @example
+   * ```ts
+   * const state = model.stateDict()
+   * await saveCheckpoint('./model.ckpt', { tensors: state })
+   * ```
+   */
+  stateDict(): StateDict {
+    const state: StateDict = {}
+
+    for (const [name, param] of this.namedParameters()) {
+      const tensor = param.data
+      let data: Float32Array
+      let shape: number[]
+
+      // Extract data from tensor
+      if (typeof (tensor as any).toArray === 'function') {
+        const arr = (tensor as any).toArray()
+        data = arr instanceof Float32Array ? arr : new Float32Array(arr)
+      } else if ((tensor as any).data) {
+        data = new Float32Array((tensor as any).data)
+      } else {
+        // Fallback: create empty array
+        data = new Float32Array(0)
+      }
+
+      // Extract shape from tensor
+      if (Array.isArray((tensor as any).shape)) {
+        shape = (tensor as any).shape
+      } else if (tensor.shape) {
+        shape = Array.isArray(tensor.shape) ? tensor.shape : [tensor.shape]
+      } else {
+        shape = [data.length]
+      }
+
+      state[name] = { data, shape, dtype: 'float32' }
+    }
+
+    return state
+  }
+
+  /**
+   * Load parameters from a state dictionary
+   *
+   * @param state - State dictionary from stateDict() or checkpoint
+   * @param strict - If true (default), throws if keys don't match exactly
+   *
+   * @example
+   * ```ts
+   * const checkpoint = await loadCheckpoint('./model.ckpt')
+   * model.loadStateDict(checkpoint.tensors)
+   * ```
+   */
+  loadStateDict(state: StateDict, strict: boolean = true): void {
+    const currentParams = this.namedParameters()
+    const stateKeys = new Set(Object.keys(state))
+    const paramKeys = new Set(currentParams.keys())
+
+    if (strict) {
+      // Check for missing keys
+      for (const key of paramKeys) {
+        if (!stateKeys.has(key)) {
+          throw new Error(`Missing key in state dict: ${key}`)
+        }
+      }
+      // Check for unexpected keys
+      for (const key of stateKeys) {
+        if (!paramKeys.has(key)) {
+          throw new Error(`Unexpected key in state dict: ${key}`)
+        }
+      }
+    }
+
+    // Load parameters
+    for (const [name, param] of currentParams) {
+      const tensorData = state[name]
+      if (!tensorData) continue
+
+      const paramData = param.data as any
+
+      // Try different methods to copy data
+      if (typeof paramData.copy === 'function') {
+        // Create tensor from loaded data
+        // This depends on the tensor implementation having a way to create from data
+        // For now, we copy element by element
+        if (typeof paramData.set === 'function') {
+          paramData.set(tensorData.data)
+        } else if (paramData.data && paramData.data.set) {
+          paramData.data.set(tensorData.data)
+        }
+      } else if (typeof paramData.set === 'function') {
+        paramData.set(tensorData.data)
+      } else if (paramData.data && typeof paramData.data.set === 'function') {
+        paramData.data.set(tensorData.data)
+      }
+    }
+  }
+
+  /**
+   * Save model to file
+   *
+   * @param path - File path to save to
+   * @param metadata - Optional metadata to include
+   */
+  async save(path: string, metadata: Record<string, unknown> = {}): Promise<void> {
+    const { saveCheckpoint } = await import('./checkpoint.js')
+    await saveCheckpoint(path, {
+      tensors: this.stateDict(),
+      metadata,
+    })
+  }
+
+  /**
+   * Load model from file
+   *
+   * @param path - File path to load from
+   * @param strict - If true (default), throws if keys don't match
+   * @returns Metadata from checkpoint
+   */
+  async load(path: string, strict: boolean = true): Promise<Record<string, unknown>> {
+    const { loadCheckpoint } = await import('./checkpoint.js')
+    const checkpoint = await loadCheckpoint(path)
+    this.loadStateDict(checkpoint.tensors, strict)
+    return checkpoint.metadata ?? {}
   }
 
   /**

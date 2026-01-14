@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": "."
+  },
+  "include": ["packages", "apps", "examples", "benchmark", "scripts"],
+  "exclude": ["node_modules"],
+  "references": [
+    { "path": "./packages" },
+    { "path": "./examples" },
+    { "path": "./benchmark" }
+  ]
+}

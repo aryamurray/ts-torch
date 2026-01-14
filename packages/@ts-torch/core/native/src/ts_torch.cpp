@@ -1700,3 +1700,114 @@ ts_TensorHandle ts_tensor_narrow(
         return nullptr;
     }
 }
+
+// Element-wise minimum of two tensors
+ts_TensorHandle ts_tensor_minimum(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_Error* error
+) {
+    try {
+        if (!a || !b) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::minimum(a->tensor, b->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// Element-wise maximum of two tensors
+ts_TensorHandle ts_tensor_maximum(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_Error* error
+) {
+    try {
+        if (!a || !b) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::maximum(a->tensor, b->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// Clamp tensor values to range [min, max]
+ts_TensorHandle ts_tensor_clamp(
+    ts_TensorHandle tensor,
+    double min_val,
+    double max_val,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::clamp(tensor->tensor, min_val, max_val);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// Clamp tensor values to minimum
+ts_TensorHandle ts_tensor_clamp_min(
+    ts_TensorHandle tensor,
+    double min_val,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::clamp_min(tensor->tensor, min_val);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// Clamp tensor values to maximum
+ts_TensorHandle ts_tensor_clamp_max(
+    ts_TensorHandle tensor,
+    double max_val,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::clamp_max(tensor->tensor, max_val);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}

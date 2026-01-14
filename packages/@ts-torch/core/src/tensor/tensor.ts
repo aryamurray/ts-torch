@@ -682,7 +682,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * const mean = a.mean(); // Tensor(2.5)
    * ```
    */
-  mean(): Tensor<readonly [], D> {
+mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
@@ -691,6 +691,83 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     checkNull(handle, 'Failed to compute mean')
 
     return new Tensor<readonly [], D>(handle!, [] as const, this.dtype)
+  }
+
+  /**
+   * Sum along a specific dimension
+   *
+   * @param dim - Dimension to reduce
+   * @param keepdim - Whether to keep the reduced dimension (default: false)
+   * @returns Tensor with sum along the specified dimension
+   *
+   * @example
+   * ```ts
+   * const a = fromArray([[1, 2, 3], [4, 5, 6]], [2, 3], DType.float32);
+   * const b = a.sumDim(1); // [6, 15] - sum along columns
+   * const c = a.sumDim(0); // [5, 7, 9] - sum along rows
+   * const d = a.sumDim(1, true); // [[6], [15]] - keep dimension
+   * ```
+   */
+  sumDim(dim: number, keepdim: boolean = false): Tensor<Shape, DType<string>> {
+    this._checkValid()
+    validateDimension(dim, this.ndim, 'dim')
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_sum_dim(this._handle, BigInt(dim), keepdim ? 1 : 0, err),
+    )
+
+    checkNull(handle, 'Failed to compute sum along dimension')
+
+    // Compute output shape
+    const newShape = [...this.shape] as number[]
+    if (keepdim) {
+      newShape[dim] = 1
+    } else {
+      newShape.splice(dim, 1)
+    }
+
+    // Query actual dtype from result tensor
+    const dtypeValue = withError((err) => lib.ts_tensor_dtype(handle!, err)) as number
+    const resultDtype = getDTypeFromValue(dtypeValue)
+
+    return new Tensor<Shape, DType<string>>(handle!, newShape as unknown as Shape, resultDtype)
+  }
+
+  /**
+   * Mean along a specific dimension
+   *
+   * @param dim - Dimension to reduce
+   * @param keepdim - Whether to keep the reduced dimension (default: false)
+   * @returns Tensor with mean along the specified dimension
+   *
+   * @example
+   * ```ts
+   * const a = fromArray([[1, 2, 3], [4, 5, 6]], [2, 3], DType.float32);
+   * const b = a.meanDim(1); // [2, 5] - mean along columns
+   * const c = a.meanDim(0); // [2.5, 3.5, 4.5] - mean along rows
+   * ```
+   */
+  meanDim(dim: number, keepdim: boolean = false): Tensor<Shape, D> {
+    this._checkValid()
+    validateDimension(dim, this.ndim, 'dim')
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_mean_dim(this._handle, BigInt(dim), keepdim ? 1 : 0, err),
+    )
+
+    checkNull(handle, 'Failed to compute mean along dimension')
+
+    // Compute output shape
+    const newShape = [...this.shape] as number[]
+    if (keepdim) {
+      newShape[dim] = 1
+    } else {
+      newShape.splice(dim, 1)
+    }
+
+    return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
   }
 
   // ==================== Activations ====================
@@ -871,6 +948,146 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     const handle = withError((err) => lib.ts_tensor_sqrt(this._handle, err))
 
     checkNull(handle, 'Failed to apply sqrt')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Element-wise tanh activation
+   *
+   * @returns New tensor with tanh applied to each element
+   *
+   * @example
+   * ```ts
+   * const a = fromArray([[0, 1], [-1, 2]], [2, 2], DType.float32);
+   * const b = a.tanh(); // [[0, 0.7616], [-0.7616, 0.9640]]
+   * ```
+   */
+  tanh(): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_tanh(this._handle, err))
+
+    checkNull(handle, 'Failed to apply tanh')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Element-wise minimum of two tensors
+   *
+   * @param other - Tensor to compare with (must be same shape)
+   * @returns New tensor with element-wise minimum
+   *
+   * @example
+   * ```ts
+   * const a = fromArray([[1, 5], [3, 2]], [2, 2], DType.float32);
+   * const b = fromArray([[2, 4], [1, 6]], [2, 2], DType.float32);
+   * const c = a.minimum(b); // [[1, 4], [1, 2]]
+   * ```
+   */
+  minimum(other: Tensor<S, D>): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_minimum(this._handle, other._handle, err))
+
+    checkNull(handle, 'Failed to compute minimum')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Element-wise maximum of two tensors
+   *
+   * @param other - Tensor to compare with (must be same shape)
+   * @returns New tensor with element-wise maximum
+   *
+   * @example
+   * ```ts
+   * const a = fromArray([[1, 5], [3, 2]], [2, 2], DType.float32);
+   * const b = fromArray([[2, 4], [1, 6]], [2, 2], DType.float32);
+   * const c = a.maximum(b); // [[2, 5], [3, 6]]
+   * ```
+   */
+  maximum(other: Tensor<S, D>): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_maximum(this._handle, other._handle, err))
+
+    checkNull(handle, 'Failed to compute maximum')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Clamp tensor values to a range [min, max]
+   *
+   * @param min - Minimum value
+   * @param max - Maximum value
+   * @returns New tensor with values clamped to range
+   *
+   * @example
+   * ```ts
+   * const a = fromArray([[0.1, 0.9], [1.5, -0.5]], [2, 2], DType.float32);
+   * const b = a.clamp(0, 1); // [[0.1, 0.9], [1.0, 0.0]]
+   * ```
+   */
+  clamp(min: number, max: number): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_clamp(this._handle, min, max, err))
+
+    checkNull(handle, 'Failed to clamp tensor')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Clamp tensor values to a minimum
+   *
+   * @param min - Minimum value
+   * @returns New tensor with values clamped to minimum
+   *
+   * @example
+   * ```ts
+   * const a = fromArray([[-1, 0.5], [2, -3]], [2, 2], DType.float32);
+   * const b = a.clampMin(0); // [[0, 0.5], [2, 0]]
+   * ```
+   */
+  clampMin(min: number): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_clamp_min(this._handle, min, err))
+
+    checkNull(handle, 'Failed to clamp tensor to minimum')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Clamp tensor values to a maximum
+   *
+   * @param max - Maximum value
+   * @returns New tensor with values clamped to maximum
+   *
+   * @example
+   * ```ts
+   * const a = fromArray([[1, 3], [2, 5]], [2, 2], DType.float32);
+   * const b = a.clampMax(3); // [[1, 3], [2, 3]]
+   * ```
+   */
+  clampMax(max: number): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_clamp_max(this._handle, max, err))
+
+    checkNull(handle, 'Failed to clamp tensor to maximum')
 
     return new Tensor<S, D>(handle!, this.shape, this.dtype)
   }

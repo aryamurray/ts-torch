@@ -502,9 +502,39 @@ export const FFI_SYMBOLS = {
     returns: ptr,
   },
 
-  // ts_tensor_narrow(tensor, dim, start, length, error) -> TensorHandle (view, zero-copy)
+// ts_tensor_narrow(tensor, dim, start, length, error) -> TensorHandle (view, zero-copy)
   ts_tensor_narrow: {
     args: [ptr, i64, i64, i64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_minimum(a, b, error) -> TensorHandle (element-wise min)
+  ts_tensor_minimum: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_maximum(a, b, error) -> TensorHandle (element-wise max)
+  ts_tensor_maximum: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_clamp(tensor, min, max, error) -> TensorHandle
+  ts_tensor_clamp: {
+    args: [ptr, f64, f64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_clamp_min(tensor, min, error) -> TensorHandle
+  ts_tensor_clamp_min: {
+    args: [ptr, f64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_clamp_max(tensor, max, error) -> TensorHandle
+  ts_tensor_clamp_max: {
+    args: [ptr, f64, ptr] as const,
     returns: ptr,
   },
 } as const

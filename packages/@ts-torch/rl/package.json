@@ -1,0 +1,56 @@
+{
+  "name": "@ts-torch/rl",
+  "version": "0.1.0",
+  "description": "Declarative reinforcement learning for ts-torch",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "bun": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aryamurray/ts-torch.git",
+    "directory": "packages/@ts-torch/rl"
+  },
+  "bugs": {
+    "url": "https://github.com/aryamurray/ts-torch/issues"
+  },
+  "homepage": "https://github.com/aryamurray/ts-torch#readme",
+  "scripts": {
+    "build": "vite build",
+    "dev": "tsc --watch",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@ts-torch/core": "workspace:*",
+    "@ts-torch/nn": "workspace:*",
+    "@ts-torch/optim": "workspace:*"
+  },
+  "devDependencies": {
+    "@ts-torch/test-utils": "workspace:*",
+    "typescript": "5.9.2",
+    "vitest": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -14,6 +14,8 @@ export default defineConfig({
       external: [
         // Workspace dependencies
         '@ts-torch/core',
+        '@ts-torch/nn',
+        '@ts-torch/optim',
         // Node built-ins (both with and without node: prefix)
         'path',
         'fs',

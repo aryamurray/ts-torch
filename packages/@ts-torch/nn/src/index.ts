@@ -66,6 +66,17 @@ export * from './modules/dropout.js'
 // Functional API (stateless operations)
 export * as F from './functional.js'
 
+// Checkpoint / Serialization
+export {
+  saveCheckpoint,
+  loadCheckpoint,
+  encodeCheckpoint,
+  decodeCheckpoint,
+  float32Tensor,
+  paramsToTensors,
+} from './checkpoint.js'
+export type { TensorData, CheckpointData, StateDict } from './checkpoint.js'
+
 /**
  * Functional namespace (alternative import style)
  *

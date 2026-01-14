@@ -563,6 +563,42 @@ TS_TORCH_API ts_TensorHandle ts_tensor_narrow(
     ts_Error* error
 );
 
+// Element-wise minimum of two tensors
+TS_TORCH_API ts_TensorHandle ts_tensor_minimum(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_Error* error
+);
+
+// Element-wise maximum of two tensors
+TS_TORCH_API ts_TensorHandle ts_tensor_maximum(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_Error* error
+);
+
+// Clamp tensor values to range [min, max]
+TS_TORCH_API ts_TensorHandle ts_tensor_clamp(
+    ts_TensorHandle tensor,
+    double min_val,
+    double max_val,
+    ts_Error* error
+);
+
+// Clamp tensor values to minimum
+TS_TORCH_API ts_TensorHandle ts_tensor_clamp_min(
+    ts_TensorHandle tensor,
+    double min_val,
+    ts_Error* error
+);
+
+// Clamp tensor values to maximum
+TS_TORCH_API ts_TensorHandle ts_tensor_clamp_max(
+    ts_TensorHandle tensor,
+    double max_val,
+    ts_Error* error
+);
+
 #ifdef __cplusplus
 }
 #endif
