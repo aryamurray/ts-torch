@@ -14,13 +14,20 @@ export default defineConfig({
       external: [
         // Workspace dependencies
         '@ts-torch/core',
-        // Node built-ins
+        // Node built-ins (both with and without node: prefix)
         'path',
         'fs',
         'url',
         'module',
         'os',
-        'process'
+        'process',
+        'node:os',
+        'node:path',
+        'node:fs',
+        'node:url',
+        'node:module',
+        'node:process',
+        'node:worker_threads'
       ],
     },
     sourcemap: true,
