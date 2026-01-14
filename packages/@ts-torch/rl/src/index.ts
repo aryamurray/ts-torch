@@ -52,8 +52,8 @@ export type { EnvConfig, StepResult } from './environment.js'
 
 // ==================== Vectorized Environments ====================
 
-export { DummyVecEnv, dummyVecEnv, isDiscreteActionSpace, isContinuousActionSpace, getSpaceFlatSize, getNumActions } from './vec-env/index.js'
-export type { VecEnv, VecEnvStepResult, EnvInfo, DummyVecEnvConfig } from './vec-env/index.js'
+export { DummyVecEnv, vecEnv, dummyVecEnv, isDiscreteActionSpace, isContinuousActionSpace, getSpaceFlatSize, getNumActions } from './vec-env/index.js'
+export type { VecEnv, VecEnvStepResult, EnvInfo, VecEnvConfig } from './vec-env/index.js'
 
 // ==================== Buffers ====================
 
@@ -142,7 +142,7 @@ export type { CartPoleState } from './envs/index.js'
 
 import { env } from './environment.js'
 import { dqn, ppo, a2c, sac } from './agents/index.js'
-import { dummyVecEnv } from './vec-env/index.js'
+import { vecEnv } from './vec-env/index.js'
 import { discrete, box } from './spaces/index.js'
 import { actorCriticPolicy, mlpPolicy, sacPolicy } from './policies/index.js'
 import { scalarize, sampleSimplex, normalizeWeights, uniformWeights, weightGrid } from './utils/index.js'
@@ -153,8 +153,12 @@ import { CartPole, CartPoleRaw } from './envs/index.js'
  *
  * @example
  * ```ts
- * // Create vectorized environment
- * const vecEnv = RL.vecEnv.dummy(() => RL.envs.CartPole(), { nEnvs: 8 })
+ * // Declarative API (recommended)
+ * const vecEnv = RL.vecEnv({
+ *   env: RL.envs.CartPole(),
+ *   nEnvs: 8,
+ *   type: 'dummy'
+ * })
  *
  * // Create PPO agent
  * const agent = RL.ppo({
@@ -173,15 +177,18 @@ export const RL = {
   env,
 
   /**
-   * Vectorized environment factories
+   * Create a vectorized environment (declarative API)
+   * 
+   * @example
+   * ```ts
+   * const vecEnv = RL.vecEnv({
+   *   env: RL.envs.CartPole(),
+   *   nEnvs: 8,
+   *   type: 'dummy'  // or 'subproc' for parallel
+   * })
+   * ```
    */
-  vecEnv: {
-    /**
-     * Create a DummyVecEnv (sequential execution)
-     * @see dummyVecEnv
-     */
-    dummy: dummyVecEnv,
-  },
+  vecEnv,
 
   /**
    * Action and observation spaces

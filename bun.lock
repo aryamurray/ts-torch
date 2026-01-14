@@ -42,6 +42,7 @@
         "@ts-torch/datasets": "workspace:*",
         "@ts-torch/nn": "workspace:*",
         "@ts-torch/optim": "workspace:*",
+        "@ts-torch/rl": "workspace:*",
         "@ts-torch/train": "workspace:*",
       },
       "devDependencies": {

@@ -55,7 +55,9 @@ export class Adam extends Optimizer {
 
     for (const group of this.paramGroups) {
       for (const param of group.params) {
-        const grad = (param as any).grad as Tensor | null
+        // Handle both raw Tensor and Parameter wrapper
+        const tensor = 'data' in param ? (param as any).data : param
+        const grad = (tensor as any).grad as Tensor | null
         if (!grad) continue
 
         // Get or initialize state
@@ -93,7 +95,7 @@ export class Adam extends Optimizer {
         // Apply weight decay to gradient if needed
         let g = grad
         if (weightDecay !== 0) {
-          g = (grad as any).add((param as any).mulScalar(weightDecay)) as Tensor
+          g = (grad as any).add((tensor as any).mulScalar(weightDecay)) as Tensor
         }
 
         // Update biased first moment: exp_avg = beta1 * exp_avg + (1 - beta1) * g
@@ -142,7 +144,7 @@ export class Adam extends Optimizer {
         const update = (m_hat as any).div(denom) as Tensor
 
         // param -= lr * update (in-place)
-        ;(param as any).addScaledInplace(update, -lr)
+        ;(tensor as any).addScaledInplace(update, -lr)
       }
     }
   }
@@ -150,8 +152,10 @@ export class Adam extends Optimizer {
   override zeroGrad(): void {
     for (const group of this.paramGroups) {
       for (const param of group.params) {
-        if ('zeroGrad' in param && typeof (param as any).zeroGrad === 'function') {
-          ;(param as any).zeroGrad()
+        // Handle both raw Tensor and Parameter wrapper
+        const tensor = 'data' in param ? (param as any).data : param
+        if ('zeroGrad' in tensor && typeof (tensor as any).zeroGrad === 'function') {
+          ;(tensor as any).zeroGrad()
         }
       }
     }

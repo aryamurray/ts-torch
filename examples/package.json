@@ -4,13 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "mnist": "bun run mnist.ts"
+    "mnist": "bun run mnist.ts",
+    "ppo-cartpole": "bun run ppo-cartpole.ts"
   },
   "dependencies": {
     "@ts-torch/core": "workspace:*",
     "@ts-torch/datasets": "workspace:*",
     "@ts-torch/nn": "workspace:*",
     "@ts-torch/optim": "workspace:*",
+    "@ts-torch/rl": "workspace:*",
     "@ts-torch/train": "workspace:*"
   },
   "devDependencies": {

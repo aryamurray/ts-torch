@@ -15,7 +15,11 @@
  */
 
 import type { Tensor } from '@ts-torch/core'
+import { device as deviceModule } from '@ts-torch/core'
 import type { Distribution } from './base.js'
+
+// CPU device for tensor creation
+const cpu = deviceModule.cpu()
 
 // Constants
 const LOG_2PI = Math.log(2 * Math.PI)
@@ -220,10 +224,8 @@ export class DiagGaussianDistribution implements Distribution<readonly [number, 
    * @returns Log probability tensor [batch] (summed over action dims)
    */
   logProbTensor(actions: Float32Array): any {
-    const { fromArray } = require('@ts-torch/core')
-
     // Create action tensor [batch, actionDim]
-    const actionTensor = fromArray(actions, [this.batchSize, this.actionDim] as const)
+    const actionTensor = cpu.tensor(actions, [this.batchSize, this.actionDim] as const)
 
     // diff = action - mean [batch, actionDim]
     const diff = (actionTensor as any).sub(this.mean_)
@@ -241,7 +243,7 @@ export class DiagGaussianDistribution implements Distribution<readonly [number, 
           expanded[b * this.actionDim + a] = Math.max(LOG_STD_MIN, Math.min(LOG_STD_MAX, logStdArray[a]!))
         }
       }
-      logStdTensor = fromArray(expanded, [this.batchSize, this.actionDim] as const)
+      logStdTensor = cpu.tensor(expanded, [this.batchSize, this.actionDim] as const)
     } else {
       logStdTensor = this.logStd_
     }
@@ -276,10 +278,8 @@ export class DiagGaussianDistribution implements Distribution<readonly [number, 
    * @returns Scalar loss tensor connected to mean (and logStd if learnable)
    */
   policyGradientLoss(actions: Float32Array, advantages: Float32Array): any {
-    const { fromArray } = require('@ts-torch/core')
-    
     // Create action tensor [batch, actionDim]
-    const actionTensor = fromArray(actions, [this.batchSize, this.actionDim] as const)
+    const actionTensor = cpu.tensor(actions, [this.batchSize, this.actionDim] as const)
     
     // diff = action - mean [batch, actionDim]
     const diff = (actionTensor as any).sub(this.mean_)
@@ -298,7 +298,7 @@ export class DiagGaussianDistribution implements Distribution<readonly [number, 
           expanded[b * this.actionDim + a] = Math.max(LOG_STD_MIN, Math.min(LOG_STD_MAX, logStdArray[a]!))
         }
       }
-      logStdTensor = fromArray(expanded, [this.batchSize, this.actionDim] as const)
+      logStdTensor = cpu.tensor(expanded, [this.batchSize, this.actionDim] as const)
     } else {
       logStdTensor = this.logStd_
     }
@@ -336,7 +336,7 @@ export class DiagGaussianDistribution implements Distribution<readonly [number, 
         advantagesExpanded[b * this.actionDim + a] = advantages[b]! / this.actionDim  // Divide by actionDim to normalize
       }
     }
-    const advantagesTensor = fromArray(advantagesExpanded, [this.batchSize, this.actionDim] as const)
+    const advantagesTensor = cpu.tensor(advantagesExpanded, [this.batchSize, this.actionDim] as const)
     
     // weighted = log_prob_elements * advantages [batch, actionDim]
     const weighted = (logProbElements as any).mul(advantagesTensor)
@@ -355,8 +355,6 @@ export class DiagGaussianDistribution implements Distribution<readonly [number, 
    * @returns Scalar entropy tensor
    */
   meanEntropyTensor(): any {
-    const { fromArray } = require('@ts-torch/core')
-    
     // Get log_std as tensor
     let logStdTensor: any
     if (this.logStd_.shape.length === 1) {
@@ -367,7 +365,7 @@ export class DiagGaussianDistribution implements Distribution<readonly [number, 
           expanded[b * this.actionDim + a] = Math.max(LOG_STD_MIN, Math.min(LOG_STD_MAX, logStdArray[a]!))
         }
       }
-      logStdTensor = fromArray(expanded, [this.batchSize, this.actionDim] as const)
+      logStdTensor = cpu.tensor(expanded, [this.batchSize, this.actionDim] as const)
     } else {
       logStdTensor = this.logStd_
     }
@@ -416,8 +414,7 @@ export class DiagGaussianDistribution implements Distribution<readonly [number, 
     data: Float32Array,
     shape: S,
   ): Tensor<S> {
-    const { fromArray } = require('@ts-torch/core')
-    return fromArray(data, shape)
+    return cpu.tensor(data, shape as any) as Tensor<S>
   }
 }
 

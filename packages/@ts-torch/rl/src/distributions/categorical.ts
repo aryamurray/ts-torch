@@ -15,7 +15,11 @@
  */
 
 import type { Tensor } from '@ts-torch/core'
+import { device as deviceModule } from '@ts-torch/core'
 import type { Distribution } from './base.js'
+
+// CPU device for tensor creation
+const cpu = deviceModule.cpu()
 
 /**
  * Categorical distribution for discrete action spaces
@@ -240,8 +244,7 @@ export class CategoricalDistribution implements Distribution<readonly [number]> 
     }
     
     // Create tensors for one-hot and advantages
-    const { fromArray } = require('@ts-torch/core')
-    const oneHotTensor = fromArray(oneHot, [this.batchSize, this.nActions] as const)
+    const oneHotTensor = cpu.tensor(oneHot, [this.batchSize, this.nActions] as const)
     
     // Expand advantages to [batch, nActions] for element-wise multiply
     const advantagesExpanded = new Float32Array(this.batchSize * this.nActions)
@@ -250,7 +253,7 @@ export class CategoricalDistribution implements Distribution<readonly [number]> 
         advantagesExpanded[b * this.nActions + a] = advantages[b]!
       }
     }
-    const advantagesTensor = fromArray(advantagesExpanded, [this.batchSize, this.nActions] as const)
+    const advantagesTensor = cpu.tensor(advantagesExpanded, [this.batchSize, this.nActions] as const)
     
     // selected_log_probs = log_probs * one_hot [batch, nActions]
     // policy_gradient = selected_log_probs * advantages [batch, nActions]
@@ -285,9 +288,7 @@ export class CategoricalDistribution implements Distribution<readonly [number]> 
    * Create a Float32 tensor from data
    */
   private createTensor(data: Float32Array): Tensor<readonly [number]> {
-    // Import fromArray dynamically to avoid circular deps
-    const { fromArray } = require('@ts-torch/core')
-    return fromArray(data, [this.batchSize] as const)
+    return cpu.tensor(data, [this.batchSize] as const)
   }
 
   /**
@@ -296,8 +297,7 @@ export class CategoricalDistribution implements Distribution<readonly [number]> 
   private createActionTensor(data: Int32Array): Tensor<readonly [number]> {
     // Convert to Float32 for tensor creation (actions stored as floats)
     const floatData = new Float32Array(data)
-    const { fromArray } = require('@ts-torch/core')
-    return fromArray(floatData, [this.batchSize] as const)
+    return cpu.tensor(floatData, [this.batchSize] as const)
   }
 }
 

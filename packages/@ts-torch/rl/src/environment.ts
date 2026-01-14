@@ -126,17 +126,25 @@ export interface EnvConfig<S> {
  */
 export class FunctionalEnv<S> {
   private state: S
-  private readonly config: EnvConfig<S>
+  private readonly config_: EnvConfig<S>
   private currentStep: number = 0
   private observationSize_: number | undefined
 
   constructor(config: EnvConfig<S>) {
-    this.config = config
+    this.config_ = config
     this.state = config.createState()
 
     // Cache observation size from first observation
     const obs = config.observe(this.state)
     this.observationSize_ = obs.length
+  }
+
+  /**
+   * Get the environment configuration (for cloning)
+   * @internal
+   */
+  get config(): EnvConfig<S> {
+    return this.config_
   }
 
   /**

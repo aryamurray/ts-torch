@@ -47,7 +47,12 @@ export abstract class Optimizer {
   }
 
   private isTensor(obj: unknown): obj is Tensor {
-    return obj instanceof Object && 'shape' in obj && 'dtype' in obj
+    if (!(obj instanceof Object)) return false
+    // Check for direct Tensor (has shape and dtype)
+    if ('shape' in obj && 'dtype' in obj) return true
+    // Check for Parameter wrapper (has data.shape and data.dtype)
+    if ('data' in obj && obj.data instanceof Object && 'shape' in obj.data && 'dtype' in obj.data) return true
+    return false
   }
 
   private validateParamGroups(): void {

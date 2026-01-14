@@ -293,18 +293,19 @@ export class PPO extends OnPolicyAlgorithm {
   /**
    * Clip gradients by global norm
    * 
-   * Note: This is a simplified implementation. Full gradient clipping
-   * requires in-place gradient modification which isn't fully supported yet.
-   * The gradient norm is computed but clipping is a no-op for now.
+   * Scales all parameter gradients so that the global norm <= maxNorm.
+   * Uses the formula: grad = grad * (maxNorm / totalNorm) when totalNorm > maxNorm
    */
   private clipGradients(maxNorm: number): void {
     const params = this.policy.parameters()
+    const grads: any[] = []
     let totalNormSq = 0
 
-    // Compute total gradient norm
+    // Compute total gradient norm and collect gradients
     for (const param of params) {
       const grad = (param as any).grad
       if (grad) {
+        grads.push(grad)
         const gradNormSq = ((grad as any).mul(grad) as any).sum().item?.() ?? 0
         totalNormSq += gradNormSq
       }
@@ -312,13 +313,20 @@ export class PPO extends OnPolicyAlgorithm {
 
     const totalNorm = Math.sqrt(totalNormSq)
 
-    // Log if gradient norm exceeds threshold (clipping not fully implemented)
-    if (totalNorm > maxNorm && this.verbose > 1) {
-      console.log(`Gradient norm ${totalNorm.toFixed(4)} exceeds max ${maxNorm}`)
+    // Clip gradients if norm exceeds threshold
+    if (totalNorm > maxNorm) {
+      const clipCoef = maxNorm / (totalNorm + 1e-6)
+      
+      // Scale each gradient: grad = grad * clipCoef
+      // Using addScaledInplace: grad += (clipCoef - 1) * grad = clipCoef * grad
+      for (const grad of grads) {
+        ;(grad as any).addScaledInplace(grad, clipCoef - 1)
+      }
+      
+      if (this.verbose > 1) {
+        console.log(`Gradient norm ${totalNorm.toFixed(4)} clipped to ${maxNorm}`)
+      }
     }
-
-    // TODO: Implement actual gradient clipping when in-place operations are available
-    // For now, the large gradients may cause instability - consider reducing learning rate
   }
 }
 

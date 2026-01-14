@@ -19,7 +19,7 @@
  * ```
  */
 
-import type { FunctionalEnv } from '../environment.js'
+import { FunctionalEnv } from '../environment.js'
 import type { Space } from '../spaces/index.js'
 import { discrete } from '../spaces/discrete.js'
 import { box } from '../spaces/box.js'
@@ -72,7 +72,7 @@ export class DummyVecEnv<S> implements VecEnv {
   /**
    * Create a DummyVecEnv
    *
-   * @param envFactory - Factory function that creates a new environment
+   * @param envFactory - Factory function that creates environment instances
    * @param config - Configuration options
    */
   constructor(
@@ -82,7 +82,7 @@ export class DummyVecEnv<S> implements VecEnv {
     this.nEnvs_ = config.nEnvs
     this.rewardDim_ = config.rewardDim ?? 1
 
-    // Create environment instances
+    // Create environment instances using factory
     this.envs = []
     for (let i = 0; i < this.nEnvs_; i++) {
       this.envs.push(envFactory())
@@ -275,15 +275,20 @@ export class DummyVecEnv<S> implements VecEnv {
 // ==================== Factory ====================
 
 /**
- * Create a DummyVecEnv
+ * Create a DummyVecEnv (legacy API)
  *
+ * @deprecated Use RL.vecEnv({ env, nEnvs }) instead
  * @param envFactory - Factory function that creates a new environment
  * @param config - Configuration options
  * @returns DummyVecEnv instance
  *
  * @example
  * ```ts
+ * // Legacy API
  * const vecEnv = dummyVecEnv(() => CartPole(), { nEnvs: 8 })
+ * 
+ * // New declarative API (preferred)
+ * const vecEnv = RL.vecEnv({ env: RL.envs.CartPole(), nEnvs: 8 })
  * ```
  */
 export function dummyVecEnv<S>(
