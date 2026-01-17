@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch-cuda/shared",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Shared utilities for ts-torch CUDA packages",
   "type": "module",
   "main": "index.ts",

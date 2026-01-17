@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch-cuda/linux-x64-cu118",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "CUDA 11.8 enabled ts-torch for Linux x64",
   "license": "MIT",
   "type": "module",

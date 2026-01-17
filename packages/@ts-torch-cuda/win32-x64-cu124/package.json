@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch-cuda/win32-x64-cu124",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "CUDA 12.4 enabled ts-torch for Windows x64",
   "license": "MIT",
   "type": "module",

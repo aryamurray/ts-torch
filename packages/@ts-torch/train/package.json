@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch/train",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Declarative training API for ts-torch",
   "files": [
     "dist"
@@ -12,7 +12,6 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
@@ -41,12 +40,12 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@ts-torch/core": "workspace:*",
-    "@ts-torch/nn": "workspace:*",
-    "@ts-torch/optim": "workspace:*"
+    "@ts-torch/core": "^0.1.0",
+    "@ts-torch/nn": "^0.1.0",
+    "@ts-torch/optim": "^0.1.0"
   },
   "devDependencies": {
-    "@ts-torch/test-utils": "workspace:*",
+    "@ts-torch/test-utils": "^0.1.0",
     "typescript": "5.9.2",
     "vitest": "^4.0.0"
   },

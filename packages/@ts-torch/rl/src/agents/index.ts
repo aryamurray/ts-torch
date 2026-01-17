@@ -18,7 +18,7 @@ export type { OnPolicyConfig } from './on-policy-base.js'
 
 // PPO
 export { PPO, ppo } from './ppo.js'
-export type { PPOConfig, PPODef } from './ppo.js'
+export type { PPOConfig, PPODef, PPOAgent } from './ppo.js'
 
 // A2C
 export { A2C, a2c } from './a2c.js'

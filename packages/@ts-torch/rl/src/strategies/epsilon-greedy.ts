@@ -103,6 +103,15 @@ export class EpsilonGreedyStrategy {
   }
 
   /**
+   * Set epsilon to a specific value
+   *
+   * @param value - The epsilon value to set (clamped to [endEpsilon, 1.0])
+   */
+  setEpsilon(value: number): void {
+    this.epsilon = Math.max(this.endEpsilon, Math.min(1.0, value))
+  }
+
+  /**
    * Current epsilon value
    */
   get currentEpsilon(): number {

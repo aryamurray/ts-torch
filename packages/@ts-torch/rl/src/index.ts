@@ -77,7 +77,7 @@ export type { CallbackLocals, BaseAlgorithmRef, Logger } from './callbacks/index
 
 // Base classes (new SB3-style)
 export { BaseAlgorithm, OnPolicyAlgorithm, OffPolicyAlgorithm, PPO, ppo, A2C, a2c, SAC, sac } from './agents/index.js'
-export type { Schedule, LearnConfig, BaseAlgorithmConfig, OnPolicyConfig, OffPolicyConfig, PPOConfig, PPODef, A2CConfig, A2CDef, SACConfig, SACDef } from './agents/index.js'
+export type { Schedule, LearnConfig, BaseAlgorithmConfig, OnPolicyConfig, OffPolicyConfig, PPOConfig, PPODef, PPOAgent, A2CConfig, A2CDef, SACConfig, SACDef } from './agents/index.js'
 
 // Legacy agents
 export { DQNAgent, dqn, isMOAgent } from './agents/index.js'

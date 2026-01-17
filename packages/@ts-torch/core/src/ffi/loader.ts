@@ -424,7 +424,7 @@ export function getLibraryPath(): string {
     const packagePath = require.resolve(`${packageName}/package.json`)
     // Handle both forward and backward slashes (Windows uses backslashes)
     const packageDir = packagePath.replace(/[/\\]package\.json$/, '')
-    const libPath = join(packageDir, libFileName)
+    const libPath = join(packageDir, 'lib', libFileName)
 
     if (existsSync(libPath)) {
       return libPath

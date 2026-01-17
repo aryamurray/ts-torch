@@ -1,0 +1,246 @@
+# ts-torch API Reference for LLMs
+
+This document describes the CORRECT ts-torch API patterns. When generating code for ts-torch, follow these patterns exactly.
+
+## Core Philosophy
+
+ts-torch separates **configuration** (cheap, pure JS objects) from **memory allocation** (expensive C++ bindings).
+
+- Configuration: Define models, devices, pipelines as plain objects
+- Initialization: Call `.init(device)` to allocate memory
+- Memory scope: Use `run(() => {...})` for automatic cleanup
+
+## Imports
+
+```ts
+// CORRECT - Use the unified torch import
+import { device, run, nn, optim, rl, Data } from '@ts-torch/torch'
+
+// CORRECT - Or import from specific packages
+import { device, run } from '@ts-torch/core'
+import { nn } from '@ts-torch/nn'
+import { Adam } from '@ts-torch/optim'
+import { RL } from '@ts-torch/rl'
+```
+
+## Device Context
+
+```ts
+// CORRECT - lowercase device namespace
+const cpu = device.cpu()
+const cuda = device.cuda(0)
+const mps = device.mps()
+
+// WRONG - Do not use DeviceContext directly
+const cpu = DeviceContext.cpu()  // WRONG
+```
+
+## Tensor Creation
+
+```ts
+// CORRECT - Create tensors via device context
+const x = cuda.zeros([784, 128])
+const y = cuda.randn([128, 10])
+const z = cpu.tensor([[1, 2], [3, 4]])
+
+// WRONG - Do not use Tensor.from() directly
+const x = Tensor.from(array, [m, n])  // WRONG - imperative style
+```
+
+## Neural Network Definition
+
+The declarative pattern: define configuration first, then initialize.
+
+```ts
+// CORRECT - Declarative model definition
+// Step 1: Define architecture (no memory allocated - just JS objects)
+const ActorConfig = nn.sequence(18,           // input size
+  nn.fc(128).tanh(),                          // hidden layer with activation
+  nn.fc(128).tanh(),
+  nn.fc(4)                                    // output layer
+)
+
+const CriticConfig = nn.sequence(18,
+  nn.fc(128).tanh(),
+  nn.fc(128).tanh(),
+  nn.fc(1)
+)
+
+// Step 2: Initialize on device (memory allocated here)
+const actor = ActorConfig.init(device.cuda(0))
+const critic = CriticConfig.init(device.cuda(0))
+
+// WRONG - Do not mix configuration and initialization
+const actor = nn.sequence(18, nn.fc(128).tanh()).init(device.cpu())  // OK but less clear
+```
+
+### Available Block Methods
+
+```ts
+nn.fc(outFeatures)           // Fully-connected layer
+  .relu()                    // ReLU activation
+  .gelu()                    // GELU activation
+  .tanh()                    // Tanh activation
+  .sigmoid()                 // Sigmoid activation
+  .leakyRelu(0.01)          // LeakyReLU with slope
+  .softmax(-1)              // Softmax on dimension
+  .dropout(0.2)             // Dropout probability
+  .batchNorm()              // Batch normalization
+  .noBias()                 // Disable bias term
+  .withInit('xavier_uniform') // Weight initialization
+```
+
+## Optimizers
+
+```ts
+// CORRECT
+const optimizer = new Adam([...actor.parameters(), ...critic.parameters()], {
+  lr: 0.0005,
+  betas: [0.9, 0.999]
+})
+
+// Training step
+optimizer.zeroGrad()
+loss.backward()
+optimizer.step()
+```
+
+## Memory-Scoped Operations
+
+```ts
+// CORRECT - Use run() for automatic memory management
+const result = run(() => {
+  const a = cuda.randn([100, 100])
+  const b = cuda.randn([100, 100])
+  const c = a.matmul(b)
+  return c.escape()  // Keep this tensor alive outside scope
+})
+
+// All tensors except escaped ones are freed when run() exits
+```
+
+## Reinforcement Learning (Declarative)
+
+For RL, prefer the high-level declarative API:
+
+```ts
+// CORRECT - Declarative RL (recommended for most use cases)
+import { RL } from '@ts-torch/rl'
+import { device } from '@ts-torch/core'
+
+// 1. Create vectorized environment
+const vecEnv = RL.vecEnv({
+  env: RL.envs.CartPole(),
+  nEnvs: 8,
+  type: 'dummy'
+})
+
+// 2. Create agent with configuration
+const agent = RL.ppo({
+  policy: {
+    netArch: { pi: [64, 64], vf: [64, 64] }
+  },
+  learningRate: 3e-4,
+  nSteps: 2048,
+  batchSize: 64,
+  nEpochs: 10,
+}).init(device.cuda(0), vecEnv)
+
+// 3. Train (SB3-style API)
+await agent.learn({ totalTimesteps: 1_000_000 })
+
+// 4. Inference
+const action = agent.predict(observation, { deterministic: true })
+```
+
+### Custom Environment
+
+```ts
+import { RL, type VecEnv, type VecEnvStepResult } from '@ts-torch/rl'
+
+// Define environment with declarative config
+const myEnv = RL.env({
+  observationSpace: RL.spaces.box({
+    low: Array(18).fill(-3),
+    high: Array(18).fill(3),
+    shape: [18]
+  }),
+  actionSpace: RL.spaces.box({
+    low: Array(4).fill(-1),
+    high: Array(4).fill(1),
+    shape: [4]
+  }),
+  reset: () => ({ observation: new Float32Array(18), info: {} }),
+  step: (action) => ({
+    observation: new Float32Array(18),
+    reward: 0,
+    terminated: false,
+    truncated: false,
+    info: {}
+  })
+})
+```
+
+## Model Persistence
+
+```ts
+import { saveCheckpoint, loadCheckpoint } from '@ts-torch/nn'
+
+// Save
+await saveCheckpoint({
+  actor: actor.stateDict(),
+  critic: critic.stateDict(),
+  metadata: { step: 1000 }
+}, './model.pt')
+
+// Load
+const checkpoint = await loadCheckpoint('./model.pt')
+actor.loadStateDict(checkpoint.actor)
+critic.loadStateDict(checkpoint.critic)
+```
+
+## Data Loading
+
+```ts
+import { Data } from '@ts-torch/core'
+
+// Declarative data pipeline
+const loader = Data.from(dataset)
+  .shuffle()
+  .batch(32)
+  .prefetch(2)
+
+for await (const batch of loader) {
+  // batch.inputs, batch.targets
+}
+```
+
+## Anti-Patterns (DO NOT USE)
+
+```ts
+// WRONG: Imperative tensor creation
+const x = new Tensor(data)           // Use device.tensor() instead
+const y = Tensor.from(arr, shape)    // Use device.tensor() instead
+
+// WRONG: Manual memory management
+const ptr = tensor.dataPtr()         // Use run() scopes instead
+tensor.dispose()                     // Use run() scopes instead
+
+// WRONG: Mixing config and init in one expression for complex models
+const model = nn.sequence(...).init(device)  // Split for clarity
+
+// WRONG: Imperative RL training loops
+while (true) {                       // Use agent.learn() instead
+  const action = policy.forward(obs)
+  const result = env.step(action)
+  // manual training...
+}
+```
+
+## Summary
+
+1. Use `device.cpu()` / `device.cuda(0)` for device contexts
+2. Define models with `nn.sequence(inputSize, ...blocks)` then call `.init(device)`
+3. Use `run(() => {...})` for memory-scoped operations
+4. Use `RL.ppo({...}).init(device, env)` for RL agents
+5. Prefer declarative configuration over imperative construction

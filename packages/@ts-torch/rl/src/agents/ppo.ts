@@ -333,13 +333,41 @@ export class PPO extends OnPolicyAlgorithm {
 // ==================== Factory ====================
 
 /**
+ * Initialized PPO agent - the type returned by `ppo({...}).init(device, env)`
+ *
+ * This is a type alias for `PPO` to make annotations clearer.
+ *
+ * @example
+ * ```ts
+ * import type { PPOAgent } from '@ts-torch/rl'
+ *
+ * const agent: PPOAgent = RL.ppo({...}).init(device, env)
+ * await agent.learn({ totalTimesteps: 1_000_000 })
+ * const action = agent.predict(observation)
+ * ```
+ */
+export type PPOAgent = PPO
+
+/**
  * PPO configuration definition (before env/device)
  */
 export interface PPODef {
   /**
    * Initialize PPO on a device with an environment
+   *
+   * @param device - Device context (e.g., `device.cuda(0)` or `device.cpu()`)
+   * @param env - Vectorized environment
+   * @returns Initialized PPO agent ready for training
+   *
+   * @example
+   * ```ts
+   * const agent = RL.ppo({
+   *   learningRate: 3e-4,
+   *   nSteps: 2048,
+   * }).init(device.cuda(0), vecEnv)
+   * ```
    */
-  init(device: DeviceContext<DeviceType>, env: VecEnv): PPO
+  init(device: DeviceContext<DeviceType>, env: VecEnv): PPOAgent
 }
 
 /**

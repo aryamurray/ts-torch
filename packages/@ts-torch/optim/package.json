@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch/optim",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Optimizers for ts-torch",
   "files": [
     "dist"
@@ -12,7 +12,6 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
@@ -40,7 +39,7 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "@ts-torch/core": "workspace:*"
+    "@ts-torch/core": "^0.1.0"
   },
   "devDependencies": {
     "typescript": "5.9.2",

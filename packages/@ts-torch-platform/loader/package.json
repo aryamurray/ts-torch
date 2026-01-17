@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch-platform/loader",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Platform-specific binary loader for ts-torch",
   "files": [
     "dist"
@@ -30,11 +30,11 @@
     "typescript": "5.9.2"
   },
   "optionalDependencies": {
-    "@ts-torch-platform/darwin-arm64": "workspace:*",
-    "@ts-torch-platform/darwin-x64": "workspace:*",
-    "@ts-torch-platform/linux-arm64": "workspace:*",
-    "@ts-torch-platform/linux-x64": "workspace:*",
-    "@ts-torch-platform/win32-x64": "workspace:*"
+    "@ts-torch-platform/darwin-arm64": "^0.1.0",
+    "@ts-torch-platform/darwin-x64": "^0.1.0",
+    "@ts-torch-platform/linux-arm64": "^0.1.0",
+    "@ts-torch-platform/linux-x64": "^0.1.0",
+    "@ts-torch-platform/win32-x64": "^0.1.0"
   },
   "engines": {
     "node": ">=18"

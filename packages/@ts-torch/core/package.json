@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch/core",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "description": "Core tensor operations & FFI bindings for ts-torch",
   "files": [
     "dist"
@@ -12,17 +12,13 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs",
-      "default": "./src/index.ts"
+      "require": "./dist/index.cjs"
     },
     "./ffi": {
-      "bun": "./src/ffi/index.ts",
       "types": "./dist/ffi/index.d.ts",
-      "import": "./dist/ffi/index.js",
-      "default": "./src/ffi/index.ts"
+      "import": "./dist/ffi/index.js"
     }
   },
   "publishConfig": {
@@ -49,7 +45,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@ts-torch-platform/loader": "workspace:*",
+    "@ts-torch-platform/loader": "^0.1.0",
     "koffi": "^2.9.0"
   },
   "devDependencies": {

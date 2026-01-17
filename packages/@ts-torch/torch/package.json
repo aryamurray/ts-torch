@@ -1,7 +1,9 @@
 {
-  "name": "@ts-torch/rl",
-  "version": "0.1.2",
-  "description": "Declarative reinforcement learning for ts-torch",
+  "name": "@ts-torch/torch",
+  "version": "0.1.3",
+  "description": "PyTorch bindings for TypeScript/JavaScript",
+  "keywords": ["pytorch", "torch", "tensor", "machine-learning", "deep-learning", "neural-network", "typescript"],
+  "license": "MIT",
   "files": [
     "dist"
   ],
@@ -23,7 +25,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aryamurray/ts-torch.git",
-    "directory": "packages/@ts-torch/rl"
+    "directory": "packages/@ts-torch/torch"
   },
   "bugs": {
     "url": "https://github.com/aryamurray/ts-torch/issues"
@@ -31,23 +33,20 @@
   "homepage": "https://github.com/aryamurray/ts-torch#readme",
   "scripts": {
     "build": "vite build",
-    "dev": "tsc --watch",
-    "check-types": "tsc --noEmit",
-    "lint": "eslint src",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest watch",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
     "@ts-torch/core": "^0.1.0",
     "@ts-torch/nn": "^0.1.0",
-    "@ts-torch/optim": "^0.1.0"
+    "@ts-torch/optim": "^0.1.0",
+    "@ts-torch/datasets": "^0.1.0",
+    "@ts-torch/train": "^0.1.0",
+    "@ts-torch/rl": "^0.1.0"
   },
   "devDependencies": {
-    "@ts-torch/test-utils": "^0.1.0",
     "typescript": "5.9.2",
-    "vitest": "^4.0.0"
+    "vite": "^6.0.0",
+    "vite-plugin-dts": "^4.5.4"
   },
   "engines": {
     "node": ">=18"

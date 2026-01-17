@@ -4,8 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "mnist": "bun run mnist.ts",
-    "ppo-cartpole": "bun run ppo-cartpole.ts"
+    "mnist": "bun run mnist-cpu.ts",
+    "mnist:cuda": "bun run mnist-cuda.ts",
+    "rl:ppo": "bun run rl/ppo-cartpole.ts",
+    "rl:ppo:benchmark": "bun run rl/ppo-cartpole-benchmark.ts",
+    "rl:a2c": "bun run rl/a2c-cartpole.ts",
+    "rl:dqn": "bun run rl/dqn-cartpole.ts"
   },
   "dependencies": {
     "@ts-torch/core": "workspace:*",

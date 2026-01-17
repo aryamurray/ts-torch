@@ -69,8 +69,16 @@ export interface DQNAgentConfig {
   /** Discount factor (default: 0.99) */
   gamma?: number
 
-  /** Target network update frequency in steps (default: 1000) */
+  /** Target network update frequency in steps (default: 500) */
   targetUpdateFreq?: number
+
+  /**
+   * Soft update coefficient (Polyak averaging). Default: 1.0 (hard updates).
+   * - tau=1.0: Hard updates (copy weights entirely) - standard DQN
+   * - tau=0.0001: Soft updates every step - alternative approach
+   * Note: tau values between 0.001-0.1 are known to be unstable.
+   */
+  tau?: number
 
   /** Number of actions (required if not in model) */
   actionSpace?: number
@@ -80,6 +88,12 @@ export interface DQNAgentConfig {
    * If > 1, agent operates in multi-objective mode
    */
   rewardDim?: number
+
+  /**
+   * Maximum gradient norm for clipping (default: 10.0)
+   * Set to 0 to disable gradient clipping.
+   */
+  maxGradNorm?: number
 }
 
 // ==================== Implementation ====================
@@ -98,6 +112,8 @@ export class DQNAgent implements Agent, MOAgent {
   private optimizer: Optimizer
   private readonly gamma: number
   private readonly targetUpdateFreq: number
+  private readonly tau: number
+  private readonly maxGradNorm: number
 
   // State
   private stepCount_: number = 0
@@ -115,7 +131,9 @@ export class DQNAgent implements Agent, MOAgent {
   constructor(config: DQNAgentConfig) {
     this.deviceContext = config.device
     this.gamma = config.gamma ?? 0.99
-    this.targetUpdateFreq = config.targetUpdateFreq ?? 1000
+    this.targetUpdateFreq = config.targetUpdateFreq ?? 500
+    this.tau = config.tau ?? 1.0  // Hard updates by default (matching Nature DQN)
+    this.maxGradNorm = config.maxGradNorm ?? 10.0  // Stable Baselines3 default
     this.rewardDim_ = config.rewardDim ?? 1
 
     // Initialize Q-network from model definition
@@ -235,7 +253,8 @@ export class DQNAgent implements Agent, MOAgent {
       if (batch.weights) {
         loss = this.weightedMseLoss(qValues, targets, batch.weights)
       } else {
-        loss = this.mseLoss(qValues, targets)
+        // Use native mseLoss for proper gradient tracking
+        loss = (qValues as any).mseLoss(targets)
       }
 
       lossValue = this.extractScalar(loss)
@@ -243,22 +262,29 @@ export class DQNAgent implements Agent, MOAgent {
       // Backward pass
       ;(loss as any).backward()
 
+      // Gradient clipping
+      if (this.maxGradNorm > 0) {
+        this.clipGradNorm(this.maxGradNorm)
+      }
+
       // Optimizer step
       this.optimizer.step()
     })
 
-    // Periodic target network sync
+    // Soft update target network every targetUpdateFreq steps
     if (this.stepCount_ % this.targetUpdateFreq === 0) {
-      this.syncTarget()
+      this.softUpdate()
     }
 
     return { loss: lossValue, tdErrors }
   }
 
   /**
-   * Sync target network with online network
+   * Soft update target network with online network using Polyak averaging
+   * target = tau * online + (1 - tau) * target
    */
-  syncTarget(): void {
+  softUpdate(tau?: number): void {
+    const t = tau ?? this.tau
     const onlineParams = this.qNetwork.parameters()
     const targetParams = this.targetNetwork.parameters()
 
@@ -266,11 +292,37 @@ export class DQNAgent implements Agent, MOAgent {
       const onlineData = (onlineParams[i] as any).data
       const targetData = (targetParams[i] as any).data
 
-      // Copy data from online to target
-      if (onlineData && targetData && typeof targetData.copy === 'function') {
-        targetData.copy(onlineData)
+      if (onlineData && targetData) {
+        // target = tau * online + (1 - tau) * target
+        if (typeof targetData.lerp === 'function') {
+          // Use lerp if available: lerp(other, weight) = self + weight * (other - self)
+          targetData.lerp(onlineData, t)
+        } else if (typeof targetData.toArray === 'function') {
+          // Fallback: manual Polyak averaging
+          const onlineArr = onlineData.toArray()
+          const targetArr = targetData.toArray()
+          const result = new Float32Array(targetArr.length)
+
+          for (let j = 0; j < targetArr.length; j++) {
+            result[j] = t * onlineArr[j] + (1 - t) * targetArr[j]
+          }
+
+          // Copy result back to target
+          const shape = targetData.shape ?? [result.length]
+          const newTensor = (this.deviceContext as any).tensor(result, shape)
+          if (typeof targetData.copy === 'function') {
+            targetData.copy(newTensor)
+          }
+        }
       }
     }
+  }
+
+  /**
+   * Hard sync target network with online network (full copy)
+   */
+  syncTarget(): void {
+    this.softUpdate(1.0)
   }
 
   /**
@@ -482,20 +534,26 @@ export class DQNAgent implements Agent, MOAgent {
   }
 
   /**
-   * Gather Q-values for specific actions
+   * Gather Q-values for specific actions using one-hot encoding
+   * 
+   * This maintains the gradient computation graph by using tensor operations:
+   * gathered = (qValues * one_hot).sumDim(1)
    */
   private gatherActions(qValues: Tensor, actions: Int32Array | number[], batchSize: number): Tensor {
-    // This is a simplified implementation - in production would use tensor gather
-    const gathered = new Float32Array(batchSize)
-    const qArray = this.extractArray(qValues)
     const numActions = this.actionSpace_
-
+    
+    // Create one-hot encoding of actions [batch, nActions]
+    const oneHot = new Float32Array(batchSize * numActions)
     for (let i = 0; i < batchSize; i++) {
       const action = typeof actions[i] === 'number' ? actions[i]! : actions[i]!
-      gathered[i] = qArray[i * numActions + action]!
+      oneHot[i * numActions + action] = 1.0
     }
-
-    return this.createTensor(gathered, [batchSize])
+    const oneHotTensor = this.createTensor(oneHot, [batchSize, numActions])
+    
+    // Multiply and sum: (qValues * one_hot).sumDim(1) gives [batch]
+    // This maintains gradients through qValues
+    const masked = (qValues as any).mul(oneHotTensor)
+    return (masked as any).sumDim(1)
   }
 
   /**
@@ -573,6 +631,39 @@ export class DQNAgent implements Agent, MOAgent {
     }
 
     return this.createTensor(new Float32Array([sum / preds.length]), [1])
+  }
+
+  /**
+   * Clip gradients by global norm
+   * Scales all parameter gradients so that the global norm <= maxNorm.
+   */
+  private clipGradNorm(maxNorm: number): void {
+    const params = this.qNetwork.parameters()
+    const grads: any[] = []
+    let totalNormSq = 0
+
+    // Compute total gradient norm and collect gradients
+    for (const param of params) {
+      const grad = (param as any).grad
+      if (grad) {
+        grads.push(grad)
+        const gradNormSq = ((grad as any).mul(grad) as any).sum().item?.() ?? 0
+        totalNormSq += gradNormSq
+      }
+    }
+
+    const totalNorm = Math.sqrt(totalNormSq)
+
+    // Clip gradients if norm exceeds threshold
+    if (totalNorm > maxNorm) {
+      const clipCoef = maxNorm / (totalNorm + 1e-6)
+
+      // Scale each gradient: grad = grad * clipCoef
+      // Using addScaledInplace: grad += (clipCoef - 1) * grad = clipCoef * grad
+      for (const grad of grads) {
+        ;(grad as any).addScaledInplace(grad, clipCoef - 1)
+      }
+    }
   }
 
   /**
