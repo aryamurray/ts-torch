@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "aryamurray/ts-torch" }],
+  "commit": false,
+  "fixed": [
+    ["@ts-torch/core", "@ts-torch/torch", "@ts-torch/nn", "@ts-torch/optim", "@ts-torch/datasets", "@ts-torch/train", "@ts-torch/rl", "@ts-torch-platform/loader", "@ts-torch-platform/linux-x64", "@ts-torch-platform/win32-x64", "@ts-torch-platform/darwin-arm64", "@ts-torch-platform/darwin-x64"]
+  ],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": ["examples", "benchmark"]
+}

@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to npm'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+            lib_name: libts_torch.so
+          - os: windows-latest
+            platform: win32-x64
+            lib_name: ts_torch.dll
+          - os: macos-14
+            platform: darwin-arm64
+            lib_name: libts_torch.dylib
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lukka/get-cmake@latest
+      - uses: oven-sh/setup-bun@v1
+
+      - name: Cache LibTorch
+        uses: actions/cache@v4
+        with:
+          path: libtorch
+          key: libtorch-${{ matrix.platform }}-2.5.1-cpu
+
+      - name: Cache native build
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/@ts-torch/core/native/build
+            packages/@ts-torch-platform/${{ matrix.platform }}/lib
+          key: native-${{ matrix.platform }}-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
+
+      - run: bun install --frozen-lockfile
+      - run: bun run setup
+      - run: bun run build
+      - run: bun run test
+        env:
+          TS_TORCH_LIB: ${{ github.workspace }}/packages/@ts-torch-platform/${{ matrix.platform }}/lib/${{ matrix.lib_name }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-${{ matrix.platform }}
+          path: packages/@ts-torch-platform/${{ matrix.platform }}/lib/
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: oven-sh/setup-bun@v1
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: platform-*
+          merge-multiple: false
+
+      - name: Move platform binaries
+        run: |
+          for platform in linux-x64 win32-x64 darwin-arm64; do
+            if [ -d "platform-$platform" ]; then
+              mkdir -p "packages/@ts-torch-platform/$platform/lib"
+              cp -r "platform-$platform/"* "packages/@ts-torch-platform/$platform/lib/"
+            fi
+          done
+
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+
+      - name: Version and Publish
+        uses: changesets/action@v1
+        with:
+          publish: bun changeset publish
+          version: bun changeset version
+          commit: 'chore: version packages [skip ci]'
+          title: 'chore: version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

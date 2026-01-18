@@ -18,7 +18,7 @@
     "postinstall": "bun run scripts/postinstall.ts"
   },
   "dependencies": {
-    "@ts-torch-cuda/shared": "0.1.0",
+    "@ts-torch-cuda/shared": "workspace:*",
     "adm-zip": "^0.5.16"
   },
   "peerDependencies": {
