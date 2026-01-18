@@ -24,6 +24,7 @@
  * ```
  */
 
+import { Logger } from '@ts-torch/core'
 import type { FunctionalEnv } from './environment.js'
 import { ReplayBuffer, type PERConfig } from './replay-buffer.js'
 import type { Agent } from './agents/base.js'
@@ -393,7 +394,7 @@ export async function fit<S>(
     // Logging
     if (logEvery > 0 && episode % logEvery === 0) {
       const avgReward = recentRewards.reduce((a, b) => a + b, 0) / recentRewards.length
-      console.log(
+      Logger.info(
         `Episode ${episode}/${episodes} | ` +
         `Steps: ${episodeSteps} | ` +
         `Reward: ${scalarReward.toFixed(2)} | ` +
@@ -406,7 +407,7 @@ export async function fit<S>(
     if (targetReward !== undefined && recentRewards.length >= targetRewardWindow) {
       const avgReward = recentRewards.reduce((a, b) => a + b, 0) / recentRewards.length
       if (avgReward >= targetReward) {
-        console.log(`Target reward ${targetReward} reached at episode ${episode}!`)
+        Logger.info(`Target reward ${targetReward} reached at episode ${episode}!`)
         break
       }
     }
@@ -486,7 +487,7 @@ function createScheduler(
   optimizer: Optimizer | null,
 ): LRScheduler | null {
   if (!optimizer) {
-    console.warn('Scheduler configured but no optimizer found on agent')
+    Logger.warn('Scheduler configured but no optimizer found on agent')
     return null
   }
 

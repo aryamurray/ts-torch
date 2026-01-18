@@ -28,6 +28,7 @@
 // ===============================
 
 import { getLib } from './ffi/loader.js'
+import { Logger } from './logger.js'
 
 // ===============================
 // Type Exports
@@ -71,6 +72,13 @@ export { run, runAsync, inScope, scopeDepth } from './memory/scope.js'
 // ===============================
 
 export { DebugMode } from './debug.js'
+
+// ===============================
+// Unified Logger
+// ===============================
+
+export { Logger, verboseToLevel } from './logger.js'
+export type { LogLevel, LogHandler, LoggerConfig } from './logger.js'
 
 // ===============================
 // Declarative Device Context
@@ -140,7 +148,7 @@ export const cuda = {
    */
   synchronize(_deviceIndex = 0): void {
     // TODO: Implement when FFI symbol is available
-    console.warn('cuda.synchronize() not yet implemented')
+    Logger.warn('cuda.synchronize() not yet implemented')
   },
 }
 

@@ -25,7 +25,7 @@
  * ```
  */
 
-import { run, device as deviceModule } from '@ts-torch/core'
+import { run, device as deviceModule, Logger } from '@ts-torch/core'
 import type { DeviceType } from '@ts-torch/core'
 import type { DeviceContext } from '@ts-torch/core'
 import { OnPolicyAlgorithm } from './on-policy-base.js'
@@ -270,17 +270,15 @@ export class PPO extends OnPolicyAlgorithm {
 
         // KL early stopping
         if (this.targetKl !== null && approxKlValue > 1.5 * this.targetKl) {
-          if (this.verbose > 0) {
-            console.log(`Early stopping at epoch ${epoch} due to KL divergence: ${approxKlValue.toFixed(4)}`)
-          }
+          Logger.info(`Early stopping at epoch ${epoch} due to KL divergence: ${approxKlValue.toFixed(4)}`)
           return
         }
       }
     }
 
     // Log metrics
-    if (this.verbose > 1 && nUpdates > 0) {
-      console.log(
+    if (nUpdates > 0) {
+      Logger.debug(
         `PPO Update - ` +
         `Policy Loss: ${(totalPolicyLoss / nUpdates).toFixed(4)}, ` +
         `Value Loss: ${(totalValueLoss / nUpdates).toFixed(4)}, ` +
@@ -323,9 +321,7 @@ export class PPO extends OnPolicyAlgorithm {
         ;(grad as any).addScaledInplace(grad, clipCoef - 1)
       }
       
-      if (this.verbose > 1) {
-        console.log(`Gradient norm ${totalNorm.toFixed(4)} clipped to ${maxNorm}`)
-      }
+      Logger.debug(`Gradient norm ${totalNorm.toFixed(4)} clipped to ${maxNorm}`)
     }
   }
 }

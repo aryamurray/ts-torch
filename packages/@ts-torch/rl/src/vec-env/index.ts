@@ -23,6 +23,7 @@
  * ```
  */
 
+import { Logger } from '@ts-torch/core'
 import type { EnvConfig } from '../environment.js'
 import { FunctionalEnv } from '../environment.js'
 import type { Space } from '../spaces/index.js'
@@ -125,7 +126,7 @@ export function vecEnv<S>(config: VecEnvConfig<S>): DummyVecEnv<S> {
   
   if (type === 'subproc') {
     // Future: implement SubprocVecEnv with worker threads
-    console.warn('subproc not yet implemented, falling back to dummy')
+    Logger.warn('subproc not yet implemented, falling back to dummy')
   }
   
   // Normalize env input to a factory function

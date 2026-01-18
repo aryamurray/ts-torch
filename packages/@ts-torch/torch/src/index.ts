@@ -36,7 +36,20 @@ export type {
   // Training
   LearnConfig,
   Schedule,
-  // Callbacks
+  // Callbacks (declarative)
+  Callbacks,
+  TrainingStartData,
+  TrainingEndData,
+  StepData,
+  EpisodeStartData,
+  EpisodeEndData,
+  RolloutStartData,
+  RolloutEndData,
+  EvalStartData,
+  EvalEndData,
+  CallbackCheckpointData,
+  BestModelData,
+  // Callbacks (class-based)
   BaseCallback,
 } from '@ts-torch/rl'
 

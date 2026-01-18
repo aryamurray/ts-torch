@@ -52,14 +52,15 @@ export interface BaseAlgorithmRef {
   numTimesteps: number
   /** Number of environments */
   nEnvs: number
-  /** Logger for metrics */
-  logger?: Logger | null
+  /** Metrics logger for recording training data */
+  metricsLogger?: MetricsLogger | null
 }
 
 /**
- * Simple logger interface
+ * Metrics logger interface for recording training metrics
+ * Note: This is different from the unified Logger in @ts-torch/core
  */
-export interface Logger {
+export interface MetricsLogger {
   record(key: string, value: number | string): void
   dump(step: number): void
 }
@@ -85,8 +86,8 @@ export abstract class BaseCallback {
   /** Parent callback (for nested callbacks) */
   parent: BaseCallback | null = null
 
-  /** Logger from the algorithm */
-  logger: Logger | null = null
+  /** Metrics logger from the algorithm */
+  logger: MetricsLogger | null = null
 
   /** Verbosity level */
   verbose: number = 0
@@ -101,7 +102,7 @@ export abstract class BaseCallback {
    */
   initCallback(model: BaseAlgorithmRef): void {
     this.model = model
-    this.logger = model.logger ?? null
+    this.logger = model.metricsLogger ?? null
     this._initCallback()
   }
 

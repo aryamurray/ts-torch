@@ -7,6 +7,7 @@ import koffi from 'koffi'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve, join, dirname } from 'node:path'
 import { FFI_SYMBOLS, type FFISymbols } from './symbols.js'
+import { Logger } from '../logger.js'
 
 /**
  * Build metadata for CUDA packages
@@ -132,27 +133,7 @@ const CUDA_VERSIONS = ['cu124', 'cu121', 'cu118']
  */
 let cudaLibPath: string | null = null
 
-/**
- * Debug mode - set TS_TORCH_DEBUG=1 to enable verbose logging
- */
-const DEBUG = process.env.TS_TORCH_DEBUG === '1'
-
-/**
- * Quiet mode - set TS_TORCH_QUIET=1 to suppress all logging
- */
-const QUIET = process.env.TS_TORCH_QUIET === '1'
-
-function debugLog(message: string): void {
-  if (DEBUG && !QUIET) {
-    console.log(`[ts-torch] ${message}`)
-  }
-}
-
-function infoLog(message: string): void {
-  if (!QUIET) {
-    console.log(`[ts-torch] ${message}`)
-  }
-}
+// Logger is configured via TS_TORCH_DEBUG and TS_TORCH_QUIET env vars automatically
 
 /**
  * Cached workspace root path
@@ -181,7 +162,7 @@ function findWorkspaceRoot(): string | null {
   // Start from loader's directory and traverse up
   const loaderDir = import.meta.dirname
   if (!loaderDir) {
-    debugLog('Cannot determine loader directory, workspace detection skipped')
+    Logger.debug('Cannot determine loader directory, workspace detection skipped')
     return null
   }
 
@@ -201,7 +182,7 @@ function findWorkspaceRoot(): string | null {
           const hasWorkspaces = Array.isArray(pkg.workspaces) || typeof pkg.workspaces === 'object'
           if (hasWorkspaces) {
             workspaceRoot = dir
-            debugLog(`Found workspace root via workspaces field: ${dir}`)
+            Logger.debug(`Found workspace root via workspaces field: ${dir}`)
             return workspaceRoot
           }
         }
@@ -213,14 +194,14 @@ function findWorkspaceRoot(): string | null {
     // Check for pnpm workspaces
     if (existsSync(join(dir, 'pnpm-workspace.yaml'))) {
       workspaceRoot = dir
-      debugLog(`Found workspace root via pnpm-workspace.yaml: ${dir}`)
+      Logger.debug(`Found workspace root via pnpm-workspace.yaml: ${dir}`)
       return workspaceRoot
     }
 
     // Check for lerna
     if (existsSync(join(dir, 'lerna.json'))) {
       workspaceRoot = dir
-      debugLog(`Found workspace root via lerna.json: ${dir}`)
+      Logger.debug(`Found workspace root via lerna.json: ${dir}`)
       return workspaceRoot
     }
 
@@ -238,7 +219,7 @@ function findWorkspaceRoot(): string | null {
 
       if (hasPackagesDir || hasAppsDir) {
         workspaceRoot = dir
-        debugLog(`Found workspace root via directory pattern (${hasPackagesDir ? 'packages/' : 'apps/'}): ${dir}`)
+        Logger.debug(`Found workspace root via directory pattern (${hasPackagesDir ? 'packages/' : 'apps/'}): ${dir}`)
         return workspaceRoot
       }
     }
@@ -250,13 +231,13 @@ function findWorkspaceRoot(): string | null {
   while (dir !== root) {
     if (existsSync(join(dir, '.git')) && existsSync(join(dir, 'package.json'))) {
       workspaceRoot = dir
-      debugLog(`Found workspace root via .git directory: ${dir}`)
+      Logger.debug(`Found workspace root via .git directory: ${dir}`)
       return workspaceRoot
     }
     dir = dirname(dir)
   }
 
-  debugLog('No workspace root found')
+  Logger.debug('No workspace root found')
   return null
 }
 
@@ -325,17 +306,17 @@ function isValidCudaBuild(pkgDir: string, libFileName: string, expectedCuda: str
   try {
     const meta: BuildMeta = JSON.parse(readFileSync(metaPath, 'utf-8'))
     if (meta.cuda !== expectedCuda) {
-      debugLog(`Build meta mismatch: expected ${expectedCuda}, got ${meta.cuda}`)
+      Logger.debug(`Build meta mismatch: expected ${expectedCuda}, got ${meta.cuda}`)
       return false
     }
     const expectedPlatform = `${process.platform}-${process.arch}`
     if (meta.platform !== expectedPlatform) {
-      debugLog(`Platform mismatch: expected ${expectedPlatform}, got ${meta.platform}`)
+      Logger.debug(`Platform mismatch: expected ${expectedPlatform}, got ${meta.platform}`)
       return false
     }
     return true
   } catch {
-    debugLog(`Invalid .build-meta.json in ${pkgDir}`)
+    Logger.debug(`Invalid .build-meta.json in ${pkgDir}`)
     return false
   }
 }
@@ -363,7 +344,7 @@ function findCudaLibrary(): string | null {
       const pkgDir = dirname(pkgPath)
 
       if (isValidCudaBuild(pkgDir, libFileName, cudaVer)) {
-        infoLog(`Using CUDA ${cudaVer} library`)
+        Logger.info(`Using CUDA ${cudaVer} library`)
         cudaLibPath = join(pkgDir, 'lib', libFileName)
         return cudaLibPath
       }
@@ -378,7 +359,7 @@ function findCudaLibrary(): string | null {
     for (const cudaVer of CUDA_VERSIONS) {
       const devPath = join(root, 'packages', '@ts-torch-cuda', `${platform}-x64-${cudaVer}`)
       if (existsSync(devPath) && isValidCudaBuild(devPath, libFileName, cudaVer)) {
-        infoLog(`Using CUDA ${cudaVer} library (dev)`)
+        Logger.info(`Using CUDA ${cudaVer} library (dev)`)
         cudaLibPath = join(devPath, 'lib', libFileName)
         return cudaLibPath
       }
@@ -405,7 +386,7 @@ export function getLibraryPath(): string {
     if (existsSync(envPath)) {
       return resolve(envPath)
     }
-    debugLog(`TS_TORCH_LIB set but file not found: ${envPath}`)
+    Logger.debug(`TS_TORCH_LIB set but file not found: ${envPath}`)
   }
 
   // 2. Check for CUDA packages (prefer GPU over CPU)

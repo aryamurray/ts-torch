@@ -6,6 +6,7 @@
  */
 
 import type { DeviceType } from '@ts-torch/core'
+import { Logger } from '@ts-torch/core'
 import type { Optimizer } from '@ts-torch/optim'
 import { Adam } from '@ts-torch/optim'
 import { BaseAlgorithm } from './base-algorithm.js'
@@ -13,6 +14,7 @@ import type { Schedule, BaseAlgorithmConfig } from './base-algorithm.js'
 import { RolloutBuffer } from '../buffers/rollout-buffer.js'
 import type { ActorCriticPolicy, ActorCriticPolicyConfig } from '../policies/index.js'
 import { actorCriticPolicy } from '../policies/index.js'
+import type { StepData, EpisodeEndData } from '../callbacks/types.js'
 
 // ==================== Types ====================
 
@@ -140,6 +142,7 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
    * Collect rollouts from the environment
    *
    * Fills the rollout buffer with experience.
+   * Invokes onStep and onEpisodeEnd callbacks.
    * @returns True to continue training
    */
   protected collectRollouts(): boolean {
@@ -160,6 +163,59 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
 
       // Update timesteps
       this.numTimesteps += this.env.nEnvs
+
+      // Track episode rewards/lengths
+      const episodeRewards = this.currentEpisodeRewards
+      const episodeLengths = this.currentEpisodeLengths
+      if (episodeRewards && episodeLengths) {
+        for (let i = 0; i < this.env.nEnvs; i++) {
+          episodeRewards[i] = (episodeRewards[i] ?? 0) + (stepResult.rewards[i] ?? 0)
+          episodeLengths[i] = (episodeLengths[i] ?? 0) + 1
+        }
+      }
+
+      // Invoke onStep callback
+      if (this.callbacks?.onStep) {
+        const stepData: StepData = {
+          timestep: this.numTimesteps,
+          observations: this.lastObs,
+          actions: envActions,
+          rewards: stepResult.rewards,
+          dones: Array.from(stepResult.dones, d => d === 1),
+          infos: stepResult.infos ?? [],
+        }
+        const continueTraining = this.callbacks.onStep(stepData)
+        if (continueTraining === false) {
+          return false
+        }
+      }
+
+      // Check for episode completions and invoke onEpisodeEnd
+      for (let i = 0; i < this.env.nEnvs; i++) {
+        if (stepResult.dones[i] === 1) {
+          this.episodesCompleted++
+
+          if (this.callbacks?.onEpisodeEnd && this.currentEpisodeRewards && this.currentEpisodeLengths) {
+            const episodeEndData: EpisodeEndData = {
+              envIndex: i,
+              episodeReward: this.currentEpisodeRewards[i]!,
+              episodeLength: this.currentEpisodeLengths[i]!,
+              timestep: this.numTimesteps,
+              info: stepResult.infos?.[i] ?? {},
+            }
+            const continueTraining = this.callbacks.onEpisodeEnd(episodeEndData)
+            if (continueTraining === false) {
+              return false
+            }
+          }
+
+          // Reset episode tracking for this env
+          if (this.currentEpisodeRewards && this.currentEpisodeLengths) {
+            this.currentEpisodeRewards[i] = 0
+            this.currentEpisodeLengths[i] = 0
+          }
+        }
+      }
 
       // Store in buffer
       this.rolloutBuffer.add(
@@ -233,6 +289,6 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
    */
   async save(_path: string): Promise<void> {
     // TODO: Implement checkpointing
-    console.warn('save() not yet fully implemented')
+    Logger.warn('save() not yet fully implemented')
   }
 }

@@ -1,16 +1,41 @@
+import { Logger } from './logger.js'
+
 /**
  * Debug mode for runtime shape validation.
  * Enabled via TS_TORCH_DEBUG=1 or NODE_ENV=development
+ *
+ * Note: DebugMode is synchronized with the unified Logger system.
+ * Setting Logger.setLevel('debug') will also enable DebugMode, and vice versa.
  */
 export const DebugMode = {
-  enabled: process.env.TS_TORCH_DEBUG === '1' || process.env.NODE_ENV === 'development',
+  /**
+   * Whether debug mode is enabled.
+   * Synchronized with Logger's debug level.
+   */
+  get enabled(): boolean {
+    return Logger.isEnabled('debug')
+  },
+
+  set enabled(value: boolean) {
+    if (value) {
+      Logger.setLevel('debug')
+    } else {
+      // Only downgrade if currently at debug level
+      if (Logger.getLevel() === 'debug') {
+        Logger.setLevel('info')
+      }
+    }
+  },
 
   enable(): void {
-    this.enabled = true
+    Logger.setLevel('debug')
   },
 
   disable(): void {
-    this.enabled = false
+    // Downgrade to info level when disabling debug mode
+    if (Logger.getLevel() === 'debug') {
+      Logger.setLevel('info')
+    }
   },
 }
 

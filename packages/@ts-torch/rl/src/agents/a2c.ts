@@ -23,7 +23,7 @@
  * ```
  */
 
-import { run, device as deviceModule } from '@ts-torch/core'
+import { run, device as deviceModule, Logger } from '@ts-torch/core'
 import type { DeviceType } from '@ts-torch/core'
 import type { DeviceContext } from '@ts-torch/core'
 import { OnPolicyAlgorithm } from './on-policy-base.js'
@@ -206,8 +206,8 @@ export class A2C extends OnPolicyAlgorithm {
             }
           }
           const totalNorm = Math.sqrt(totalNormSq)
-          if (totalNorm > this.maxGradNorm && this.verbose > 1) {
-            console.log(`Gradient norm ${totalNorm.toFixed(4)} exceeds max ${this.maxGradNorm}`)
+          if (totalNorm > this.maxGradNorm) {
+            Logger.debug(`Gradient norm ${totalNorm.toFixed(4)} exceeds max ${this.maxGradNorm}`)
           }
         }
 
@@ -221,14 +221,12 @@ export class A2C extends OnPolicyAlgorithm {
       })
 
       // Log metrics
-      if (this.verbose > 1) {
-        console.log(
-          `A2C Update - ` +
-          `Policy Loss: ${policyLossValue.toFixed(4)}, ` +
-          `Value Loss: ${valueLossValue.toFixed(4)}, ` +
-          `Entropy: ${entropyValue.toFixed(4)}`,
-        )
-      }
+      Logger.debug(
+        `A2C Update - ` +
+        `Policy Loss: ${policyLossValue.toFixed(4)}, ` +
+        `Value Loss: ${valueLossValue.toFixed(4)}, ` +
+        `Entropy: ${entropyValue.toFixed(4)}`,
+      )
     }
   }
 }

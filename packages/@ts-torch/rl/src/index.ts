@@ -71,7 +71,24 @@ export type { ActorCriticPolicyConfig, ActorCriticPolicyDef, PolicySpaces, NetAr
 // ==================== Callbacks ====================
 
 export { BaseCallback, CallbackList, StopTrainingCallback, EpisodeTrackingCallback, callbackList, maybeCallback } from './callbacks/index.js'
-export type { CallbackLocals, BaseAlgorithmRef, Logger } from './callbacks/index.js'
+export type {
+  CallbackLocals,
+  BaseAlgorithmRef,
+  MetricsLogger,
+  // Declarative callback types
+  Callbacks,
+  TrainingStartData,
+  TrainingEndData,
+  StepData,
+  EpisodeStartData,
+  EpisodeEndData,
+  RolloutStartData,
+  RolloutEndData,
+  EvalStartData,
+  EvalEndData,
+  CheckpointData as CallbackCheckpointData,  // Aliased to avoid conflict with nn's CheckpointData
+  BestModelData,
+} from './callbacks/index.js'
 
 // ==================== Agents ====================
 

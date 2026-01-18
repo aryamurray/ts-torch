@@ -610,30 +610,6 @@ export class DQNAgent implements Agent, MOAgent {
   }
 
   /**
-   * MSE loss computation
-   */
-  private mseLoss(predictions: Tensor, targets: Tensor): Tensor {
-    // Use tensor operations if available, otherwise fallback
-    if (typeof (predictions as any).sub === 'function') {
-      const diff = (predictions as any).sub(targets)
-      const squared = (diff as any).mul(diff)
-      return (squared as any).mean()
-    }
-
-    // Fallback: manual MSE
-    const preds = this.extractArray(predictions)
-    const targs = this.extractArray(targets)
-    let sum = 0
-
-    for (let i = 0; i < preds.length; i++) {
-      const diff = preds[i]! - targs[i]!
-      sum += diff * diff
-    }
-
-    return this.createTensor(new Float32Array([sum / preds.length]), [1])
-  }
-
-  /**
    * Clip gradients by global norm
    * Scales all parameter gradients so that the global norm <= maxNorm.
    */

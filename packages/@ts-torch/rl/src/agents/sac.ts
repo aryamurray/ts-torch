@@ -25,7 +25,7 @@
  * ```
  */
 
-import { run, device as deviceModule, Tensor } from '@ts-torch/core'
+import { run, device as deviceModule, Tensor, Logger } from '@ts-torch/core'
 import type { DeviceType, DeviceContext } from '@ts-torch/core'
 import type { Optimizer } from '@ts-torch/optim'
 import { Adam } from '@ts-torch/optim'
@@ -357,11 +357,11 @@ export class SAC extends OffPolicyAlgorithm {
     }
 
     // Log stats
-    if (this.verbose > 1 && this.actorLosses.length > 0) {
+    if (this.actorLosses.length > 0) {
       const avgActorLoss = this.actorLosses.reduce((a, b) => a + b, 0) / this.actorLosses.length
       const avgCriticLoss = this.criticLosses.reduce((a, b) => a + b, 0) / this.criticLosses.length
 
-      console.log(
+      Logger.debug(
         `SAC Update - ` +
         `Actor Loss: ${avgActorLoss.toFixed(4)}, ` +
         `Critic Loss: ${avgCriticLoss.toFixed(4)}, ` +
@@ -421,7 +421,7 @@ export class SAC extends OffPolicyAlgorithm {
    */
   async save(path: string): Promise<void> {
     // TODO: Implement checkpoint saving
-    console.log(`Saving SAC to ${path}`)
+    Logger.info(`Saving SAC to ${path}`)
   }
 
   /**

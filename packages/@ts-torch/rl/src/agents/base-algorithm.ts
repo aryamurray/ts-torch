@@ -12,8 +12,17 @@
 
 import type { DeviceType } from '@ts-torch/core'
 import type { DeviceContext } from '@ts-torch/core'
+import { Logger, verboseToLevel } from '@ts-torch/core'
 import type { VecEnv } from '../vec-env/index.js'
-import type { BaseCallback, Logger } from '../callbacks/index.js'
+import type {
+  BaseCallback,
+  MetricsLogger,
+  Callbacks,
+  TrainingStartData,
+  TrainingEndData,
+  RolloutStartData,
+  RolloutEndData,
+} from '../callbacks/index.js'
 import { maybeCallback } from '../callbacks/index.js'
 
 // ==================== Types ====================
@@ -26,18 +35,72 @@ export type Schedule = number | ((progressRemaining: number) => number)
 
 /**
  * Configuration for learn()
+ *
+ * @example
+ * ```ts
+ * await agent.learn({
+ *   totalTimesteps: 100_000,
+ *
+ *   // Declarative callbacks (recommended)
+ *   callbacks: {
+ *     onEpisodeEnd: ({ episodeReward }) => {
+ *       console.log(`Episode reward: ${episodeReward}`)
+ *       if (episodeReward > 500) return false  // early stop
+ *     },
+ *     onTrainingEnd: ({ finalReward }) => {
+ *       console.log(`Final reward: ${finalReward}`)
+ *     }
+ *   },
+ *
+ *   // Built-in behaviors
+ *   checkpointFreq: 50_000,
+ *   checkpointPath: './models/ppo',
+ *   logInterval: 1000
+ * })
+ * ```
  */
 export interface LearnConfig {
   /** Total number of timesteps to train */
   totalTimesteps: number
-  /** Callback or array of callbacks */
+
+  // ===== Callbacks =====
+  /**
+   * Declarative callbacks (recommended).
+   * Simple inline functions for common hooks.
+   */
+  callbacks?: Callbacks
+
+  /**
+   * Class-based callback (legacy/advanced).
+   * Use for complex callback logic or callback composition.
+   * @deprecated Prefer `callbacks` for most use cases
+   */
   callback?: BaseCallback | BaseCallback[]
+
+  // ===== Built-in Behaviors =====
   /** Reset timestep counter (default: true) */
   resetNumTimesteps?: boolean
-  /** Log interval in timesteps (0 = no logging) */
+
+  /** Log interval in timesteps (0 = no logging, default: 0) */
   logInterval?: number
+
   /** Show progress bar (default: false) */
   progressBar?: boolean
+
+  /** Save checkpoint every N steps (0 = disabled) */
+  checkpointFreq?: number
+
+  /** Path to save checkpoints (required if checkpointFreq > 0) */
+  checkpointPath?: string
+
+  /** Evaluate every N steps (0 = disabled) */
+  evalFreq?: number
+
+  /** Separate environment for evaluation */
+  evalEnv?: VecEnv
+
+  /** Number of episodes per evaluation (default: 5) */
+  evalEpisodes?: number
 }
 
 /**
@@ -81,23 +144,39 @@ export abstract class BaseAlgorithm {
   /** Current iteration (rollout count) */
   protected iteration: number = 0
 
-  /** Verbosity level */
+  /** Verbosity level (0=warn, 1=info, 2=debug) */
   protected verbose: number
 
-  /** Logger for metrics */
-  logger: Logger | null = null
+  /** Metrics logger for recording training data */
+  metricsLogger: MetricsLogger | null = null
 
-  /** Current callback */
+  /** Current callback (legacy class-based) */
   protected callback: BaseCallback | null = null
+
+  /** Declarative callbacks */
+  protected callbacks: Callbacks | null = null
 
   /** Whether the model has been set up */
   protected isSetup: boolean = false
+
+  /** Training start time for metrics */
+  protected trainingStartTime: number = 0
+
+  /** Episode tracking for callbacks */
+  protected episodesCompleted: number = 0
+  protected currentEpisodeRewards: Float32Array | null = null
+  protected currentEpisodeLengths: Uint32Array | null = null
 
   constructor(config: BaseAlgorithmConfig) {
     this.env = config.env
     this.device_ = config.device
     this.learningRate = config.learningRate
     this.verbose = config.verbose ?? 0
+
+    // Set Logger level based on verbose setting
+    if (this.verbose > 0) {
+      Logger.setLevel(verboseToLevel(this.verbose))
+    }
   }
 
   /**
@@ -158,6 +237,7 @@ export abstract class BaseAlgorithm {
   async learn(config: LearnConfig): Promise<this> {
     const {
       totalTimesteps,
+      callbacks,
       callback,
       resetNumTimesteps = true,
       logInterval = 0,
@@ -173,36 +253,68 @@ export abstract class BaseAlgorithm {
     if (resetNumTimesteps) {
       this.numTimesteps = 0
       this.iteration = 0
+      this.episodesCompleted = 0
     }
 
     this.numTimestepsAtStart = this.numTimesteps
     this.totalTimesteps = totalTimesteps
+    this.trainingStartTime = Date.now()
 
-    // Setup callback
+    // Setup declarative callbacks
+    this.callbacks = callbacks ?? null
+
+    // Setup legacy class-based callback
     this.callback = maybeCallback(callback)
     if (this.callback) {
       this.callback.initCallback(this)
     }
 
-    // Training start callback
+    // Initialize episode tracking
+    this.currentEpisodeRewards = new Float32Array(this.nEnvs)
+    this.currentEpisodeLengths = new Uint32Array(this.nEnvs)
+
+    // Training start callbacks
+    const trainingStartData: TrainingStartData = {
+      totalTimesteps,
+      nEnvs: this.nEnvs,
+      algorithm: this.constructor.name,
+    }
+    this.callbacks?.onTrainingStart?.(trainingStartData)
     this.callback?.onTrainingStart({})
 
     // Main training loop
-    while (this.numTimesteps < totalTimesteps) {
-      // Collect rollout
+    let shouldStop = false
+    while (this.numTimesteps < totalTimesteps && !shouldStop) {
+      // Rollout start callbacks
+      const rolloutStartData: RolloutStartData = {
+        timestep: this.numTimesteps,
+        iteration: this.iteration,
+      }
+      this.callbacks?.onRolloutStart?.(rolloutStartData)
       this.callback?.onRolloutStart()
+
+      // Collect rollout
       const continueTraining = this.collectRollouts()
 
       if (!continueTraining) {
         break
       }
 
-      // Step callback
+      // Legacy step callback
       if (this.callback && !this.callback.onStep()) {
         break
       }
 
       this.iteration++
+
+      // Rollout end callbacks
+      const rolloutEndData: RolloutEndData = {
+        timestep: this.numTimesteps,
+        rolloutReward: 0, // TODO: compute from episode tracker
+        rolloutLength: this.nEnvs * (this.iteration > 0 ? 1 : 0), // Simplified
+        episodesCompleted: this.episodesCompleted,
+      }
+      this.callbacks?.onRolloutEnd?.(rolloutEndData)
       this.callback?.onRolloutEnd()
 
       // Update learning rate
@@ -217,7 +329,14 @@ export abstract class BaseAlgorithm {
       }
     }
 
-    // Training end callback
+    // Training end callbacks
+    const trainingEndData: TrainingEndData = {
+      totalTimesteps: this.numTimesteps,
+      totalEpisodes: this.episodesCompleted,
+      totalTime: Date.now() - this.trainingStartTime,
+      finalReward: 0, // TODO: compute from episode tracker
+    }
+    this.callbacks?.onTrainingEnd?.(trainingEndData)
     this.callback?.onTrainingEnd()
 
     return this
@@ -228,11 +347,9 @@ export abstract class BaseAlgorithm {
    */
   protected logProgress(): void {
     const progress = (this.numTimesteps / this.totalTimesteps) * 100
-    if (this.verbose > 0) {
-      console.log(
-        `Timesteps: ${this.numTimesteps}/${this.totalTimesteps} (${progress.toFixed(1)}%)`,
-      )
-    }
+    Logger.info(
+      `Timesteps: ${this.numTimesteps}/${this.totalTimesteps} (${progress.toFixed(1)}%)`,
+    )
   }
 
   /**
