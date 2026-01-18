@@ -70,7 +70,6 @@ jobs:
       # Run setup - same script as local development for parity
       # This downloads LibTorch (if not cached) and builds native library
       - name: Setup LibTorch and build native library
-        if: steps.cache-libtorch.outputs.cache-hit != 'true' || steps.cache-native.outputs.cache-hit != 'true'
         run: bun run setup
 
       # Verify native library exists after setup or cache restore
