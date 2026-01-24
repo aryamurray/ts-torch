@@ -15,7 +15,7 @@ describe('Adam', () => {
         const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001 })
 
-        expect(optimizer.learningRate).toBe(0.001)
+        expect(optimizer.lr).toBe(0.001)
         expect(optimizer.defaults.betas).toEqual([0.9, 0.999])
         expect(optimizer.defaults.eps).toBe(1e-8)
         expect(optimizer.defaults.weightDecay).toBe(0)
@@ -174,13 +174,13 @@ describe('Adam', () => {
     })
   })
 
-  describe('learningRate getter/setter', () => {
+  describe('lr getter/setter', () => {
     test('gets learning rate', () => {
       run(() => {
         const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001 })
 
-        expect(optimizer.learningRate).toBe(0.001)
+        expect(optimizer.lr).toBe(0.001)
       })
     })
 
@@ -189,8 +189,8 @@ describe('Adam', () => {
         const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new Adam(params, { lr: 0.001 })
 
-        optimizer.learningRate = 0.0001
-        expect(optimizer.learningRate).toBe(0.0001)
+        optimizer.lr = 0.0001
+        expect(optimizer.lr).toBe(0.0001)
       })
     })
   })

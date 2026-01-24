@@ -9,6 +9,7 @@ import { Optimizer, type ParameterGroup, type OptimizerOptions } from './optimiz
  * SGD optimizer options
  */
 export interface SGDOptions extends OptimizerOptions {
+  /** Learning rate */
   lr: number
   momentum?: number
   weightDecay?: number
@@ -37,17 +38,16 @@ export class SGD extends Optimizer {
   private momentumBuffers: WeakMap<Tensor, Tensor> = new WeakMap()
 
   constructor(params: Tensor[] | ParameterGroup[], options: SGDOptions) {
-    const momentum = options.momentum ?? 0
-    const weightDecay = options.weightDecay ?? 0
+    const { lr, momentum = 0, weightDecay = 0 } = options
 
     validateSGDParams({
-      lr: options.lr,
+      lr: lr,
       momentum,
       weightDecay,
     })
 
     const defaults: SGDOptions = {
-      lr: options.lr,
+      lr,
       momentum,
       weightDecay,
     }
@@ -162,6 +162,6 @@ export class SGD extends Optimizer {
   }
 
   override toString(): string {
-    return `SGD(lr=${this.defaults.lr}, momentum=${this.defaults.momentum ?? 0}, weight_decay=${this.defaults.weightDecay ?? 0})`
+    return `SGD(lr=${this.defaults.lr}, momentum=${this.defaults.momentum ?? 0}, weightDecay=${this.defaults.weightDecay ?? 0})`
   }
 }

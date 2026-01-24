@@ -9,6 +9,7 @@ import { Optimizer, type ParameterGroup, type OptimizerOptions } from './optimiz
  * RMSprop optimizer options
  */
 export interface RMSpropOptions extends OptimizerOptions {
+  /** Learning rate */
   lr: number
   alpha?: number
   eps?: number
@@ -70,14 +71,10 @@ export class RMSprop extends Optimizer {
   >()
 
   constructor(params: Tensor[] | ParameterGroup[], options: RMSpropOptions) {
-    const alpha = options.alpha ?? 0.99
-    const eps = options.eps ?? 1e-8
-    const weightDecay = options.weightDecay ?? 0
-    const momentum = options.momentum ?? 0
-    const centered = options.centered ?? false
+    const { lr, alpha = 0.99, eps = 1e-8, weightDecay = 0, momentum = 0, centered = false } = options
 
     validateRMSpropParams({
-      lr: options.lr,
+      lr: lr,
       alpha,
       eps,
       weightDecay,
@@ -85,7 +82,7 @@ export class RMSprop extends Optimizer {
     })
 
     const defaults: RMSpropOptions = {
-      lr: options.lr,
+      lr,
       alpha,
       eps,
       weightDecay,

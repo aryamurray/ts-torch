@@ -15,7 +15,7 @@ describe('SGD', () => {
         const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01 })
 
-        expect(optimizer.learningRate).toBe(0.01)
+        expect(optimizer.lr).toBe(0.01)
         expect(optimizer.defaults.momentum).toBe(0)
         expect(optimizer.defaults.weightDecay).toBe(0)
       })
@@ -26,7 +26,7 @@ describe('SGD', () => {
         const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01, momentum: 0.9 })
 
-        expect(optimizer.learningRate).toBe(0.01)
+        expect(optimizer.lr).toBe(0.01)
         expect(optimizer.defaults.momentum).toBe(0.9)
       })
     })
@@ -36,7 +36,7 @@ describe('SGD', () => {
         const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01, weightDecay: 0.0001 })
 
-        expect(optimizer.learningRate).toBe(0.01)
+        expect(optimizer.lr).toBe(0.01)
         expect(optimizer.defaults.weightDecay).toBe(0.0001)
       })
     })
@@ -50,7 +50,7 @@ describe('SGD', () => {
           weightDecay: 0.001,
         })
 
-        expect(optimizer.learningRate).toBe(0.1)
+        expect(optimizer.lr).toBe(0.1)
         expect(optimizer.defaults.momentum).toBe(0.95)
         expect(optimizer.defaults.weightDecay).toBe(0.001)
       })
@@ -167,13 +167,13 @@ describe('SGD', () => {
     })
   })
 
-  describe('learningRate getter/setter', () => {
+  describe('lr getter/setter', () => {
     test('gets learning rate', () => {
       run(() => {
         const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01 })
 
-        expect(optimizer.learningRate).toBe(0.01)
+        expect(optimizer.lr).toBe(0.01)
       })
     })
 
@@ -182,8 +182,8 @@ describe('SGD', () => {
         const params = [cpu.tensor([1, 2, 3], [3] as const)]
         const optimizer = new SGD(params, { lr: 0.01 })
 
-        optimizer.learningRate = 0.001
-        expect(optimizer.learningRate).toBe(0.001)
+        optimizer.lr = 0.001
+        expect(optimizer.lr).toBe(0.001)
       })
     })
 
@@ -195,7 +195,7 @@ describe('SGD', () => {
 
         const initialData = Array.from(param.toArray() as Float32Array)
         const optimizer = new SGD([param], { lr: 0.1 })
-        optimizer.learningRate = 0.01
+        optimizer.lr = 0.01
         optimizer.step()
 
         // With smaller lr, changes should be smaller
@@ -215,7 +215,7 @@ describe('SGD', () => {
         expect(str).toContain('SGD')
         expect(str).toContain('lr=0.01')
         expect(str).toContain('momentum=0.9')
-        expect(str).toContain('weight_decay=0.0001')
+        expect(str).toContain('weightDecay=0.0001')
       })
     })
 
@@ -226,7 +226,7 @@ describe('SGD', () => {
 
         const str = optimizer.toString()
         expect(str).toContain('momentum=0')
-        expect(str).toContain('weight_decay=0')
+        expect(str).toContain('weightDecay=0')
       })
     })
   })

@@ -17,6 +17,7 @@ export interface ParameterGroup {
  * Optimizer configuration options
  */
 export interface OptimizerOptions {
+  /** Learning rate */
   lr: number
   [key: string]: unknown
 }
@@ -84,17 +85,17 @@ export abstract class Optimizer {
   /**
    * Get the current learning rate
    */
-  get learningRate(): number {
+  get lr(): number {
     return this.defaults.lr
   }
 
   /**
    * Set the learning rate for all parameter groups
    */
-  set learningRate(lr: number) {
-    this.defaults.lr = lr
+  set lr(value: number) {
+    this.defaults.lr = value
     for (const group of this.paramGroups) {
-      group.lr = lr
+      group.lr = value
     }
   }
 

@@ -6,6 +6,7 @@ import { type Tensor, validateAdamParams } from '@ts-torch/core'
 import { Optimizer, type ParameterGroup, type OptimizerOptions } from './optimizer.js'
 
 export interface AdamOptions extends OptimizerOptions {
+  /** Learning rate */
   lr: number
   betas?: [number, number]
   eps?: number
@@ -25,20 +26,17 @@ export class Adam extends Optimizer {
   declare defaults: AdamOptions
 
   constructor(params: Tensor[] | ParameterGroup[], options: AdamOptions) {
-    const betas = options.betas ?? [0.9, 0.999]
-    const eps = options.eps ?? 1e-8
-    const weightDecay = options.weightDecay ?? 0
-    const amsgrad = options.amsgrad ?? false
+    const { lr, betas = [0.9, 0.999], eps = 1e-8, weightDecay = 0, amsgrad = false } = options
 
     validateAdamParams({
-      lr: options.lr,
+      lr: lr,
       betas,
       eps,
       weightDecay,
     })
 
     super(params, {
-      lr: options.lr,
+      lr,
       betas,
       eps,
       weightDecay,

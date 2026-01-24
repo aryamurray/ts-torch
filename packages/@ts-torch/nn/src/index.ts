@@ -38,6 +38,9 @@ export {
   // Linear layers
   Linear,
   type LinearOptions,
+  type InitStrategy as LinearInitStrategy,
+  type InitFn,
+  type ConstantInit,
 } from './modules/linear.js'
 
 export {

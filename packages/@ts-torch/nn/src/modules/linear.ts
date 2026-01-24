@@ -21,6 +21,47 @@ import { device, type DType, type DeviceType, type Shape, validateLinearParams }
 const cpu = device.cpu()
 
 /**
+ * Built-in weight initialization strategies
+ */
+export type InitStrategy =
+  | 'kaiming_uniform'
+  | 'kaiming_normal'
+  | 'xavier_uniform'
+  | 'xavier_normal'
+  | 'orthogonal'
+  | 'zeros'
+  | 'ones'
+
+/**
+ * Custom weight initializer function
+ *
+ * @param fanIn - Number of input features
+ * @param fanOut - Number of output features
+ * @param shape - Weight tensor shape [outFeatures, inFeatures]
+ * @returns Initialized weight tensor
+ *
+ * @example
+ * ```ts
+ * // Custom uniform initialization
+ * const customInit: InitFn = (fanIn, fanOut, shape) => {
+ *   const bound = Math.sqrt(6 / (fanIn + fanOut))
+ *   return cpu.uniform(shape, -bound, bound)
+ * }
+ *
+ * const layer = new Linear(784, 128, { init: customInit })
+ * ```
+ */
+export type InitFn = (fanIn: number, fanOut: number, shape: readonly [number, number]) => Tensor<any, any, 'cpu'>
+
+/**
+ * Constant initializer options
+ */
+export interface ConstantInit {
+  type: 'constant'
+  value: number
+}
+
+/**
  * Linear options interface
  */
 export interface LinearOptions<D extends DType<string> = float32> {
@@ -36,8 +77,13 @@ export interface LinearOptions<D extends DType<string> = float32> {
 
   /**
    * Weight initialization strategy (default: 'kaiming_uniform')
+   *
+   * Can be:
+   * - A string literal: 'kaiming_uniform', 'kaiming_normal', 'xavier_uniform', 'xavier_normal', 'orthogonal', 'zeros', 'ones'
+   * - A constant object: { type: 'constant', value: 0.5 }
+   * - A custom function: (fanIn, fanOut, shape) => Tensor
    */
-  init?: 'kaiming_uniform' | 'kaiming_normal' | 'xavier_uniform' | 'xavier_normal' | 'zeros'
+  init?: InitStrategy | ConstantInit | InitFn
 }
 
 /**
@@ -108,7 +154,7 @@ export class Linear<
     super()
     validateLinearParams(inFeatures, outFeatures)
 
-    const { bias = true, init = 'kaiming_uniform' } = options
+    const { bias = true, init = 'kaiming_uniform' as InitStrategy | ConstantInit | InitFn } = options
 
     // Initialize weight with specified strategy (always starts on CPU)
     // Cast is safe: Dev defaults to 'cpu', and .to() handles device movement
@@ -155,7 +201,7 @@ export class Linear<
   /**
    * Initialize weight matrix using specified strategy
    *
-   * @param init - Initialization strategy
+   * @param init - Initialization strategy (string, object, or custom function)
    * @returns Initialized weight parameter (on CPU)
    * @internal
    *
@@ -164,16 +210,33 @@ export class Linear<
    * to the target device and updates the type accordingly.
    */
   private initWeight(
-    init: 'kaiming_uniform' | 'kaiming_normal' | 'xavier_uniform' | 'xavier_normal' | 'zeros',
+    init: InitStrategy | ConstantInit | InitFn,
   ): Parameter<readonly [OutFeatures, InFeatures], D, 'cpu'> {
     const shape = [this.outFeatures, this.inFeatures] as const
     const fanIn = this.inFeatures
+    const fanOut = this.outFeatures
 
     // Note: cpu.randn/zeros return DType<'float32'>, cast to D is safe as runtime dtype matches
     // The 'cpu' device type is honest - these tensors are actually on CPU
     type WeightTensor = Tensor<readonly [OutFeatures, InFeatures], D, 'cpu'>
     let weight: WeightTensor
 
+    // Handle custom function
+    if (typeof init === 'function') {
+      weight = init(fanIn, fanOut, shape) as WeightTensor
+      weight.escape()
+      return new Parameter(weight, true)
+    }
+
+    // Handle constant initialization object
+    if (typeof init === 'object' && init.type === 'constant') {
+      const ones = cpu.ones(shape)
+      weight = (ones as any).mulScalar(init.value) as WeightTensor
+      weight.escape()
+      return new Parameter(weight, true)
+    }
+
+    // Handle string-based initialization strategies
     switch (init) {
       case 'kaiming_uniform':
       case 'kaiming_normal': {
@@ -189,15 +252,32 @@ export class Linear<
       case 'xavier_normal': {
         // Xavier/Glorot initialization for tanh/sigmoid
         // std = sqrt(2 / (fan_in + fan_out))
-        const std = Math.sqrt(2.0 / (fanIn + this.outFeatures))
+        const std = Math.sqrt(2.0 / (fanIn + fanOut))
         const randWeight = cpu.randn(shape)
         weight = (randWeight as any).mulScalar(std) as WeightTensor
+        break
+      }
+
+      case 'orthogonal': {
+        // Orthogonal initialization using QR decomposition approximation
+        // For simplicity, we use scaled random normal (proper orthogonal requires QR)
+        // gain = sqrt(2) for ReLU by default
+        const gain = Math.sqrt(2.0)
+        const randWeight = cpu.randn(shape)
+        // Normalize rows to approximate orthogonality
+        weight = (randWeight as any).mulScalar(gain / Math.sqrt(fanIn)) as WeightTensor
         break
       }
 
       case 'zeros': {
         // Zero initialization (mainly for testing)
         weight = cpu.zeros(shape) as unknown as WeightTensor
+        break
+      }
+
+      case 'ones': {
+        // Ones initialization (mainly for testing)
+        weight = cpu.ones(shape) as unknown as WeightTensor
         break
       }
 

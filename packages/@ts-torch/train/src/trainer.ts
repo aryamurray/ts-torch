@@ -25,6 +25,8 @@ import type { Module } from '@ts-torch/nn'
 import type { Optimizer } from '@ts-torch/optim'
 import { crossEntropyLoss, mseLoss, nllLoss } from '@ts-torch/optim'
 import type { OptimizerConfig } from './optimizers.js'
+import type { SchedulerConfig } from './schedulers.js'
+import type { LRScheduler } from '@ts-torch/optim'
 import { createMetrics, computeMetrics, resetMetrics, type Metric, type MetricsConfig, type MetricsResult } from './metrics.js'
 
 /**
@@ -119,6 +121,11 @@ export interface FitOptions {
   /** Gradient clipping max norm */
   clipGradNorm?: number
 
+  // ==================== Learning Rate Scheduling ====================
+
+  /** Learning rate scheduler configuration */
+  scheduler?: SchedulerConfig
+
   // ==================== Validation ====================
 
   /** Validation data loader */
@@ -129,11 +136,48 @@ export interface FitOptions {
 
   // ==================== Callbacks ====================
 
+  /** Called at the start of each epoch */
+  onEpochStart?: (ctx: { epoch: number; totalEpochs: number }) => void | Promise<void>
+
   /** Called at the end of each epoch */
   onEpochEnd?: (ctx: EpochContext) => void | Promise<void>
 
+  /** Called at the start of each batch, before forward pass */
+  onBatchStart?: (ctx: { batch: any; step: number; epoch: number }) => void | Promise<void>
+
   /** Called at the end of each batch */
   onBatchEnd?: (ctx: BatchContext) => void | Promise<void>
+
+  /**
+   * Called after forward pass with predictions and targets.
+   * Can modify or replace the loss before backward pass.
+   *
+   * @example
+   * ```ts
+   * onForward: ({ predictions, targets, loss }) => {
+   *   // Add custom regularization
+   *   return loss.add(myRegularizationTerm)
+   * }
+   * ```
+   */
+  onForward?: (ctx: {
+    predictions: Tensor
+    targets: Tensor
+    loss: Tensor
+    batch: any
+  }) => Tensor | void | Promise<Tensor | void>
+
+  /**
+   * Called after backward pass, before optimizer step.
+   * Useful for gradient inspection or custom gradient manipulation.
+   */
+  onBackward?: (ctx: { loss: number; step: number; epoch: number }) => void | Promise<void>
+
+  /**
+   * Called before optimizer.step(). Return false to skip the optimizer step.
+   * Useful for implementing custom gradient accumulation or conditional updates.
+   */
+  onBeforeOptimizerStep?: (ctx: { step: number; epoch: number }) => boolean | void | Promise<boolean | void>
 
   /** Log metrics every N batches (0 = no logging) */
   logEvery?: number
@@ -190,6 +234,8 @@ export interface EvaluateOptions {
 export class Trainer<M extends Module<any, any, any, DeviceType>> {
   private model: M
   private optimizer: Optimizer | null = null
+  private scheduler: LRScheduler | null = null
+  private schedulerConfig: SchedulerConfig | null = null
   private metrics: Metric[] = []
   private lossFn: (predictions: Tensor, targets: Tensor) => Tensor = crossEntropyLoss as any
   private defaultConfig: TrainerConfig
@@ -223,14 +269,20 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
     const {
       epochs,
       optimizer: optimizerConfig,
+      scheduler: schedulerConfig,
       loss,
       metrics: metricsConfig = { loss: true },
       accumulate = 1,
       clipGradNorm,
       validateOn,
       validateEvery = 1,
+      onEpochStart,
       onEpochEnd,
+      onBatchStart,
       onBatchEnd,
+      onForward,
+      onBackward,
+      onBeforeOptimizerStep,
       logEvery = 0,
       debug,
     } = options
@@ -247,6 +299,10 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
 
     // Create optimizer
     this.optimizer = resolvedOptimizer.create(this.model)
+
+    // Create scheduler if provided
+    this.schedulerConfig = schedulerConfig ?? null
+    this.scheduler = schedulerConfig ? schedulerConfig.create(this.optimizer) : null
 
     // Create metrics
     this.metrics = createMetrics({ ...metricsConfig, loss: true })
@@ -269,13 +325,31 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
     for (let epoch = 1; epoch <= epochs; epoch++) {
       resetMetrics(this.metrics)
 
+      // Epoch start callback
+      if (onEpochStart) {
+        await onEpochStart({ epoch, totalEpochs: epochs })
+      }
+
       let batchIdx = 0
       let epochLoss = 0
       let batchCount = 0
 
       // Iterate over batches
       for await (const batch of data) {
-        const batchLoss = await this.trainStep(batch, accumulate, clipGradNorm, batchIdx, debug)
+        // Batch start callback
+        if (onBatchStart) {
+          await onBatchStart({ batch, step: batchIdx, epoch })
+        }
+
+        const batchLoss = await this.trainStep(
+          batch,
+          accumulate,
+          clipGradNorm,
+          batchIdx,
+          epoch,
+          { onForward, onBackward, onBeforeOptimizerStep },
+          debug,
+        )
 
         // FREE batch tensors after use to prevent memory leak
         // Batch tensors are created by the pipeline and must be explicitly freed
@@ -306,6 +380,11 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
           console.log(`Epoch ${epoch} | Batch ${batchIdx} | Loss: ${batchLoss.toFixed(4)}`)
         }
 
+        // Step scheduler if configured for batch-level stepping
+        if (this.scheduler && this.schedulerConfig?.stepOn === 'batch' && !this.schedulerConfig.needsMetrics) {
+          this.scheduler.step()
+        }
+
         batchIdx++
       }
 
@@ -322,6 +401,18 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
         valMetrics = await this.evaluate(validateOn, { metrics: metricsConfig })
         history.valLoss!.push(valMetrics.loss ?? 0)
         history.valMetrics!.push(valMetrics)
+      }
+
+      // Step scheduler at epoch end (default behavior)
+      if (this.scheduler && this.schedulerConfig?.stepOn !== 'batch') {
+        if (this.schedulerConfig?.needsMetrics) {
+          // ReduceLROnPlateau needs metrics - use validation loss if available, otherwise training loss
+          const metricValue = valMetrics?.loss ?? epochMetrics.loss
+          // Cast to any to call step with metric (ReduceLROnPlateau overrides step to accept metric)
+          ;(this.scheduler as any).step(metricValue)
+        } else {
+          this.scheduler.step()
+        }
       }
 
       // Epoch callback
@@ -415,12 +506,20 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
     accumulate: number,
     clipGradNorm: number | undefined,
     batchIdx: number,
+    epoch: number,
+    hooks: {
+      onForward?: FitOptions['onForward']
+      onBackward?: FitOptions['onBackward']
+      onBeforeOptimizerStep?: FitOptions['onBeforeOptimizerStep']
+    },
     _debug?: FitOptions['debug'],
   ): Promise<number> {
     const shouldStep = (batchIdx + 1) % accumulate === 0
 
     let lossValue = 0
+    let forwardResult: { predictions: Tensor; targets: Tensor; loss: Tensor } | null = null
 
+    // Forward pass and loss computation in scope
     run(() => {
       // Zero gradients at start of accumulation window
       if (batchIdx % accumulate === 0) {
@@ -433,6 +532,33 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
       // Compute loss
       const loss = this.lossFn(predictions, targets)
 
+      // Escape tensors so they persist outside run() scope for hooks
+      if ('escape' in predictions) (predictions as any).escape()
+      if ('escape' in targets) (targets as any).escape()
+      if ('escape' in loss) (loss as any).escape()
+
+      forwardResult = { predictions, targets, loss }
+    })
+
+    if (!forwardResult) {
+      throw new Error('Forward pass failed')
+    }
+
+    // TypeScript doesn't know run() executes synchronously, so we need to help it
+    const result = forwardResult as { predictions: Tensor; targets: Tensor; loss: Tensor }
+    const { predictions, targets } = result
+    let loss: Tensor = result.loss
+
+    // onForward hook - can modify or replace the loss (async, outside run scope)
+    if (hooks.onForward) {
+      const modifiedLoss = await hooks.onForward({ predictions, targets, loss, batch })
+      if (modifiedLoss) {
+        loss = modifiedLoss
+      }
+    }
+
+    // Backward pass in scope
+    run(() => {
       // Scale loss for gradient accumulation
       const scaledLoss = accumulate > 1 ? (loss as any).divScalar(accumulate) : loss
 
@@ -448,16 +574,32 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
       }
     })
 
+    // onBackward hook (async, outside run scope)
+    if (hooks.onBackward) {
+      await hooks.onBackward({ loss: lossValue, step: batchIdx, epoch })
+    }
+
     // Optimizer step - wrap in scope to free intermediate tensors
     if (shouldStep) {
-      run(() => {
-        // Gradient clipping
-        if (clipGradNorm) {
-          this.clipGradients(clipGradNorm)
+      // onBeforeOptimizerStep hook - can skip optimizer step by returning false
+      let shouldDoStep = true
+      if (hooks.onBeforeOptimizerStep) {
+        const result = await hooks.onBeforeOptimizerStep({ step: batchIdx, epoch })
+        if (result === false) {
+          shouldDoStep = false
         }
+      }
 
-        this.optimizer!.step()
-      })
+      if (shouldDoStep) {
+        run(() => {
+          // Gradient clipping
+          if (clipGradNorm) {
+            this.clipGradients(clipGradNorm)
+          }
+
+          this.optimizer!.step()
+        })
+      }
     }
 
     return lossValue

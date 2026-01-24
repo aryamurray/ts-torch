@@ -32,3 +32,24 @@ export type { OptimizerConfig, AdamConfig, SGDConfig, AdamWConfig, RMSpropConfig
 // Metrics
 export { LossMetric, AccuracyMetric, TopKAccuracyMetric, CustomMetric, createMetrics, computeMetrics, resetMetrics } from './metrics.js'
 export type { Metric, MetricsConfig, MetricsResult, MetricFn } from './metrics.js'
+
+// Learning rate schedulers
+export {
+  StepLR,
+  MultiStepLR,
+  ExponentialLR,
+  CosineAnnealingLR,
+  CosineAnnealingWarmRestarts,
+  ReduceLROnPlateau,
+  LinearWarmup,
+} from './schedulers.js'
+export type {
+  SchedulerConfig,
+  StepLRConfig,
+  MultiStepLRConfig,
+  ExponentialLRConfig,
+  CosineAnnealingLRConfig,
+  CosineAnnealingWarmRestartsConfig,
+  ReduceLROnPlateauConfig,
+  LinearWarmupConfig,
+} from './schedulers.js'

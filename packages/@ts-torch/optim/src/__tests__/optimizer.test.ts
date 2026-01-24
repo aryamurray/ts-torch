@@ -44,7 +44,7 @@ describe('Optimizer', () => {
 
       const allParams = optimizer.getAllParams()
       expect(allParams).toHaveLength(2)
-      expect(optimizer.learningRate).toBe(0.01)
+      expect(optimizer.lr).toBe(0.01)
     })
 
     test('accepts parameter groups', () => {
@@ -77,7 +77,7 @@ describe('Optimizer', () => {
       const options: OptimizerOptions = { lr: 0.01, momentum: 0.9 }
       const optimizer = new MockOptimizer(params, options)
 
-      expect(optimizer.learningRate).toBe(0.01)
+      expect(optimizer.lr).toBe(0.01)
     })
   })
 
@@ -124,10 +124,10 @@ describe('Optimizer', () => {
     })
   })
 
-  describe('learningRate getter/setter', () => {
+  describe('lr getter/setter', () => {
     test('gets current learning rate', () => {
       const optimizer = new MockOptimizer([new MockTensor()] as unknown as Tensor[], { lr: 0.01 })
-      expect(optimizer.learningRate).toBe(0.01)
+      expect(optimizer.lr).toBe(0.01)
     })
 
     test('sets learning rate for all parameter groups', () => {
@@ -141,9 +141,9 @@ describe('Optimizer', () => {
       }
 
       const optimizer = new MockOptimizer([group1, group2], { lr: 0.01 })
-      optimizer.learningRate = 0.05
+      optimizer.lr = 0.05
 
-      expect(optimizer.learningRate).toBe(0.05)
+      expect(optimizer.lr).toBe(0.05)
       expect(group1.lr).toBe(0.05)
       expect(group2.lr).toBe(0.05)
     })

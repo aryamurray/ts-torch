@@ -148,7 +148,7 @@ export interface AdamWConfig {
  */
 export function AdamW(config: AdamWConfig): OptimizerConfig {
   return {
-    name: `AdamW(lr=${config.lr}, weight_decay=${config.weightDecay ?? 0.01})`,
+    name: `AdamW(lr=${config.lr}, weightDecay=${config.weightDecay ?? 0.01})`,
     create: (model) => {
       const params = model.parameters().map((p) => p.data) as any
       return new AdamWOptimizer(params, config)
