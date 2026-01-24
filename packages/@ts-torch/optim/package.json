@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch/optim",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Optimizers for ts-torch",
   "files": [
     "dist"
@@ -38,7 +38,7 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "@ts-torch/core": "^0.1.0"
+    "@ts-torch/core": "^0.1.4"
   },
   "devDependencies": {
     "typescript": "5.9.2",
