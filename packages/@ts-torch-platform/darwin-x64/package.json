@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch-platform/darwin-x64",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Native binaries for ts-torch on macOS x64 (Intel)",
   "license": "MIT",
   "files": [

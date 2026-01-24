@@ -1,8 +1,16 @@
 {
   "name": "@ts-torch/torch",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "PyTorch bindings for TypeScript/JavaScript",
-  "keywords": ["pytorch", "torch", "tensor", "machine-learning", "deep-learning", "neural-network", "typescript"],
+  "keywords": [
+    "pytorch",
+    "torch",
+    "tensor",
+    "machine-learning",
+    "deep-learning",
+    "neural-network",
+    "typescript"
+  ],
   "license": "MIT",
   "files": [
     "dist"
@@ -36,12 +44,12 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@ts-torch/core": "^0.1.0",
-    "@ts-torch/nn": "^0.1.0",
-    "@ts-torch/optim": "^0.1.0",
-    "@ts-torch/datasets": "^0.1.0",
-    "@ts-torch/train": "^0.1.0",
-    "@ts-torch/rl": "^0.1.0"
+    "@ts-torch/core": "^0.1.4",
+    "@ts-torch/nn": "^0.1.4",
+    "@ts-torch/optim": "^0.1.4",
+    "@ts-torch/datasets": "^0.1.4",
+    "@ts-torch/train": "^0.1.4",
+    "@ts-torch/rl": "^0.1.4"
   },
   "devDependencies": {
     "typescript": "5.9.2",

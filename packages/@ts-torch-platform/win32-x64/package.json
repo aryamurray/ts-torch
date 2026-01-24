@@ -1,6 +1,6 @@
 {
   "name": "@ts-torch-platform/win32-x64",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Native binaries for ts-torch on Windows x64",
   "license": "MIT",
   "files": [
