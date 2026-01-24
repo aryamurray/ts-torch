@@ -39,7 +39,6 @@
     "build:native:cuda": "bun run ../../../scripts/build-native-cuda.ts",
     "dev": "tsc --watch",
     "check-types": "tsc --noEmit",
-    "lint": "eslint src",
     "test": "vitest run --dangerouslyIgnoreUnhandledErrors",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

@@ -22,8 +22,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "check-types": "tsc --noEmit",
-    "lint": "eslint src"
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^22.10.6",
