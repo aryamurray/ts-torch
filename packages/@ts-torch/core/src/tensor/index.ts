@@ -26,7 +26,7 @@
 export { Tensor } from './tensor.js'
 
 // Factory functions
-export { zeros, ones, empty, randn, fromArray, createArange, createTensorFromData, cat } from './factory.js'
+export { zeros, ones, empty, randn, rand, fromArray, createArange, createTensorFromData, cat, stack } from './factory.js'
 
 // Re-export types for convenience
 export type { Shape } from '../types/shape.js'

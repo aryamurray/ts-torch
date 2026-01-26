@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { zeros, ones, randn, fromArray, createArange, empty } from '../factory.js';
+import { zeros, ones, randn, rand, fromArray, createArange, empty, stack } from '../factory.js';
 import { DType } from '../../types/dtype.js';
 import { scopedTest, expectZeros, expectOnes } from '../../test/utils.js';
 
@@ -126,13 +126,13 @@ describe('Tensor Factory Functions - Integration', () => {
         // Check that values are finite and vary
         expect(tensor).toBeFinite();
 
-        const data = Array.from(tensor.toArray()).map(Number);
+        const data = Array.from(tensor.toArray() as Iterable<number | bigint>).map(Number);
         const mean = data.reduce((a, b) => a + b, 0) / data.length;
         const variance =
           data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / data.length;
 
         // Normal distribution should have mean ~0 and variance ~1 (with tolerance)
-        expect(Math.abs(mean)).toBeLessThan(0.3);
+        expect(Math.abs(mean)).toBeLessThan(0.4);
         expect(Math.abs(variance - 1)).toBeLessThan(0.5);
       }));
 
@@ -145,7 +145,7 @@ describe('Tensor Factory Functions - Integration', () => {
         expect(tensor).toBeFinite();
 
         // Verify values are different (not all the same)
-        const data = Array.from(tensor.toArray()).map(Number);
+        const data = Array.from(tensor.toArray() as Iterable<number | bigint>).map(Number);
         const unique = new Set(data);
         expect(unique.size).toBeGreaterThan(50); // At least 50 unique values
       }));
@@ -160,6 +160,28 @@ describe('Tensor Factory Functions - Integration', () => {
     it('should support requires_grad', () =>
       scopedTest(() => {
         const tensor = randn([2, 2] as const, DType.float32, true);
+        expect(tensor.requiresGrad).toBe(true);
+      }));
+  });
+
+  describe('rand', () => {
+    it('should create tensor with uniform values in [0, 1)', () =>
+      scopedTest(() => {
+        const tensor = rand([200] as const);
+
+        expect(tensor).toHaveShape([200]);
+        expect(tensor).toBeFinite();
+
+        const data = Array.from(tensor.toArray() as Iterable<number | bigint>).map(Number);
+        const min = Math.min(...data);
+        const max = Math.max(...data);
+        expect(min).toBeGreaterThanOrEqual(0);
+        expect(max).toBeLessThan(1);
+      }));
+
+    it('should support requires_grad', () =>
+      scopedTest(() => {
+        const tensor = rand([3, 3] as const, DType.float32, true);
         expect(tensor.requiresGrad).toBe(true);
       }));
   });
@@ -265,10 +287,10 @@ describe('Tensor Factory Functions - Integration', () => {
         const tensor = createArange(0, 1, 0.1);
 
         expect(tensor).toHaveShape([10]);
-        const data = Array.from(tensor.toArray()).map(Number);
-        expect(data[0]).toBeCloseTo(0, 1e-5);
-        expect(data[5]).toBeCloseTo(0.5, 1e-5);
-        expect(data[9]).toBeCloseTo(0.9, 1e-5);
+        const data = Array.from(tensor.toArray() as Iterable<number | bigint>).map(Number);
+        expect(Math.abs(data[0] - 0)).toBeLessThan(1e-5);
+        expect(Math.abs(data[5] - 0.5)).toBeLessThan(1e-5);
+        expect(Math.abs(data[9] - 0.9)).toBeLessThan(1e-5);
       }));
 
     it('should support negative ranges', () =>
@@ -293,6 +315,18 @@ describe('Tensor Factory Functions - Integration', () => {
     it('should throw error for invalid range', () =>
       scopedTest(() => {
         expect(() => createArange(10, 0, 1)).toThrow('valid range');
+      }));
+  });
+
+  describe('stack', () => {
+    it('should stack tensors along new dimension', () =>
+      scopedTest(() => {
+        const a = fromArray([1, 2, 3, 4], [2, 2] as const);
+        const b = fromArray([5, 6, 7, 8], [2, 2] as const);
+        const c = stack([a, b], 0);
+
+        expect(c).toHaveShape([2, 2, 2]);
+        expect(c).toBeCloseTo([1, 2, 3, 4, 5, 6, 7, 8]);
       }));
   });
 

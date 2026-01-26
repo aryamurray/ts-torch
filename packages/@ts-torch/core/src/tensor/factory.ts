@@ -12,6 +12,7 @@ import { DType as DTypeConstants } from '../types/dtype.js'
 import type { DeviceType } from '../types/tensor.js'
 import { getLib, koffi } from '../ffi/index.js'
 import { withError, checkNull } from '../ffi/error.js'
+import { shapeCache } from '../ffi/buffer-pool.js'
 import {
   ValidationError,
   validatePositiveInt,
@@ -56,22 +57,25 @@ export function zeros<S extends Shape, D extends DType<string> = DType<'float32'
   validateShapeArray(shape)
   const lib = getLib()
 
-  // Convert shape to BigInt64Array for FFI (koffi accepts ArrayBuffer directly)
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  // Use pooled shape buffer to reduce allocation overhead
+  const shapeBuffer = shapeCache.fillShape(shape)
+  try {
+    // Device: CPU (0), device_index: 0
+    const handle = withError((err) => lib.ts_tensor_zeros(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
 
-  // Device: CPU (0), device_index: 0
-  const handle = withError((err) => lib.ts_tensor_zeros(shapeArray.buffer, shape.length, dtype.value, 0, 0, err))
+    checkNull(handle, 'Failed to create zeros tensor')
 
-  checkNull(handle, 'Failed to create zeros tensor')
+    const tensor = new Tensor<S, D>(handle!, shape, dtype)
 
-  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    // Set requires_grad after creation
+    if (requiresGrad) {
+      tensor.requiresGrad = true
+    }
 
-  // Set requires_grad after creation
-  if (requiresGrad) {
-    tensor.requiresGrad = true
+    return tensor
+  } finally {
+    shapeCache.release(shapeBuffer)
   }
-
-  return tensor
 }
 
 /**
@@ -98,20 +102,24 @@ export function ones<S extends Shape, D extends DType<string> = DType<'float32'>
   validateShapeArray(shape)
   const lib = getLib()
 
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  // Use pooled shape buffer to reduce allocation overhead
+  const shapeBuffer = shapeCache.fillShape(shape)
+  try {
+    // Device: CPU (0), device_index: 0
+    const handle = withError((err) => lib.ts_tensor_ones(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
 
-  // Device: CPU (0), device_index: 0
-  const handle = withError((err) => lib.ts_tensor_ones(shapeArray.buffer, shape.length, dtype.value, 0, 0, err))
+    checkNull(handle, 'Failed to create ones tensor')
 
-  checkNull(handle, 'Failed to create ones tensor')
+    const tensor = new Tensor<S, D>(handle!, shape, dtype)
 
-  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    if (requiresGrad) {
+      tensor.requiresGrad = true
+    }
 
-  if (requiresGrad) {
-    tensor.requiresGrad = true
+    return tensor
+  } finally {
+    shapeCache.release(shapeBuffer)
   }
-
-  return tensor
 }
 
 /**
@@ -141,20 +149,24 @@ export function empty<S extends Shape, D extends DType<string> = DType<'float32'
   validateShapeArray(shape)
   const lib = getLib()
 
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  // Use pooled shape buffer to reduce allocation overhead
+  const shapeBuffer = shapeCache.fillShape(shape)
+  try {
+    // Device: CPU (0), device_index: 0
+    const handle = withError((err) => lib.ts_tensor_empty(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
 
-  // Device: CPU (0), device_index: 0
-  const handle = withError((err) => lib.ts_tensor_empty(shapeArray.buffer, shape.length, dtype.value, 0, 0, err))
+    checkNull(handle, 'Failed to create empty tensor')
 
-  checkNull(handle, 'Failed to create empty tensor')
+    const tensor = new Tensor<S, D>(handle!, shape, dtype)
 
-  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    if (requiresGrad) {
+      tensor.requiresGrad = true
+    }
 
-  if (requiresGrad) {
-    tensor.requiresGrad = true
+    return tensor
+  } finally {
+    shapeCache.release(shapeBuffer)
   }
-
-  return tensor
 }
 
 /**
@@ -181,20 +193,68 @@ export function randn<S extends Shape, D extends DType<string> = DType<'float32'
   validateShapeArray(shape)
   const lib = getLib()
 
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  // Use pooled shape buffer to reduce allocation overhead
+  const shapeBuffer = shapeCache.fillShape(shape)
+  try {
+    // Device: CPU (0), device_index: 0
+    const handle = withError((err) => lib.ts_tensor_randn(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
 
-  // Device: CPU (0), device_index: 0
-  const handle = withError((err) => lib.ts_tensor_randn(shapeArray.buffer, shape.length, dtype.value, 0, 0, err))
+    checkNull(handle, 'Failed to create randn tensor')
 
-  checkNull(handle, 'Failed to create randn tensor')
+    const tensor = new Tensor<S, D>(handle!, shape, dtype)
 
-  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    if (requiresGrad) {
+      tensor.requiresGrad = true
+    }
 
-  if (requiresGrad) {
-    tensor.requiresGrad = true
+    return tensor
+  } finally {
+    shapeCache.release(shapeBuffer)
   }
+}
 
-  return tensor
+/**
+ * Create a tensor with random uniform distribution in [0, 1)
+ *
+ * @template S - Shape type as readonly tuple
+ * @template D - DType type
+ * @param shape - Tensor shape
+ * @param dtype - Data type (default: float32)
+ * @param requiresGrad - Enable autograd tracking (default: false)
+ * @returns New tensor with random uniform values
+ *
+ * @example
+ * ```ts
+ * const t = rand([2, 2] as const);
+ * // Random values in [0, 1)
+ * ```
+ */
+export function rand<S extends Shape, D extends DType<string> = DType<'float32'>>(
+  shape: S,
+  dtype: D = DTypeConstants.float32 as D,
+  requiresGrad = false,
+): Tensor<S, D> {
+  validateShapeArray(shape)
+  const lib = getLib()
+
+  // Use pooled shape buffer to reduce allocation overhead
+  const shapeBuffer = shapeCache.fillShape(shape)
+  try {
+    // Device: CPU (0), device_index: 0
+    const handle = withError((err) => lib.ts_tensor_rand(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+
+    checkNull(handle, 'Failed to create rand tensor')
+
+    const tensor = new Tensor<S, D>(handle!, shape, dtype)
+
+    if (requiresGrad) {
+      tensor.requiresGrad = true
+    }
+
+    return tensor
+  } finally {
+    shapeCache.release(shapeBuffer)
+  }
 }
 
 /**
@@ -260,22 +320,26 @@ export function fromArray<S extends Shape, D extends DType<string> = DType<'floa
     typedData = data as Float32Array | Float64Array | Int32Array | BigInt64Array
   }
 
-  const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+  // Use pooled shape buffer to reduce allocation overhead
+  const shapeBuffer = shapeCache.fillShape(shape)
+  try {
+    // Device: CPU (0), device_index: 0 (koffi accepts ArrayBuffer directly)
+    const handle = withError((err) =>
+      lib.ts_tensor_from_buffer(typedData.buffer, shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err),
+    )
 
-  // Device: CPU (0), device_index: 0 (koffi accepts ArrayBuffer directly)
-  const handle = withError((err) =>
-    lib.ts_tensor_from_buffer(typedData.buffer, shapeArray.buffer, shape.length, dtype.value, 0, 0, err),
-  )
+    checkNull(handle, 'Failed to create tensor from array')
 
-  checkNull(handle, 'Failed to create tensor from array')
+    const tensor = new Tensor<S, D>(handle!, shape, dtype)
 
-  const tensor = new Tensor<S, D>(handle!, shape, dtype)
+    if (requiresGrad) {
+      tensor.requiresGrad = true
+    }
 
-  if (requiresGrad) {
-    tensor.requiresGrad = true
+    return tensor
+  } finally {
+    shapeCache.release(shapeBuffer)
   }
-
-  return tensor
 }
 
 /**
@@ -488,4 +552,64 @@ export function cat<D extends DType<string> = DType<'float32'>, Dev extends Devi
   checkNull(handle, 'Failed to concatenate tensors')
 
   return new Tensor<Shape, D, Dev>(handle!, resultShape as Shape, dtype, device)
+}
+
+/**
+ * Stack tensors along a new dimension
+ *
+ * All tensors must have the same shape, dtype, and device.
+ *
+ * @param tensors - Array of tensors to stack
+ * @param dim - New dimension index (default: 0)
+ * @returns New tensor with stacked data
+ *
+ * @example
+ * ```ts
+ * const a = fromArray([1, 2], [2] as const)
+ * const b = fromArray([3, 4], [2] as const)
+ * const c = stack([a, b], 0) // shape: [2, 2]
+ * ```
+ */
+export function stack<D extends DType<string> = DType<'float32'>, Dev extends DeviceType = DeviceType>(
+  tensors: Tensor<Shape, D, Dev>[],
+  dim: number = 0,
+): Tensor<Shape, D, Dev> {
+  if (tensors.length === 0) {
+    throw new ValidationError('tensors', 'empty array', 'at least one tensor')
+  }
+
+  const first = tensors[0]!
+  const dtype = first.dtype
+  const device = first.device as Dev
+  const shape = first.shape as readonly number[]
+
+  const ndim = shape.length
+  const normalizedDim = dim < 0 ? dim + ndim + 1 : dim
+  if (!Number.isInteger(dim) || normalizedDim < 0 || normalizedDim > ndim) {
+    throw new ValidationError('dim', dim, `a value between ${-(ndim + 1)} and ${ndim}`)
+  }
+
+  for (let i = 1; i < tensors.length; i++) {
+    const t = tensors[i]!
+    if (t.device !== device) {
+      throw new ValidationError(
+        `tensors[${i}].device`,
+        t.device,
+        `same device as tensors[0] (${device})`,
+      )
+    }
+    if (t.dtype.name !== dtype.name) {
+      throw new ValidationError(
+        `tensors[${i}].dtype`,
+        t.dtype.name,
+        `same dtype as tensors[0] (${dtype.name})`,
+      )
+    }
+    if (t.shape.length !== shape.length || !t.shape.every((dimSize, idx) => dimSize === shape[idx])) {
+      throw new ValidationError(`tensors[${i}].shape`, t.shape, `same shape as tensors[0] (${shape})`)
+    }
+  }
+
+  const expanded = tensors.map((tensor) => tensor.unsqueeze(normalizedDim))
+  return cat(expanded as unknown as Tensor<Shape, D, Dev>[], normalizedDim)
 }

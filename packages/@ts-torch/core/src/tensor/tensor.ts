@@ -7,7 +7,15 @@
 
 import type { Shape } from '../types/shape.js'
 import type { DType } from '../types/dtype.js'
-import type { MatMulShape, TransposeShape, DeviceType } from '../types/tensor.js'
+import type {
+  MatMulShape,
+  TransposeShape,
+  DeviceType,
+  SqueezeShape,
+  UnsqueezeShape,
+  FlattenShape,
+  PermuteShape,
+} from '../types/tensor.js'
 import { getLib } from '../ffi/loader.js'
 import { withError, checkNull, TorchError, ErrorCode, type Pointer } from '../ffi/error.js'
 import { BytesPerElement, getDTypeFromValue } from '../types/dtype.js'
@@ -576,6 +584,15 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
   }
 
   /**
+   * Normalize a dimension index (supports negative dims)
+   * @internal
+   */
+  private _normalizeDim(dim: number, ndim: number, parameter: string = 'dim'): number {
+    validateDimension(dim, ndim, parameter)
+    return dim < 0 ? dim + ndim : dim
+  }
+
+  /**
    * Transpose two dimensions
    *
    * @template D0 - First dimension index
@@ -637,6 +654,167 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     checkNull(handle, 'Failed to reshape tensor')
 
     return new Tensor<NewS, D>(handle!, shape, this.dtype)
+  }
+
+  // ==================== Shape Operations ====================
+
+  /**
+   * Return a view with dimensions of size 1 removed
+   */
+  squeeze<Dim extends number | undefined = undefined>(dim?: Dim): Tensor<SqueezeShape<S, Dim> & Shape, D> {
+    this._checkValid()
+    const shape = [...this.shape] as number[]
+    if (shape.length === 0) {
+      return this as unknown as Tensor<SqueezeShape<S, Dim> & Shape, D>
+    }
+
+    if (dim === undefined) {
+      const newShape = shape.filter((size) => size !== 1)
+      if (newShape.length === shape.length) {
+        return this as unknown as Tensor<SqueezeShape<S, Dim> & Shape, D>
+      }
+      return this.reshape((newShape.length === 0 ? ([] as number[]) : newShape) as unknown as Shape) as Tensor<
+        SqueezeShape<S, Dim> & Shape,
+        D
+      >
+    }
+
+    const normalized = this._normalizeDim(dim, shape.length, 'dim')
+    if (shape[normalized] !== 1) {
+      return this as unknown as Tensor<SqueezeShape<S, Dim> & Shape, D>
+    }
+    shape.splice(normalized, 1)
+    return this.reshape((shape.length === 0 ? ([] as number[]) : shape) as unknown as Shape) as Tensor<
+      SqueezeShape<S, Dim> & Shape,
+      D
+    >
+  }
+
+  /**
+   * Return a view with a dimension of size 1 inserted
+   */
+  unsqueeze<Dim extends number>(dim: Dim): Tensor<UnsqueezeShape<S, Dim>, D> {
+    this._checkValid()
+    const ndim = this.ndim
+    const normalized = dim < 0 ? dim + ndim + 1 : dim
+    if (!Number.isInteger(dim) || normalized < 0 || normalized > ndim) {
+      throw new Error(`dim must be in range [${-(ndim + 1)}, ${ndim}] for ${ndim}D tensor`)
+    }
+
+    const shape = [...this.shape] as number[]
+    shape.splice(normalized, 0, 1)
+    return this.reshape(shape as unknown as Shape) as Tensor<UnsqueezeShape<S, Dim>, D>
+  }
+
+  /**
+   * Flatten dimensions from startDim to endDim (inclusive)
+   */
+  flatten<Start extends number = 0, End extends number = number>(
+    startDim: Start = 0 as Start,
+    endDim: End = -1 as End,
+  ): Tensor<FlattenShape<S, Start, End>, D> {
+    this._checkValid()
+    const ndim = this.ndim
+    let start = startDim < 0 ? (startDim as number) + ndim : (startDim as number)
+    let end = endDim < 0 ? (endDim as number) + ndim : (endDim as number)
+
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < 0 || start >= ndim || end >= ndim) {
+      throw new Error(`startDim/endDim must be valid dimensions for ${ndim}D tensor`)
+    }
+    if (end < start) {
+      throw new Error(`endDim (${endDim}) must be >= startDim (${startDim})`)
+    }
+
+    const shape = [...this.shape] as number[]
+    const prefix = shape.slice(0, start)
+    const middle = shape.slice(start, end + 1)
+    const suffix = shape.slice(end + 1)
+    const flattened = middle.reduce((acc, dim) => acc * dim, 1)
+    const newShape = [...prefix, flattened, ...suffix]
+    return this.reshape(newShape as unknown as Shape) as Tensor<FlattenShape<S, Start, End>, D>
+  }
+
+  /**
+   * Alias for reshape
+   */
+  view<NewS extends Shape>(shape: NewS): Tensor<NewS, D> {
+    return this.reshape(shape)
+  }
+
+  /**
+   * Split tensor along a dimension into chunks
+   */
+  split(splitSizeOrSections: number | number[], dim: number = 0): Tensor<Shape, D>[] {
+    this._checkValid()
+    const normalizedDim = this._normalizeDim(dim, this.ndim, 'dim')
+    const dimSize = (this.shape as readonly number[])[normalizedDim] ?? 0
+
+    if (Array.isArray(splitSizeOrSections)) {
+      const sizes = splitSizeOrSections
+      let total = 0
+      for (const size of sizes) {
+        validatePositiveInt(size, 'splitSize')
+        total += size
+      }
+      if (total !== dimSize) {
+        throw new Error(`Sum of split sizes (${total}) does not match dimension size (${dimSize})`)
+      }
+      const outputs: Tensor<Shape, D>[] = []
+      let offset = 0
+      for (const size of sizes) {
+        outputs.push(this.narrow(normalizedDim, offset, size))
+        offset += size
+      }
+      return outputs
+    }
+
+    validatePositiveInt(splitSizeOrSections, 'splitSize')
+    const splitSize = splitSizeOrSections
+    const outputs: Tensor<Shape, D>[] = []
+    let offset = 0
+    while (offset < dimSize) {
+      const length = Math.min(splitSize, dimSize - offset)
+      outputs.push(this.narrow(normalizedDim, offset, length))
+      offset += length
+    }
+    return outputs
+  }
+
+  /**
+   * Permute tensor dimensions
+   */
+  permute<Perm extends readonly number[]>(dims: Perm): Tensor<PermuteShape<S, Perm>, D> {
+    this._checkValid()
+    const ndim = this.ndim
+    if (dims.length !== ndim) {
+      throw new Error(`permute expects ${ndim} dimensions, got ${dims.length}`)
+    }
+
+    const normalized = dims.map((dim) => (dim < 0 ? dim + ndim : dim))
+    const seen = new Set<number>()
+    for (let i = 0; i < normalized.length; i++) {
+      const dim = normalized[i]!
+      if (!Number.isInteger(dim) || dim < 0 || dim >= ndim) {
+        throw new Error(`Invalid permute dimension: ${dims[i]}`)
+      }
+      if (seen.has(dim)) {
+        throw new Error(`Duplicate dimension in permute: ${dim}`)
+      }
+      seen.add(dim)
+    }
+
+    let result: Tensor<Shape, D> = this as unknown as Tensor<Shape, D>
+    const order = Array.from({ length: ndim }, (_, i) => i)
+    for (let i = 0; i < ndim; i++) {
+      const targetDim = normalized[i]!
+      const currentIndex = order.indexOf(targetDim)
+      if (currentIndex !== i) {
+        result = result.transpose(i, currentIndex) as Tensor<Shape, D>
+        ;[order[i], order[currentIndex]] = [order[currentIndex]!, order[i]!]
+      }
+    }
+
+    return result as Tensor<PermuteShape<S, Perm>, D>
   }
 
   // ==================== Reductions ====================

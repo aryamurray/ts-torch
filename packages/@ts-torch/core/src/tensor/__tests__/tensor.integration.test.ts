@@ -19,7 +19,7 @@ describe('Tensor Operations - Integration', () => {
           const c = a.add(b);
 
           expect(c).toHaveShape([2, 3]);
-          expect(c).toBeCloseTo(2); // All values should be 2
+          expect(c).toBeCloseTo([2, 2, 2, 2, 2, 2]); // All values should be 2
         }));
 
       it('should add tensors with different values', () =>
@@ -200,6 +200,53 @@ describe('Tensor Operations - Integration', () => {
     });
   });
 
+  describe('shape operations', () => {
+    it('should squeeze singleton dimensions', () =>
+      scopedTest(() => {
+        const a = ones([1, 2, 1, 3] as const);
+        const b = a.squeeze();
+
+        expect(b).toHaveShape([2, 3]);
+      }));
+
+    it('should unsqueeze along a dimension', () =>
+      scopedTest(() => {
+        const a = ones([2, 3] as const);
+        const b = (a as any).unsqueeze(1) as typeof a;
+
+        expect(b).toHaveShape([2, 1, 3]);
+      }));
+
+    it('should flatten a range of dimensions', () =>
+      scopedTest(() => {
+        const a = ones([2, 3, 4] as const);
+        const b = a.flatten(1, 2);
+
+        expect(b).toHaveShape([2, 12]);
+        expect(b.numel).toBe(24);
+      }));
+
+    it('should permute dimensions', () =>
+      scopedTest(() => {
+        const a = fromArray([1, 2, 3, 4, 5, 6], [2, 3] as const);
+        const b = a.permute([1, 0]);
+
+        expect(b).toHaveShape([3, 2]);
+        expect(b).toBeCloseTo([1, 4, 2, 5, 3, 6]);
+      }));
+
+    it('should split tensors into chunks', () =>
+      scopedTest(() => {
+        const a = fromArray([1, 2, 3, 4, 5, 6], [6] as const);
+        const parts = a.split(2);
+
+        expect(parts).toHaveLength(3);
+        expect(parts[0]).toBeCloseTo([1, 2]);
+        expect(parts[1]).toBeCloseTo([3, 4]);
+        expect(parts[2]).toBeCloseTo([5, 6]);
+      }));
+  });
+
   describe('reduction operations', () => {
     describe('sum', () => {
       it('should sum all elements to scalar', () =>
@@ -236,7 +283,7 @@ describe('Tensor Operations - Integration', () => {
           const m = a.mean();
 
           expect(m).toHaveShape([]);
-          expect(m.item()).toBeCloseTo(2.5, 1e-5);
+          expect(Math.abs(m.item() - 2.5)).toBeLessThan(1e-5);
         }));
 
       it('should compute mean of ones', () =>
@@ -244,7 +291,7 @@ describe('Tensor Operations - Integration', () => {
           const a = ones([10, 10] as const);
           const m = a.mean();
 
-          expect(m.item()).toBeCloseTo(1, 1e-5);
+          expect(Math.abs(m.item() - 1)).toBeLessThan(1e-5);
         }));
 
       it('should compute mean of zeros', () =>
@@ -290,7 +337,7 @@ describe('Tensor Operations - Integration', () => {
           const a = fromArray([0], [1] as const);
           const b = a.sigmoid();
 
-          expect(b.item()).toBeCloseTo(0.5, 1e-5);
+          expect(Math.abs(b.item() - 0.5)).toBeLessThan(1e-5);
         }));
 
       it('should map large positive values close to 1', () =>
@@ -298,7 +345,7 @@ describe('Tensor Operations - Integration', () => {
           const a = fromArray([10], [1] as const);
           const b = a.sigmoid();
 
-          expect(b.item()).toBeCloseTo(0.9999, 1e-4);
+          expect(Math.abs(b.item() - 0.9999)).toBeLessThan(1e-4);
         }));
 
       it('should map large negative values close to 0', () =>
@@ -306,7 +353,7 @@ describe('Tensor Operations - Integration', () => {
           const a = fromArray([-10], [1] as const);
           const b = a.sigmoid();
 
-          expect(b.item()).toBeCloseTo(0.0001, 1e-4);
+          expect(Math.abs(b.item() - 0.0001)).toBeLessThan(1e-4);
         }));
 
       it('should work with tensors', () =>
@@ -315,8 +362,8 @@ describe('Tensor Operations - Integration', () => {
           const b = a.sigmoid();
 
           expect(b).toBeFinite();
-          const data = Array.from(b.toArray()).map(Number);
-          expect(data[2]).toBeCloseTo(0.5, 1e-5); // sigmoid(0) = 0.5
+          const data = Array.from(b.toArray() as Iterable<number | bigint>).map(Number);
+          expect(Math.abs(data[2] - 0.5)).toBeLessThan(1e-5); // sigmoid(0) = 0.5
         }));
     });
 
@@ -327,9 +374,9 @@ describe('Tensor Operations - Integration', () => {
           const b = a.softmax(0);
 
           expect(b).toBeFinite();
-          const data = Array.from(b.toArray()).map(Number);
+          const data = Array.from(b.toArray() as Iterable<number | bigint>).map(Number);
           const sum = data.reduce((acc, val) => acc + val, 0);
-          expect(sum).toBeCloseTo(1, 1e-5); // Probabilities should sum to 1
+          expect(Math.abs(sum - 1)).toBeLessThan(1e-5); // Probabilities should sum to 1
         }));
 
       it('should apply softmax to 2D tensor', () =>
@@ -350,7 +397,7 @@ describe('Tensor Operations - Integration', () => {
 
           expect(b).toBeFinite();
           // Log-softmax should produce negative values
-          const data = Array.from(b.toArray()).map(Number);
+          const data = Array.from(b.toArray() as Iterable<number | bigint>).map(Number);
           expect(data.every((v) => v <= 0)).toBe(true);
         }));
     });
