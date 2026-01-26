@@ -27,9 +27,7 @@ import type { Shape, DType } from '@ts-torch/core'
  * ```
  */
 export function relu<S extends Shape, D extends DType<string> = float32>(x: Tensor<S, D>): Tensor<S, D> {
-  // TODO: Implement when Tensor ops are ready
-  // return x.relu();
-  return x as any // Placeholder
+  return x.relu()
 }
 
 /**
@@ -47,9 +45,7 @@ export function relu<S extends Shape, D extends DType<string> = float32>(x: Tens
  * ```
  */
 export function sigmoid<S extends Shape, D extends DType<string> = float32>(x: Tensor<S, D>): Tensor<S, D> {
-  // TODO: Implement when Tensor ops are ready
-  // return x.sigmoid();
-  return x as any // Placeholder
+  return x.sigmoid()
 }
 
 /**
@@ -67,9 +63,7 @@ export function sigmoid<S extends Shape, D extends DType<string> = float32>(x: T
  * ```
  */
 export function tanh<S extends Shape, D extends DType<string> = float32>(x: Tensor<S, D>): Tensor<S, D> {
-  // TODO: Implement when Tensor ops are ready
-  // return x.tanh();
-  return x as any // Placeholder
+  return x.tanh()
 }
 
 /**
@@ -92,9 +86,7 @@ export function softmax<S extends Shape, D extends DType<string> = float32>(
   x: Tensor<S, D>,
   _dim: number = -1,
 ): Tensor<S, D> {
-  // TODO: Implement when Tensor ops are ready
-  // return x.softmax(dim);
-  return x as any // Placeholder
+  return x.softmax(_dim)
 }
 
 /**
@@ -116,9 +108,8 @@ export function leakyRelu<S extends Shape, D extends DType<string> = float32>(
   x: Tensor<S, D>,
   _negativeSlope: number = 0.01,
 ): Tensor<S, D> {
-  // TODO: Implement when Tensor ops are ready
-  // return x.leakyRelu(negativeSlope);
-  return x as any // Placeholder
+  const negative = x.mulScalar(_negativeSlope)
+  return x.maximum(negative)
 }
 
 /**
@@ -136,9 +127,10 @@ export function leakyRelu<S extends Shape, D extends DType<string> = float32>(
  * ```
  */
 export function gelu<S extends Shape, D extends DType<string> = float32>(x: Tensor<S, D>): Tensor<S, D> {
-  // TODO: Implement when Tensor ops are ready
-  // return x.gelu();
-  return x as any // Placeholder
+  const x3 = x.mul(x).mul(x)
+  const inner = x.add(x3.mulScalar(0.044715)).mulScalar(Math.sqrt(2 / Math.PI))
+  const tanhValue = inner.tanh()
+  return x.mul(tanhValue.addScalar(1)).mulScalar(0.5)
 }
 
 /**
@@ -173,12 +165,7 @@ export function dropout<S extends Shape, D extends DType<string> = float32>(
     throw new Error(`Dropout probability must be in [0, 1), got ${p}`)
   }
 
-  // TODO: Implement actual dropout when Tensor ops are ready
-  // During training:
-  // const mask = (random(x.shape) > p).cast(x.dtype);
-  // return x.mul(mask).div(1 - p); // Scale to maintain expected value
-
-  return x as any // Placeholder
+  return x.dropout(p, training)
 }
 
 /**
@@ -211,14 +198,11 @@ export function linear<
   _weight: Tensor<readonly [OutFeatures, InFeatures], D>,
   _bias?: Tensor<readonly [OutFeatures], D>,
 ): Tensor<readonly [...BatchShape, OutFeatures], D> {
-  // TODO: Implement when Tensor ops are ready
-  // let output = input.matmul(weight.transpose(-1, -2));
-  // if (bias) {
-  //   output = output.add(bias);
-  // }
-  // return output;
-
-  return input as any // Placeholder
+  let output = input.matmul(_weight.transpose(0, 1)) as Tensor<readonly [...BatchShape, OutFeatures], D>
+  if (_bias) {
+    output = output.add(_bias) as Tensor<readonly [...BatchShape, OutFeatures], D>
+  }
+  return output
 }
 
 /**
@@ -243,16 +227,7 @@ export function logSoftmax<S extends Shape, D extends DType<string> = float32>(
   x: Tensor<S, D>,
   _dim: number = -1,
 ): Tensor<S, D> {
-  // TODO: Implement when Tensor ops are ready
-  // return x.logSoftmax(dim);
-  //
-  // Numerically stable implementation:
-  // const maxVals = x.max(dim=dim, keepdim=true);
-  // const shifted = x.sub(maxVals);
-  // const logSumExp = shifted.exp().sum(dim=dim, keepdim=true).log();
-  // return shifted.sub(logSumExp);
-
-  return x as any // Placeholder
+  return x.logSoftmax(_dim)
 }
 
 /**
@@ -278,11 +253,11 @@ export function normalize<S extends Shape, D extends DType<string> = float32>(
   _dim: number = -1,
   _eps: number = 1e-12,
 ): Tensor<S, D> {
-  // TODO: Implement when Tensor ops are ready
-  // const norm = x.norm(p, dim=dim, keepdim=true);
-  // return x.div(norm.clamp(min=eps));
-
-  return x as any // Placeholder
+  if (_p !== 2) {
+    throw new Error(`normalize currently supports p=2, got p=${_p}`)
+  }
+  const norm = x.mul(x).sumDim(_dim, true).sqrt().clampMin(_eps)
+  return x.div(norm) as Tensor<S, D>
 }
 
 /**
@@ -306,8 +281,14 @@ export function clamp<S extends Shape, D extends DType<string> = float32>(
   _min: number | null = null,
   _max: number | null = null,
 ): Tensor<S, D> {
-  // TODO: Implement when Tensor ops are ready
-  // return x.clamp(min, max);
-
-  return x as any // Placeholder
+  if (_min === null && _max === null) {
+    return x
+  }
+  if (_min === null) {
+    return x.clampMax(_max as number)
+  }
+  if (_max === null) {
+    return x.clampMin(_min)
+  }
+  return x.clamp(_min, _max)
 }

@@ -45,11 +45,7 @@ export class ReLU<S extends Shape = Shape, D extends DType<string> = float32, De
    * @returns Output tensor with same shape, all negative values set to 0
    */
   forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
-    // TODO: Implement actual ReLU when Tensor ops are ready
-    // return input.relu();
-    // or: return input.clamp(0, Infinity);
-
-    return input as any // Placeholder - maintains type safety
+    return input.relu()
   }
 
   override toString(): string {
@@ -82,11 +78,7 @@ export class Sigmoid<S extends Shape = Shape, D extends DType<string> = float32,
    * @returns Output tensor with same shape, values in (0, 1)
    */
   forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
-    // TODO: Implement actual Sigmoid when Tensor ops are ready
-    // return input.sigmoid();
-    // or: return 1 / (1 + input.neg().exp());
-
-    return input as any // Placeholder - maintains type safety
+    return input.sigmoid()
   }
 
   override toString(): string {
@@ -119,10 +111,7 @@ export class Tanh<S extends Shape = Shape, D extends DType<string> = float32, De
    * @returns Output tensor with same shape, values in (-1, 1)
    */
   forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
-    // TODO: Implement actual Tanh when Tensor ops are ready
-    // return input.tanh();
-
-    return input as any // Placeholder - maintains type safety
+    return input.tanh()
   }
 
   override toString(): string {
@@ -166,15 +155,7 @@ export class Softmax<S extends Shape = Shape, D extends DType<string> = float32,
    * @returns Output tensor with same shape, values sum to 1 along dim
    */
   forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
-    // TODO: Implement actual Softmax when Tensor ops are ready
-    // return input.softmax(this.dim);
-    //
-    // Numerically stable implementation:
-    // const maxVals = input.max(dim=this.dim, keepdim=true);
-    // const exp = input.sub(maxVals).exp();
-    // return exp.div(exp.sum(dim=this.dim, keepdim=true));
-
-    return input as any // Placeholder - maintains type safety
+    return input.softmax(this.dim)
   }
 
   override toString(): string {
@@ -220,11 +201,8 @@ export class LeakyReLU<S extends Shape = Shape, D extends DType<string> = float3
    * @returns Output tensor with same shape
    */
   forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
-    // TODO: Implement actual LeakyReLU when Tensor ops are ready
-    // return input.leaky_relu(this.negativeSlope);
-    // or: return input.maximum(input.mul(this.negativeSlope));
-
-    return input as any // Placeholder - maintains type safety
+    const negative = input.mulScalar(this.negativeSlope)
+    return input.maximum(negative)
   }
 
   override toString(): string {
@@ -260,15 +238,10 @@ export class GELU<S extends Shape = Shape, D extends DType<string> = float32, De
    * @returns Output tensor with same shape
    */
   forward(input: Tensor<S, D, Dev>): Tensor<S, D, Dev> {
-    // TODO: Implement actual GELU when Tensor ops are ready
-    // return input.gelu();
-    //
-    // Tanh approximation:
-    // const x3 = input.pow(3);
-    // const inner = Math.sqrt(2/Math.PI) * (input + 0.044715 * x3);
-    // return 0.5 * input * (1 + inner.tanh());
-
-    return input as any // Placeholder - maintains type safety
+    const x3 = input.mul(input).mul(input)
+    const inner = input.add(x3.mulScalar(0.044715)).mulScalar(Math.sqrt(2 / Math.PI))
+    const tanh = inner.tanh()
+    return input.mul(tanh.addScalar(1)).mulScalar(0.5)
   }
 
   override toString(): string {

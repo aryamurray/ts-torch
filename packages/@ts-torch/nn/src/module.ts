@@ -32,8 +32,23 @@ export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType
   sigmoid(): Tensor<S, D, Dev>
   tanh(): Tensor<S, D, Dev>
   softmax(dim: number): Tensor<S, D, Dev>
+  logSoftmax(dim: number): Tensor<S, D, Dev>
+  exp(): Tensor<S, D, Dev>
+  log(): Tensor<S, D, Dev>
+  sqrt(): Tensor<S, D, Dev>
+  clamp(min: number, max: number): Tensor<S, D, Dev>
+  clampMin(min: number): Tensor<S, D, Dev>
+  clampMax(max: number): Tensor<S, D, Dev>
+  dropout(p?: number, training?: boolean): Tensor<S, D, Dev>
+  sumDim(dim: number, keepdim?: boolean): Tensor<any, D, Dev>
   matmul<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
   add<S2 extends Shape>(other: Tensor<S2, D, Dev> | number): Tensor<any, D, Dev>
+  addScalar(scalar: number): Tensor<S, D, Dev>
+  sub<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
+  mul<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
+  mulScalar(scalar: number): Tensor<S, D, Dev>
+  div<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
+  maximum<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
   transpose(dim0: number, dim1: number): Tensor<any, D, Dev>
   escape(): this
   free(): void
