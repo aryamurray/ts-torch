@@ -3,6 +3,8 @@
  * Manages error struct allocation and error checking
  */
 
+import { errorPool } from './buffer-pool.js'
+
 /**
  * Pointer type for koffi
  * koffi accepts ArrayBuffer/TypedArray directly as pointer arguments
@@ -127,8 +129,19 @@ export function createError(): ErrorBuffer {
  * @throws TorchError if error code is not 0
  */
 export function checkError(errorBuffer: ErrorBuffer): void {
+  checkErrorBuffer(errorBuffer.buffer)
+}
+
+/**
+ * Check error directly from ArrayBuffer
+ * Used internally by pooled withError
+ *
+ * @param buffer - Raw ArrayBuffer containing error struct
+ * @throws TorchError if error code is not 0
+ */
+export function checkErrorBuffer(buffer: ArrayBuffer): void {
   // Read error code (first 4 bytes) from the backing ArrayBuffer
-  const codeView = new DataView(errorBuffer.buffer, 0, 4)
+  const codeView = new DataView(buffer, 0, 4)
   const code = codeView.getInt32(0, true) as ErrorCode
 
   if (code === ErrorCode.OK) {
@@ -136,7 +149,7 @@ export function checkError(errorBuffer: ErrorBuffer): void {
   }
 
   // Read error message (next 256 bytes)
-  const messageBytes = new Uint8Array(errorBuffer.buffer, 4, 256)
+  const messageBytes = new Uint8Array(buffer, 4, 256)
 
   // Find null terminator
   let messageLength = 0
@@ -156,7 +169,7 @@ export function checkError(errorBuffer: ErrorBuffer): void {
 
 /**
  * Wrapper for FFI calls with automatic error handling
- * Simplifies error checking pattern
+ * Uses buffer pooling to reduce allocation overhead.
  *
  * @param fn - Function that takes error buffer and returns result
  * @returns Result from function
@@ -166,10 +179,14 @@ export function checkError(errorBuffer: ErrorBuffer): void {
  * const result = withError(err => lib.ts_tensor_zeros(shape, ndim, dtype, false, err));
  */
 export function withError<T>(fn: (errorBuffer: ArrayBuffer) => T): T {
-  const errorBuffer = createError()
-  const result = fn(errorBuffer.buffer)
-  checkError(errorBuffer)
-  return result
+  const buffer = errorPool.acquire()
+  try {
+    const result = fn(buffer)
+    checkErrorBuffer(buffer)
+    return result
+  } finally {
+    errorPool.release(buffer)
+  }
 }
 
 /**

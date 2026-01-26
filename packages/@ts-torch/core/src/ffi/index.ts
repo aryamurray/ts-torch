@@ -31,6 +31,7 @@ export {
   ErrorCode,
   createError,
   checkError,
+  checkErrorBuffer,
   withError,
   checkNull,
   validateShape,
@@ -39,6 +40,9 @@ export {
   type Pointer,
   type ErrorBuffer,
 } from './error.js'
+
+// Re-export buffer pooling
+export { errorPool, shapeCache } from './buffer-pool.js'
 
 // Re-export FFI symbols and types
 export { FFI_SYMBOLS, type TensorHandle, type FFISymbols } from './symbols.js'
