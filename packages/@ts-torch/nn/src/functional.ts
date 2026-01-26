@@ -7,6 +7,12 @@
  * Contrast with nn.Module versions:
  * - Functional: stateless, no parameters, lower level
  * - Module: stateful, may have parameters, higher level abstraction
+ *
+ * ## Fused Operations (Performance)
+ *
+ * For performance-critical code, use fused operations like `linearRelu()`,
+ * `linearSigmoid()`, etc. These combine multiple operations into a single
+ * FFI call, reducing overhead significantly.
  */
 
 import type { Tensor, float32 } from './module.js'
@@ -291,4 +297,142 @@ export function clamp<S extends Shape, D extends DType<string> = float32>(
     return x.clampMin(_min)
   }
   return x.clamp(_min, _max)
+}
+
+// ============================================================================
+// Fused Operations (Phase 3: Performance Optimization)
+// ============================================================================
+
+/**
+ * Fused linear + ReLU: relu(xW^T + b)
+ *
+ * Combines linear layer and ReLU activation in a single FFI call,
+ * reducing overhead compared to calling `linear()` then `relu()` separately.
+ *
+ * @template BatchShape - Batch dimensions
+ * @template InFeatures - Input feature dimension
+ * @template OutFeatures - Output feature dimension
+ * @template D - Data type
+ * @param input - Input tensor [...BatchShape, InFeatures]
+ * @param weight - Weight matrix [OutFeatures, InFeatures]
+ * @param bias - Optional bias vector [OutFeatures]
+ * @returns Output tensor [...BatchShape, OutFeatures]
+ *
+ * @example
+ * ```ts
+ * const x: Tensor<readonly [32, 784]> = ...;
+ * const w: Tensor<readonly [128, 784]> = ...;
+ * const b: Tensor<readonly [128]> = ...;
+ *
+ * // Fused: single FFI call
+ * const y = linearRelu(x, w, b);
+ *
+ * // Equivalent to (but faster than):
+ * const y2 = relu(linear(x, w, b));
+ * ```
+ */
+export function linearRelu<
+  BatchShape extends readonly number[],
+  InFeatures extends number,
+  OutFeatures extends number,
+  D extends DType<string> = float32,
+>(
+  input: Tensor<readonly [...BatchShape, InFeatures], D>,
+  _weight: Tensor<readonly [OutFeatures, InFeatures], D>,
+  _bias?: Tensor<readonly [OutFeatures], D>,
+): Tensor<readonly [...BatchShape, OutFeatures], D> {
+  // Use fused operation via tensor's internal FFI call
+  return (input as any).linearRelu(_weight, _bias) as Tensor<readonly [...BatchShape, OutFeatures], D>
+}
+
+/**
+ * Fused linear + Sigmoid: sigmoid(xW^T + b)
+ *
+ * Combines linear layer and sigmoid activation in a single FFI call.
+ *
+ * @template BatchShape - Batch dimensions
+ * @template InFeatures - Input feature dimension
+ * @template OutFeatures - Output feature dimension
+ * @template D - Data type
+ * @param input - Input tensor [...BatchShape, InFeatures]
+ * @param weight - Weight matrix [OutFeatures, InFeatures]
+ * @param bias - Optional bias vector [OutFeatures]
+ * @returns Output tensor [...BatchShape, OutFeatures]
+ *
+ * @example
+ * ```ts
+ * const logits = linearSigmoid(x, w, b); // For binary classification
+ * ```
+ */
+export function linearSigmoid<
+  BatchShape extends readonly number[],
+  InFeatures extends number,
+  OutFeatures extends number,
+  D extends DType<string> = float32,
+>(
+  input: Tensor<readonly [...BatchShape, InFeatures], D>,
+  _weight: Tensor<readonly [OutFeatures, InFeatures], D>,
+  _bias?: Tensor<readonly [OutFeatures], D>,
+): Tensor<readonly [...BatchShape, OutFeatures], D> {
+  return (input as any).linearSigmoid(_weight, _bias) as Tensor<readonly [...BatchShape, OutFeatures], D>
+}
+
+/**
+ * Fused linear + Tanh: tanh(xW^T + b)
+ *
+ * Combines linear layer and tanh activation in a single FFI call.
+ *
+ * @template BatchShape - Batch dimensions
+ * @template InFeatures - Input feature dimension
+ * @template OutFeatures - Output feature dimension
+ * @template D - Data type
+ * @param input - Input tensor [...BatchShape, InFeatures]
+ * @param weight - Weight matrix [OutFeatures, InFeatures]
+ * @param bias - Optional bias vector [OutFeatures]
+ * @returns Output tensor [...BatchShape, OutFeatures]
+ *
+ * @example
+ * ```ts
+ * const hidden = linearTanh(x, w, b); // Common in RNNs
+ * ```
+ */
+export function linearTanh<
+  BatchShape extends readonly number[],
+  InFeatures extends number,
+  OutFeatures extends number,
+  D extends DType<string> = float32,
+>(
+  input: Tensor<readonly [...BatchShape, InFeatures], D>,
+  _weight: Tensor<readonly [OutFeatures, InFeatures], D>,
+  _bias?: Tensor<readonly [OutFeatures], D>,
+): Tensor<readonly [...BatchShape, OutFeatures], D> {
+  return (input as any).linearTanh(_weight, _bias) as Tensor<readonly [...BatchShape, OutFeatures], D>
+}
+
+/**
+ * Fused add + ReLU: relu(a + b)
+ *
+ * Combines addition and ReLU in a single FFI call.
+ * Useful for residual connections with ReLU.
+ *
+ * @template S - Tensor shape (preserved)
+ * @template D - Data type
+ * @param a - First tensor
+ * @param b - Second tensor
+ * @returns relu(a + b)
+ *
+ * @example
+ * ```ts
+ * // Residual connection with ReLU
+ * const out = addRelu(x, residual);
+ *
+ * // Equivalent to (but faster than):
+ * const out2 = relu(x.add(residual));
+ * ```
+ */
+export function addRelu<S extends Shape, D extends DType<string> = float32>(
+  a: Tensor<S, D>,
+  b: Tensor<S, D>,
+): Tensor<S, D> {
+  return (a as any).addRelu(b) as Tensor<S, D>
 }

@@ -414,19 +414,30 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * Element-wise addition
    *
    * @param other - Tensor to add (must have same shape)
-   * @returns New tensor with result
+   * @param options - Optional: { out: preallocated tensor to write result into }
+   * @returns New tensor with result (or the `out` tensor if provided)
    *
    * @example
    * ```ts
    * const a = ones([2, 3], DType.float32);
    * const b = ones([2, 3], DType.float32);
    * const c = a.add(b); // [[2, 2, 2], [2, 2, 2]]
+   *
+   * // With pre-allocated output (avoids allocation):
+   * const out = empty([2, 3], DType.float32);
+   * a.add(b, { out }); // Writes to out, returns out
    * ```
    */
-  add(other: Tensor<S, D>): Tensor<S, D> {
+  add(other: Tensor<S, D>, options?: { out?: Tensor<S, D> }): Tensor<S, D> {
     this._checkValid()
     other._checkValid()
     const lib = getLib()
+
+    if (options?.out) {
+      options.out._checkValid()
+      withError((err) => lib.ts_tensor_add_out(this._handle, other._handle, options.out!._handle, err))
+      return options.out
+    }
 
     const handle = withError((err) => lib.ts_tensor_add(this._handle, other._handle, err))
 
@@ -439,7 +450,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * Element-wise subtraction
    *
    * @param other - Tensor to subtract (must have same shape)
-   * @returns New tensor with result
+   * @param options - Optional: { out: preallocated tensor to write result into }
+   * @returns New tensor with result (or the `out` tensor if provided)
    *
    * @example
    * ```ts
@@ -448,10 +460,16 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * const c = a.sub(b); // [[0, 0, 0], [0, 0, 0]]
    * ```
    */
-  sub(other: Tensor<S, D>): Tensor<S, D> {
+  sub(other: Tensor<S, D>, options?: { out?: Tensor<S, D> }): Tensor<S, D> {
     this._checkValid()
     other._checkValid()
     const lib = getLib()
+
+    if (options?.out) {
+      options.out._checkValid()
+      withError((err) => lib.ts_tensor_sub_out(this._handle, other._handle, options.out!._handle, err))
+      return options.out
+    }
 
     const handle = withError((err) => lib.ts_tensor_sub(this._handle, other._handle, err))
 
@@ -464,7 +482,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * Element-wise multiplication
    *
    * @param other - Tensor to multiply (must have same shape)
-   * @returns New tensor with result
+   * @param options - Optional: { out: preallocated tensor to write result into }
+   * @returns New tensor with result (or the `out` tensor if provided)
    *
    * @example
    * ```ts
@@ -473,10 +492,16 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * const c = a.mul(b); // [[2, 4], [6, 8]]
    * ```
    */
-  mul(other: Tensor<S, D>): Tensor<S, D> {
+  mul(other: Tensor<S, D>, options?: { out?: Tensor<S, D> }): Tensor<S, D> {
     this._checkValid()
     other._checkValid()
     const lib = getLib()
+
+    if (options?.out) {
+      options.out._checkValid()
+      withError((err) => lib.ts_tensor_mul_out(this._handle, other._handle, options.out!._handle, err))
+      return options.out
+    }
 
     const handle = withError((err) => lib.ts_tensor_mul(this._handle, other._handle, err))
 
@@ -489,7 +514,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * Element-wise division
    *
    * @param other - Tensor to divide by (must have same shape)
-   * @returns New tensor with result
+   * @param options - Optional: { out: preallocated tensor to write result into }
+   * @returns New tensor with result (or the `out` tensor if provided)
    *
    * @example
    * ```ts
@@ -498,10 +524,16 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * const c = a.div(b); // [[1, 2], [3, 4]]
    * ```
    */
-  div(other: Tensor<S, D>): Tensor<S, D> {
+  div(other: Tensor<S, D>, options?: { out?: Tensor<S, D> }): Tensor<S, D> {
     this._checkValid()
     other._checkValid()
     const lib = getLib()
+
+    if (options?.out) {
+      options.out._checkValid()
+      withError((err) => lib.ts_tensor_div_out(this._handle, other._handle, options.out!._handle, err))
+      return options.out
+    }
 
     const handle = withError((err) => lib.ts_tensor_div(this._handle, other._handle, err))
 
@@ -517,6 +549,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    *
    * @template S2 - Shape of other tensor
    * @param other - Tensor to multiply with
+   * @param options - Optional: { out: preallocated tensor to write result into }
    * @returns New tensor with result shape computed at compile time
    *
    * @example
@@ -524,13 +557,23 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
    * const a = zeros([2, 3], DType.float32);
    * const b = zeros([3, 4], DType.float32);
    * const c = a.matmul(b); // Type: Tensor<[2, 4], DType<"float32">>
+   *
+   * // With pre-allocated output:
+   * const out = empty([2, 4], DType.float32);
+   * a.matmul(b, { out }); // Writes to out
    * ```
    */
-  matmul<S2 extends Shape>(other: Tensor<S2, D>): Tensor<MatMulShape<S, S2>, D> {
+  matmul<S2 extends Shape>(other: Tensor<S2, D>, options?: { out?: Tensor<MatMulShape<S, S2>, D> }): Tensor<MatMulShape<S, S2>, D> {
     this._checkValid()
     other._checkValid()
     validateMatmulShapes(this.shape, other.shape)
     const lib = getLib()
+
+    if (options?.out) {
+      options.out._checkValid()
+      withError((err) => lib.ts_tensor_matmul_out(this._handle, other._handle, options.out!._handle, err))
+      return options.out
+    }
 
     const handle = withError((err) => lib.ts_tensor_matmul(this._handle, other._handle, err))
 
@@ -1750,6 +1793,71 @@ mean(): Tensor<readonly [], D> {
     withError((err) => lib.ts_tensor_add_scaled_inplace(this._handle, other._handle, scalar, err))
   }
 
+  /**
+   * In-place addition: this += other
+   *
+   * WARNING: Will error if this tensor is a leaf with requires_grad=true
+   *
+   * @param other - Tensor to add
+   */
+  addInplace(other: Tensor<S, D>): void {
+    this._checkValid()
+    other._checkValid()
+    const lib = getLib()
+
+    withError((err) => lib.ts_tensor_add_(this._handle, other._handle, err))
+  }
+
+  /**
+   * In-place multiplication: this *= other
+   *
+   * @param other - Tensor to multiply with
+   */
+  mulInplace(other: Tensor<S, D>): void {
+    this._checkValid()
+    other._checkValid()
+    const lib = getLib()
+
+    withError((err) => lib.ts_tensor_mul_(this._handle, other._handle, err))
+  }
+
+  /**
+   * In-place scalar multiplication: this *= scalar
+   *
+   * @param scalar - Scalar to multiply with
+   */
+  mulScalarInplace(scalar: number): void {
+    this._checkValid()
+    const lib = getLib()
+
+    withError((err) => lib.ts_tensor_mul_scalar_(this._handle, scalar, err))
+  }
+
+  /**
+   * In-place division: this /= other
+   *
+   * @param other - Tensor to divide by
+   */
+  divInplace(other: Tensor<S, D>): void {
+    this._checkValid()
+    other._checkValid()
+    const lib = getLib()
+
+    withError((err) => lib.ts_tensor_div_(this._handle, other._handle, err))
+  }
+
+  /**
+   * In-place scalar division: this /= scalar
+   *
+   * @param scalar - Scalar to divide by
+   */
+  divScalarInplace(scalar: number): void {
+    this._checkValid()
+    const lib = getLib()
+
+    withError((err) => lib.ts_tensor_div_scalar_(this._handle, scalar, err))
+  }
+
   // ==================== Convolution Operations ====================
 
   /**
@@ -2229,4 +2337,117 @@ mean(): Tensor<readonly [], D> {
 
     return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
   }
+
+  // ==================== Fused Operations (Phase 3: Performance) ====================
+
+  /**
+   * Fused linear + ReLU: relu(x @ W^T + b)
+   *
+   * Combines linear layer and ReLU activation in a single FFI call.
+   *
+   * @param weight - Weight tensor [outFeatures, inFeatures]
+   * @param bias - Optional bias tensor [outFeatures]
+   * @returns Output tensor with linear + ReLU applied
+   *
+   * @internal Used by nn.functional.linearRelu
+   */
+  linearRelu<OutFeatures extends number>(
+    weight: Tensor<readonly [OutFeatures, number], D>,
+    bias?: Tensor<readonly [OutFeatures], D>,
+  ): Tensor<Shape, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_linear_relu(this._handle, weight._handle, bias?._handle ?? null, err),
+    )
+
+    checkNull(handle, 'Failed to apply fused linearRelu')
+
+    // Compute output shape: replace last dim with outFeatures
+    const newShape = [...(this.shape as readonly number[])]
+    newShape[newShape.length - 1] = weight.shape[0]
+
+    return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
+  }
+
+  /**
+   * Fused linear + Sigmoid: sigmoid(x @ W^T + b)
+   *
+   * @param weight - Weight tensor [outFeatures, inFeatures]
+   * @param bias - Optional bias tensor [outFeatures]
+   * @returns Output tensor with linear + sigmoid applied
+   *
+   * @internal Used by nn.functional.linearSigmoid
+   */
+  linearSigmoid<OutFeatures extends number>(
+    weight: Tensor<readonly [OutFeatures, number], D>,
+    bias?: Tensor<readonly [OutFeatures], D>,
+  ): Tensor<Shape, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_linear_sigmoid(this._handle, weight._handle, bias?._handle ?? null, err),
+    )
+
+    checkNull(handle, 'Failed to apply fused linearSigmoid')
+
+    const newShape = [...(this.shape as readonly number[])]
+    newShape[newShape.length - 1] = weight.shape[0]
+
+    return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
+  }
+
+  /**
+   * Fused linear + Tanh: tanh(x @ W^T + b)
+   *
+   * @param weight - Weight tensor [outFeatures, inFeatures]
+   * @param bias - Optional bias tensor [outFeatures]
+   * @returns Output tensor with linear + tanh applied
+   *
+   * @internal Used by nn.functional.linearTanh
+   */
+  linearTanh<OutFeatures extends number>(
+    weight: Tensor<readonly [OutFeatures, number], D>,
+    bias?: Tensor<readonly [OutFeatures], D>,
+  ): Tensor<Shape, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_linear_tanh(this._handle, weight._handle, bias?._handle ?? null, err),
+    )
+
+    checkNull(handle, 'Failed to apply fused linearTanh')
+
+    const newShape = [...(this.shape as readonly number[])]
+    newShape[newShape.length - 1] = weight.shape[0]
+
+    return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
+  }
+
+  /**
+   * Fused add + ReLU: relu(this + other)
+   *
+   * @param other - Tensor to add
+   * @returns relu(this + other)
+   *
+   * @internal Used by nn.functional.addRelu
+   */
+  addRelu(other: Tensor<S, D>): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) => lib.ts_tensor_add_relu(this._handle, other._handle, err))
+
+    checkNull(handle, 'Failed to apply fused addRelu')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
 }
+
+/**
+ * Type alias for any tensor regardless of shape, dtype, or device
+ */
+export type AnyTensor = Tensor<Shape, DType<string>, DeviceType>

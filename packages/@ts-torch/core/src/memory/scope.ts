@@ -290,3 +290,99 @@ export function currentScopeId(): number {
 export function scopeTensorCount(): number {
   return currentScope?.tensors.size ?? 0
 }
+
+// ============================================================================
+// Deterministic Disposal Helpers
+// ============================================================================
+
+/**
+ * Interface for disposable resources (tensors)
+ */
+export interface Disposable {
+  free(): void
+}
+
+/**
+ * Guaranteed disposal of a single tensor, even on throw.
+ * Provides Rust-like RAII semantics for deterministic memory management.
+ *
+ * NOTE: The native layer has double-free protection via atomic flags,
+ * so calling free() multiple times is safe (but wasteful).
+ *
+ * @template T - Type of disposable resource
+ * @template R - Return type of the function
+ * @param resource - Resource to dispose after use
+ * @param fn - Function to execute with the resource
+ * @returns Result of the function
+ *
+ * @example
+ * ```ts
+ * import { using } from '@ts-torch/core/memory';
+ *
+ * const result = using(randn([100, 100]), (tensor) => {
+ *   // Use tensor...
+ *   return tensor.sum().item();
+ * }); // tensor is freed here, even if an exception occurred
+ * ```
+ */
+export function using<T extends Disposable, R>(resource: T, fn: (r: T) => R): R {
+  try {
+    return fn(resource)
+  } finally {
+    resource.free()
+  }
+}
+
+/**
+ * Async version of using() for async operations.
+ *
+ * @template T - Type of disposable resource
+ * @template R - Return type of the async function
+ * @param resource - Resource to dispose after use
+ * @param fn - Async function to execute with the resource
+ * @returns Promise of the function result
+ *
+ * @example
+ * ```ts
+ * const result = await usingAsync(randn([100, 100]), async (tensor) => {
+ *   await someAsyncOp();
+ *   return tensor.sum().item();
+ * }); // tensor is freed here
+ * ```
+ */
+export async function usingAsync<T extends Disposable, R>(
+  resource: T,
+  fn: (r: T) => Promise<R>,
+): Promise<R> {
+  try {
+    return await fn(resource)
+  } finally {
+    resource.free()
+  }
+}
+
+/**
+ * Dispose multiple resources in a single scope.
+ * All resources are freed when the function returns, even on throw.
+ *
+ * @template R - Return type of the function
+ * @param resources - Array of resources to dispose
+ * @param fn - Function to execute
+ * @returns Result of the function
+ *
+ * @example
+ * ```ts
+ * const result = withResources([randn([10]), randn([10])], ([a, b]) => {
+ *   return a.add(b).sum().item();
+ * }); // Both a and b are freed here
+ * ```
+ */
+export function withResources<T extends Disposable[], R>(resources: T, fn: (r: T) => R): R {
+  try {
+    return fn(resources)
+  } finally {
+    for (const r of resources) {
+      r.free()
+    }
+  }
+}

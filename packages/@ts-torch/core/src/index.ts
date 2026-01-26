@@ -65,7 +65,20 @@ export { cat, rand, stack } from './tensor/factory.js'
 // Memory Management
 // ===============================
 
-export { run, runAsync, inScope, scopeDepth } from './memory/scope.js'
+export { run, runAsync, inScope, scopeDepth, using, usingAsync, withResources } from './memory/scope.js'
+
+// ===============================
+// Optimized Batched Operations
+// ===============================
+
+export {
+  batch,
+  isBatchRecording,
+  chainMatmul,
+  mlpForward,
+  setNumThreads,
+  getNumThreads,
+} from './ops/index.js'
 
 // ===============================
 // Debug Mode

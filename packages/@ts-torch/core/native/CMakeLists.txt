@@ -53,6 +53,8 @@ set(SOURCES
     src/device.cpp
     src/nn.cpp
     src/indexing.cpp
+    src/batch_ops.cpp
+    src/fused_ops.cpp
 )
 
 # Header files

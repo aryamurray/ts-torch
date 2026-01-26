@@ -9,6 +9,9 @@
 // Base optimizer
 export * from './optimizer.js'
 
+// Optimizer tensor wrapper (safe in-place operations)
+export { OptimizerTensor, wrapForOptim } from './optimizer-tensor.js'
+
 // Optimizers
 export * from './sgd.js'
 export * from './adam.js'

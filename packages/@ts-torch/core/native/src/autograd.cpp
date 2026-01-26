@@ -99,7 +99,7 @@ int ts_tensor_is_leaf(ts_TensorHandle tensor, ts_Error* error) {
     }
 }
 
-// Scope management
+// Scope management (using SBO for performance)
 
 ts_ScopeHandle ts_scope_begin(void) {
     auto scope = std::make_unique<ts_Scope>();
@@ -114,18 +114,20 @@ void ts_scope_end(ts_ScopeHandle scope) {
     }
 
     // Delete all tensors that weren't escaped
-    for (auto* tensor : scope->tensors) {
+    // Uses the SBO for_each method which iterates inline + overflow
+    scope->for_each([scope](ts_TensorHandle tensor) {
+        // Only delete if not escaped
         if (scope->escaped.find(tensor) == scope->escaped.end()) {
-            ts_tensor_delete(tensor);
+            ts_tensor_delete(tensor);  // Safe: uses atomic double-free protection
         }
-    }
+    });
 
     g_scope_stack.pop_back();
 }
 
 void ts_scope_register_tensor(ts_ScopeHandle scope, ts_TensorHandle tensor) {
     if (scope && tensor) {
-        scope->tensors.insert(tensor);
+        scope->add(tensor);  // Uses SBO add method
     }
 }
 

@@ -6,10 +6,19 @@
  * during high-frequency tensor operations.
  */
 
-import { ERROR_STRUCT_SIZE } from './error.js'
+// Inline constant to avoid circular dependency with error.ts
+// Must match ERROR_STRUCT_SIZE in error.ts (4 bytes code + 256 bytes message = 260)
+const ERROR_STRUCT_SIZE = 260
 
 const ERROR_POOL_SIZE = 8
 const SHAPE_POOL_SIZE = 16
+const SHAPE_CACHE_32_SIZE = 64 // Larger cache for int32 shapes (most common case)
+
+/**
+ * Maximum safe int32 value for shape dimensions
+ * Dimensions larger than this require int64 path
+ */
+export const MAX_INT32 = 2_147_483_647
 
 /**
  * Pool for reusing error buffers across FFI calls
@@ -117,13 +126,91 @@ class ShapeBufferCache {
 }
 
 /**
+ * Cache for reusing Int32Array shape buffers (fast path)
+ *
+ * Int32 shapes avoid BigInt conversion overhead which is significant
+ * in hot paths. Most tensor dimensions fit in int32.
+ */
+class ShapeBufferCache32 {
+  private caches = new Map<number, Int32Array[]>()
+
+  /**
+   * Acquire a shape buffer for the given number of dimensions
+   */
+  acquire(ndim: number): Int32Array {
+    const cache = this.caches.get(ndim)
+    let buffer = cache?.pop()
+    // Check if buffer was detached by FFI or is invalid
+    if (!buffer || buffer.length !== ndim || buffer.buffer.byteLength === 0) {
+      buffer = new Int32Array(ndim)
+    }
+    return buffer
+  }
+
+  /**
+   * Release a shape buffer back to the cache
+   */
+  release(buffer: Int32Array): void {
+    // Don't return detached buffers to the cache
+    if (buffer.buffer.byteLength === 0) {
+      return
+    }
+    const ndim = buffer.length
+    let cache = this.caches.get(ndim)
+    if (!cache) {
+      cache = []
+      this.caches.set(ndim, cache)
+    }
+    if (cache.length < SHAPE_CACHE_32_SIZE) {
+      cache.push(buffer)
+    }
+  }
+
+  /**
+   * Check if shape can use int32 (all dimensions fit in int32)
+   */
+  canUseInt32(shape: readonly number[]): boolean {
+    for (let i = 0; i < shape.length; i++) {
+      const dim = shape[i]!
+      if (!Number.isSafeInteger(dim) || dim < 0 || dim > MAX_INT32) {
+        return false
+      }
+    }
+    return true
+  }
+
+  /**
+   * Helper to acquire and fill a shape buffer in one step
+   *
+   * @param shape - Readonly shape array to convert
+   * @returns Filled Int32Array buffer, or null if shape requires int64
+   */
+  fillShape(shape: readonly number[]): Int32Array | null {
+    if (!this.canUseInt32(shape)) {
+      return null // Caller should fall back to int64 path
+    }
+    const buffer = this.acquire(shape.length)
+    for (let i = 0; i < shape.length; i++) {
+      buffer[i] = shape[i]!
+    }
+    return buffer
+  }
+}
+
+/**
  * Global error buffer pool instance
  * Thread-safe for single-threaded JS execution
  */
 export const errorPool = new ErrorBufferPool()
 
 /**
- * Global shape buffer cache instance
+ * Global shape buffer cache instance (int64 - legacy)
  * Thread-safe for single-threaded JS execution
  */
 export const shapeCache = new ShapeBufferCache()
+
+/**
+ * Global int32 shape buffer cache instance (fast path)
+ * Use this for most tensor operations where dimensions fit in int32
+ */
+export const shapeCache32 = new ShapeBufferCache32()

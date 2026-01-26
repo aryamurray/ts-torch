@@ -8,15 +8,41 @@
 #include <vector>
 #include <unordered_set>
 #include <stdexcept>
+#include <atomic>
 
 // Version string
 #define TS_TORCH_VERSION "0.1.0"
 
 // Internal structures
+
+/**
+ * Tensor wrapper with double-free protection via atomic flag.
+ * The atomic flag ensures that even if both manual dispose() and scope
+ * cleanup try to delete the same tensor, only one will succeed.
+ */
 struct ts_Tensor {
     torch::Tensor tensor;
+    std::atomic<bool> freed{false};  // Double-free protection
+    int32_t batch_id = -1;           // For batching placeholders (Phase 2)
 
     explicit ts_Tensor(torch::Tensor t) : tensor(std::move(t)) {}
+
+    // Placeholder constructor for batching (Phase 2)
+    explicit ts_Tensor(int32_t id) : batch_id(id) {}
+
+    /**
+     * Atomically mark as freed. Returns true if this call won the race
+     * (caller should delete), false if already freed (caller should not delete).
+     */
+    bool mark_freed() {
+        bool expected = false;
+        return freed.compare_exchange_strong(expected, true);
+    }
+
+    /**
+     * Check if this is a batch placeholder (Phase 2)
+     */
+    bool is_placeholder() const { return batch_id >= 0; }
 };
 
 struct ts_Module {
@@ -32,9 +58,62 @@ struct ts_Optimizer {
         : optimizer(std::move(opt)) {}
 };
 
+/**
+ * Scope with Small Buffer Optimization (SBO).
+ * Uses inline storage for up to 16 tensors (common case) to avoid
+ * heap allocation. Falls back to vector for larger scopes.
+ */
 struct ts_Scope {
-    std::unordered_set<ts_TensorHandle> tensors;
+    static constexpr size_t INLINE_CAPACITY = 16;
+
+    // Inline storage (no heap allocation for small scopes)
+    ts_TensorHandle inline_tensors[INLINE_CAPACITY];
+    size_t inline_count = 0;
+
+    // Overflow to heap vector for large scopes
+    std::vector<ts_TensorHandle>* overflow = nullptr;
+
+    // Track escaped tensors (typically small, keep as set)
     std::unordered_set<ts_TensorHandle> escaped;
+
+    ~ts_Scope() {
+        delete overflow;
+    }
+
+    void add(ts_TensorHandle h) {
+        if (inline_count < INLINE_CAPACITY) {
+            inline_tensors[inline_count++] = h;
+        } else {
+            if (!overflow) overflow = new std::vector<ts_TensorHandle>();
+            overflow->push_back(h);
+        }
+    }
+
+    // Check if tensor is in this scope
+    bool contains(ts_TensorHandle h) const {
+        for (size_t i = 0; i < inline_count; i++) {
+            if (inline_tensors[i] == h) return true;
+        }
+        if (overflow) {
+            for (auto t : *overflow) {
+                if (t == h) return true;
+            }
+        }
+        return false;
+    }
+
+    // Iterate over all tensors
+    template<typename Fn>
+    void for_each(Fn fn) const {
+        for (size_t i = 0; i < inline_count; i++) {
+            fn(inline_tensors[i]);
+        }
+        if (overflow) {
+            for (auto t : *overflow) {
+                fn(t);
+            }
+        }
+    }
 };
 
 // Thread-local scope stack declaration (defined in common.cpp)
@@ -110,7 +189,7 @@ inline void set_error(ts_Error* error, int code, const char* message) {
 // Helper function to register tensor in current scope
 inline void register_in_scope(ts_TensorHandle handle) {
     if (!g_scope_stack.empty()) {
-        g_scope_stack.back()->tensors.insert(handle);
+        g_scope_stack.back()->add(handle);
     }
 }
 

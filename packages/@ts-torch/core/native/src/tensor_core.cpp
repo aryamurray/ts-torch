@@ -109,10 +109,16 @@ int ts_tensor_device_index(ts_TensorHandle tensor, ts_Error* error) {
 // Tensor memory management
 // ============================================================================
 
+/**
+ * Delete tensor with double-free protection.
+ * Uses atomic flag to ensure only one caller actually deletes.
+ * Safe to call from both manual dispose() and scope cleanup.
+ */
 void ts_tensor_delete(ts_TensorHandle tensor) {
-    if (tensor) {
+    if (tensor && tensor->mark_freed()) {
         delete tensor;
     }
+    // If mark_freed() returns false, tensor was already freed by another caller
 }
 
 ts_TensorHandle ts_tensor_clone(ts_TensorHandle tensor, ts_Error* error) {
@@ -698,5 +704,247 @@ ts_TensorHandle ts_tensor_ge(
     } catch (const std::exception& e) {
         set_error(error, 1, e.what());
         return nullptr;
+    }
+}
+
+// ============================================================================
+// In-Place Operations (Phase 4)
+// ============================================================================
+
+void ts_tensor_add_(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !other) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        // This will error if tensor is a leaf with requires_grad=true
+        tensor->tensor.add_(other->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_sub_(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !other) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        tensor->tensor.sub_(other->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_mul_(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !other) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        tensor->tensor.mul_(other->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_mul_scalar_(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        tensor->tensor.mul_(scalar);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_add_alpha_(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    double alpha,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !other) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        tensor->tensor.add_(other->tensor, alpha);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_optim_add_(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    double alpha,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !other) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        // Use .data() to bypass autograd - only safe in optimizer context
+        tensor->tensor.data().add_(other->tensor, alpha);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_zero_grad_(
+    ts_TensorHandle tensor,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        if (tensor->tensor.grad().defined()) {
+            tensor->tensor.grad().zero_();
+        }
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_div_(
+    ts_TensorHandle tensor,
+    ts_TensorHandle other,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !other) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        tensor->tensor.div_(other->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_div_scalar_(
+    ts_TensorHandle tensor,
+    double scalar,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        tensor->tensor.div_(scalar);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+// ============================================================================
+// Out= Operations (Pre-allocated output tensors)
+// ============================================================================
+
+void ts_tensor_add_out(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_TensorHandle out,
+    ts_Error* error
+) {
+    try {
+        if (!a || !b || !out) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        torch::add_out(out->tensor, a->tensor, b->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_sub_out(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_TensorHandle out,
+    ts_Error* error
+) {
+    try {
+        if (!a || !b || !out) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        torch::sub_out(out->tensor, a->tensor, b->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_mul_out(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_TensorHandle out,
+    ts_Error* error
+) {
+    try {
+        if (!a || !b || !out) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        torch::mul_out(out->tensor, a->tensor, b->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_div_out(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_TensorHandle out,
+    ts_Error* error
+) {
+    try {
+        if (!a || !b || !out) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        torch::div_out(out->tensor, a->tensor, b->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+    }
+}
+
+void ts_tensor_matmul_out(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_TensorHandle out,
+    ts_Error* error
+) {
+    try {
+        if (!a || !b || !out) {
+            set_error(error, 1, "Null tensor handle");
+            return;
+        }
+        torch::matmul_out(out->tensor, a->tensor, b->tensor);
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
     }
 }

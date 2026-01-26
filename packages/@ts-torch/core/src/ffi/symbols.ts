@@ -62,6 +62,34 @@ export const FFI_SYMBOLS = {
     returns: ptr,
   },
 
+  // ==================== Tensor Creation (int32 fast path) ====================
+  // These use int32 shapes to avoid BigInt conversion overhead
+
+  ts_tensor_zeros_i32: {
+    args: [ptr, i32, i32, i32, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  ts_tensor_ones_i32: {
+    args: [ptr, i32, i32, i32, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  ts_tensor_randn_i32: {
+    args: [ptr, i32, i32, i32, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  ts_tensor_rand_i32: {
+    args: [ptr, i32, i32, i32, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  ts_tensor_empty_i32: {
+    args: [ptr, i32, i32, i32, i32, ptr] as const,
+    returns: ptr,
+  },
+
   // ==================== Tensor Properties ====================
 
   // ts_tensor_ndim(tensor, error) -> int64_t
@@ -536,6 +564,174 @@ export const FFI_SYMBOLS = {
   ts_tensor_clamp_max: {
     args: [ptr, f64, ptr] as const,
     returns: ptr,
+  },
+
+  // ==================== In-Place Operations (Phase 4) ====================
+
+  // ts_tensor_add_(tensor, other, error)
+  ts_tensor_add_: {
+    args: [ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_sub_(tensor, other, error)
+  ts_tensor_sub_: {
+    args: [ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_mul_(tensor, other, error)
+  ts_tensor_mul_: {
+    args: [ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_mul_scalar_(tensor, scalar, error)
+  ts_tensor_mul_scalar_: {
+    args: [ptr, f64, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_add_alpha_(tensor, other, alpha, error)
+  ts_tensor_add_alpha_: {
+    args: [ptr, ptr, f64, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_optim_add_(tensor, other, alpha, error)
+  ts_tensor_optim_add_: {
+    args: [ptr, ptr, f64, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_zero_grad_(tensor, error)
+  ts_tensor_zero_grad_: {
+    args: [ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_div_(tensor, other, error)
+  ts_tensor_div_: {
+    args: [ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_div_scalar_(tensor, scalar, error)
+  ts_tensor_div_scalar_: {
+    args: [ptr, f64, ptr] as const,
+    returns: void_,
+  },
+
+  // ==================== Out= Operations (Pre-allocated output) ====================
+
+  // ts_tensor_add_out(a, b, out, error)
+  ts_tensor_add_out: {
+    args: [ptr, ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_sub_out(a, b, out, error)
+  ts_tensor_sub_out: {
+    args: [ptr, ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_mul_out(a, b, out, error)
+  ts_tensor_mul_out: {
+    args: [ptr, ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_div_out(a, b, out, error)
+  ts_tensor_div_out: {
+    args: [ptr, ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ts_tensor_matmul_out(a, b, out, error)
+  ts_tensor_matmul_out: {
+    args: [ptr, ptr, ptr, ptr] as const,
+    returns: void_,
+  },
+
+  // ==================== Fused Operations (Phase 3) ====================
+
+  // ts_tensor_linear_relu(input, weight, bias, error) -> TensorHandle
+  ts_tensor_linear_relu: {
+    args: [ptr, ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_linear_sigmoid(input, weight, bias, error) -> TensorHandle
+  ts_tensor_linear_sigmoid: {
+    args: [ptr, ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_linear_tanh(input, weight, bias, error) -> TensorHandle
+  ts_tensor_linear_tanh: {
+    args: [ptr, ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_add_relu(a, b, error) -> TensorHandle
+  ts_tensor_add_relu: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ==================== Batching API (Phase 2) ====================
+
+  // ts_batch_begin(error) -> BatchHandle
+  ts_batch_begin: {
+    args: [ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_batch_end(batch, error) -> TensorHandle
+  ts_batch_end: {
+    args: [ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_batch_abort(batch)
+  ts_batch_abort: {
+    args: [ptr] as const,
+    returns: void_,
+  },
+
+  // ts_batch_is_recording() -> int
+  ts_batch_is_recording: {
+    args: [] as const,
+    returns: i32,
+  },
+
+  // ==================== Direct Batched Operations ====================
+
+  // ts_tensor_chain_matmul(tensors, count, error) -> TensorHandle
+  ts_tensor_chain_matmul: {
+    args: [ptr, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_mlp_forward(input, weights, biases, num_layers, apply_relu, error) -> TensorHandle
+  ts_tensor_mlp_forward: {
+    args: [ptr, ptr, ptr, i32, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ==================== Thread Controls (Phase 6) ====================
+
+  // ts_set_num_threads(num_threads)
+  ts_set_num_threads: {
+    args: [i32] as const,
+    returns: void_,
+  },
+
+  // ts_get_num_threads() -> int
+  ts_get_num_threads: {
+    args: [] as const,
+    returns: i32,
   },
 } as const
 

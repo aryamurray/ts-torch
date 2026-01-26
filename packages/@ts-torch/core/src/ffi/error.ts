@@ -22,6 +22,14 @@ export type Pointer = ArrayBuffer | unknown
 export const ERROR_STRUCT_SIZE = 260
 
 /**
+ * Thread-local (main thread) error buffer for fast synchronous FFI calls.
+ * Avoids pool acquire/release overhead in hot paths.
+ * @internal
+ */
+let mainThreadErrorBuffer: ArrayBuffer | null = null
+let mainThreadErrorView: DataView | null = null
+
+/**
  * Error codes returned by native library
  */
 export enum ErrorCode {
@@ -165,6 +173,34 @@ export function checkErrorBuffer(buffer: ArrayBuffer): void {
   const message = decoder.decode(messageBytes.subarray(0, messageLength))
 
   throw new TorchError(code, message)
+}
+
+/**
+ * Fast wrapper for FFI calls using thread-local error buffer.
+ * Avoids pool acquire/release overhead - ideal for hot paths.
+ *
+ * WARNING: Not reentrant - do not call FFI from within FFI callbacks.
+ *
+ * @param fn - Function that takes error buffer and returns result
+ * @returns Result from function
+ * @throws TorchError if error occurred
+ *
+ * @example
+ * const result = withErrorFast(err => lib.ts_tensor_zeros(shape, ndim, dtype, false, err));
+ */
+export function withErrorFast<T>(fn: (errorBuffer: ArrayBuffer) => T): T {
+  // Lazy initialize thread-local buffer
+  if (mainThreadErrorBuffer === null) {
+    mainThreadErrorBuffer = new ArrayBuffer(ERROR_STRUCT_SIZE)
+    mainThreadErrorView = new DataView(mainThreadErrorBuffer)
+  }
+
+  // Reset error code to 0 (OK)
+  mainThreadErrorView!.setInt32(0, 0, true)
+
+  const result = fn(mainThreadErrorBuffer)
+  checkErrorBuffer(mainThreadErrorBuffer)
+  return result
 }
 
 /**

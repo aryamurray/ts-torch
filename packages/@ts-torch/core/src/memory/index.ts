@@ -21,12 +21,26 @@ export {
   scopeDepth,
   currentScopeId,
   scopeTensorCount,
+  // Deterministic disposal helpers
+  using,
+  usingAsync,
+  withResources,
   type ScopedTensor,
+  type Disposable,
 } from './scope.js'
 
 // ==================== Tensor Pooling ====================
 
 export { TensorPool, globalTensorPool, type PoolableTensor, type PoolStats } from './pool.js'
+
+// ==================== Caching Allocator (Phase 5) ====================
+
+export {
+  CachingAllocator,
+  globalCachingAllocator,
+  type AllocatorStats,
+  type CachingAllocatorOptions,
+} from './caching-allocator.js'
 
 // ==================== ArrayBuffer Memory Pool ====================
 
