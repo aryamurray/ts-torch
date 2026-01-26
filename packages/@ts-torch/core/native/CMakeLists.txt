@@ -45,12 +45,20 @@ include_directories(
 
 # Source files
 set(SOURCES
-    src/ts_torch.cpp
+    src/common.cpp
+    src/tensor_factory.cpp
+    src/tensor_core.cpp
+    src/activation.cpp
+    src/autograd.cpp
+    src/device.cpp
+    src/nn.cpp
+    src/indexing.cpp
 )
 
 # Header files
 set(HEADERS
     include/ts_torch.h
+    include/ts_torch/internal.h
 )
 
 # Build shared library
