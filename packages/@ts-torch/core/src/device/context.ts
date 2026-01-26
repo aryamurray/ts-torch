@@ -20,6 +20,7 @@ import type { DType } from '../types/dtype.js'
 import { DType as DTypeConstants } from '../types/dtype.js'
 import { getLib } from '../ffi/loader.js'
 import { withError, checkNull } from '../ffi/error.js'
+import { shapeCache } from '../ffi/buffer-pool.js'
 import { ValidationError, validatePositiveInt } from '../validation/index.js'
 
 /** Device type enum values for FFI */
@@ -100,16 +101,20 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
   ): Tensor<S, D, Dev> {
     validateShapeArray(shape)
     const lib = getLib()
-    const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+    const shapeBuffer = shapeCache.fillShape(shape)
 
-    const handle = withError((err) =>
-      lib.ts_tensor_zeros(shapeArray.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
-    )
+    try {
+      const handle = withError((err) =>
+        lib.ts_tensor_zeros(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+      )
 
-    checkNull(handle, `Failed to create zeros tensor on ${this}`)
-    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
-    if (requiresGrad) tensor.requiresGrad = true
-    return tensor
+      checkNull(handle, `Failed to create zeros tensor on ${this}`)
+      const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
+      if (requiresGrad) tensor.requiresGrad = true
+      return tensor
+    } finally {
+      shapeCache.release(shapeBuffer)
+    }
   }
 
   /**
@@ -128,16 +133,20 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
   ): Tensor<S, D, Dev> {
     validateShapeArray(shape)
     const lib = getLib()
-    const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+    const shapeBuffer = shapeCache.fillShape(shape)
 
-    const handle = withError((err) =>
-      lib.ts_tensor_ones(shapeArray.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
-    )
+    try {
+      const handle = withError((err) =>
+        lib.ts_tensor_ones(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+      )
 
-    checkNull(handle, `Failed to create ones tensor on ${this}`)
-    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
-    if (requiresGrad) tensor.requiresGrad = true
-    return tensor
+      checkNull(handle, `Failed to create ones tensor on ${this}`)
+      const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
+      if (requiresGrad) tensor.requiresGrad = true
+      return tensor
+    } finally {
+      shapeCache.release(shapeBuffer)
+    }
   }
 
   /**
@@ -156,16 +165,52 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
   ): Tensor<S, D, Dev> {
     validateShapeArray(shape)
     const lib = getLib()
-    const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+    const shapeBuffer = shapeCache.fillShape(shape)
 
-    const handle = withError((err) =>
-      lib.ts_tensor_randn(shapeArray.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
-    )
+    try {
+      const handle = withError((err) =>
+        lib.ts_tensor_randn(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+      )
 
-    checkNull(handle, `Failed to create randn tensor on ${this}`)
-    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
-    if (requiresGrad) tensor.requiresGrad = true
-    return tensor
+      checkNull(handle, `Failed to create randn tensor on ${this}`)
+      const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
+      if (requiresGrad) tensor.requiresGrad = true
+      return tensor
+    } finally {
+      shapeCache.release(shapeBuffer)
+    }
+  }
+
+  /**
+   * Create a tensor with random uniform values on this device
+   *
+   * @example
+   * ```ts
+   * const cuda = device.cuda(0)
+   * const noise = cuda.rand([256, 256])
+   * ```
+   */
+  rand<S extends Shape, D extends DType<string> = DType<'float32'>>(
+    shape: S,
+    dtype: D = DTypeConstants.float32 as D,
+    requiresGrad = false,
+  ): Tensor<S, D, Dev> {
+    validateShapeArray(shape)
+    const lib = getLib()
+    const shapeBuffer = shapeCache.fillShape(shape)
+
+    try {
+      const handle = withError((err) =>
+        lib.ts_tensor_rand(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+      )
+
+      checkNull(handle, `Failed to create rand tensor on ${this}`)
+      const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
+      if (requiresGrad) tensor.requiresGrad = true
+      return tensor
+    } finally {
+      shapeCache.release(shapeBuffer)
+    }
   }
 
   /**
@@ -184,16 +229,20 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
   ): Tensor<S, D, Dev> {
     validateShapeArray(shape)
     const lib = getLib()
-    const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+    const shapeBuffer = shapeCache.fillShape(shape)
 
-    const handle = withError((err) =>
-      lib.ts_tensor_empty(shapeArray.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
-    )
+    try {
+      const handle = withError((err) =>
+        lib.ts_tensor_empty(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+      )
 
-    checkNull(handle, `Failed to create empty tensor on ${this}`)
-    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
-    if (requiresGrad) tensor.requiresGrad = true
-    return tensor
+      checkNull(handle, `Failed to create empty tensor on ${this}`)
+      const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
+      if (requiresGrad) tensor.requiresGrad = true
+      return tensor
+    } finally {
+      shapeCache.release(shapeBuffer)
+    }
   }
 
   /**
@@ -250,24 +299,28 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
       typedData = data as Float32Array | Float64Array | Int32Array | BigInt64Array
     }
 
-    const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
+    const shapeBuffer = shapeCache.fillShape(shape)
 
-    const handle = withError((err) =>
-      lib.ts_tensor_from_buffer(
-        typedData.buffer,
-        shapeArray.buffer,
-        shape.length,
-        dtype.value,
-        this.deviceTypeValue,
-        this.index,
-        err,
-      ),
-    )
+    try {
+      const handle = withError((err) =>
+        lib.ts_tensor_from_buffer(
+          typedData.buffer,
+          shapeBuffer.buffer,
+          shape.length,
+          dtype.value,
+          this.deviceTypeValue,
+          this.index,
+          err,
+        ),
+      )
 
-    checkNull(handle, `Failed to create tensor from array on ${this}`)
-    const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
-    if (requiresGrad) tensor.requiresGrad = true
-    return tensor
+      checkNull(handle, `Failed to create tensor from array on ${this}`)
+      const tensor = new Tensor<S, D, Dev>(handle!, shape, dtype, this.type)
+      if (requiresGrad) tensor.requiresGrad = true
+      return tensor
+    } finally {
+      shapeCache.release(shapeBuffer)
+    }
   }
 
   /** String representation */

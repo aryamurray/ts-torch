@@ -237,21 +237,30 @@ ts_TensorHandle ts_tensor_from_buffer(
     try {
         std::vector<int64_t> shape_vec(shape, shape + ndim);
         auto scalar_type = dtype_to_scalar_type(dtype);
+        auto target_device = make_device(device, device_index);
 
-        // Create tensor from data (copies the data)
+        // Calculate number of elements
+        size_t numel = 1;
+        for (auto dim : shape_vec) numel *= dim;
+
         auto options = torch::TensorOptions()
             .dtype(scalar_type)
-            .device(torch::kCPU);
+            .device(target_device);
 
-        auto tensor = torch::from_blob(
-            const_cast<void*>(data),
-            shape_vec,
-            options
-        ).clone();
+        // Create tensor directly on target device
+        torch::Tensor tensor = torch::empty(shape_vec, options);
 
-        // Move to target device if not CPU
-        if (device != TS_DEVICE_CPU) {
-            tensor = tensor.to(make_device(device, device_index));
+        if (device == TS_DEVICE_CPU) {
+            // Direct memcpy for CPU tensors - avoids from_blob + clone overhead
+            std::memcpy(tensor.data_ptr(), data, numel * tensor.element_size());
+        } else {
+            // For GPU: create a view of the source data, then copy to device tensor
+            auto cpu_view = torch::from_blob(
+                const_cast<void*>(data),
+                shape_vec,
+                torch::TensorOptions().dtype(scalar_type)
+            );
+            tensor.copy_(cpu_view);
         }
 
         auto* handle = new ts_Tensor(std::move(tensor));
