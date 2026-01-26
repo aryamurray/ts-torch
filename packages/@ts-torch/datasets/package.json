@@ -38,10 +38,14 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@ts-torch/core": "^0.1.0"
+    "@ts-torch/core": "^0.1.0",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0"
   },
   "devDependencies": {
+    "@types/jpeg-js": "^0.4.3",
     "@types/node": "^22.10.5",
+    "@types/pngjs": "^6.0.4",
     "typescript": "5.9.2",
     "vitest": "^4.0.16"
   },

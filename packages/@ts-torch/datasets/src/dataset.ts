@@ -117,9 +117,7 @@ export class TensorDataset extends BaseDataset<Tensor[]> {
       throw new Error(`Index ${index} out of bounds for dataset of length ${this.length}`)
     }
 
-    // TODO: Implement tensor indexing
-    // return this.tensors.map(tensor => tensor[index]);
-    return this.tensors
+    return this.tensors.map((tensor) => tensor.narrow(0, index, 1).squeeze(0))
   }
 
   get length(): number {

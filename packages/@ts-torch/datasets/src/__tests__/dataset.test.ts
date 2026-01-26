@@ -228,8 +228,23 @@ describe('Dataset', () => {
         const tensor = cpu.tensor([1, 2, 3, 4, 5], [5] as const);
         const dataset = new TensorDataset([tensor]);
 
-        const item = dataset.getItem(0);
+        const item = dataset.getItem(2);
         expect(item).toHaveLength(1);
+        expect(item[0]?.shape).toEqual([]);
+        expect(item[0]?.item()).toBe(3);
+      }));
+
+    it('should return matching slices for multiple tensors', () =>
+      scopedTest(() => {
+        const features = cpu.tensor([1, 2, 3, 4, 5, 6], [3, 2] as const);
+        const labels = cpu.tensor([9, 8, 7], [3] as const);
+        const dataset = new TensorDataset([features, labels]);
+
+        const [feature, label] = dataset.getItem(1);
+        expect(feature).toHaveShape([2]);
+        expect(feature).toBeCloseTo([3, 4]);
+        expect(label?.shape).toEqual([]);
+        expect(label?.item()).toBe(8);
       }));
 
     it('should throw error for out of bounds index', () =>

@@ -2,7 +2,9 @@
  * Data transformation utilities for image and tensor preprocessing
  */
 
-import type { Tensor } from '@ts-torch/core'
+import { device, type Tensor, type DType } from '@ts-torch/core'
+
+const cpu = device.cpu()
 
 /**
  * Base transform interface
@@ -70,20 +72,38 @@ export class Normalize implements Transform<Tensor, Tensor> {
   }
 
   apply(tensor: Tensor): Tensor {
-    // For single-channel normalization, apply globally
     if (this.mean.length === 1 && this.std.length === 1) {
       const centered = (tensor as any).subScalar(this.mean[0])
       return (centered as any).divScalar(this.std[0])
     }
 
-    // For multi-channel, we need to apply per-channel
-    // This requires the tensor shape to be [C, H, W] or [N, C, H, W]
-    // For now, apply simple global normalization as a fallback
-    // TODO: Implement proper per-channel normalization when broadcasting is available
-    const avgMean = this.mean.reduce((a, b) => a + b, 0) / this.mean.length
-    const avgStd = this.std.reduce((a, b) => a + b, 0) / this.std.length
-    const centered = (tensor as any).subScalar(avgMean)
-    return (centered as any).divScalar(avgStd)
+    const shape = tensor.shape as readonly number[]
+    const { batch, channels, height, width } = parseImageShape(shape)
+
+    if (channels !== this.mean.length || channels !== this.std.length) {
+      const avgMean = this.mean.reduce((a, b) => a + b, 0) / this.mean.length
+      const avgStd = this.std.reduce((a, b) => a + b, 0) / this.std.length
+      const centered = (tensor as any).subScalar(avgMean)
+      return (centered as any).divScalar(avgStd)
+    }
+
+    const data = toNumberArray(tensor)
+    const out = new Float32Array(data.length)
+
+    for (let n = 0; n < batch; n++) {
+      for (let c = 0; c < channels; c++) {
+        const mean = this.mean[c]!
+        const std = this.std[c]!
+        for (let h = 0; h < height; h++) {
+          for (let w = 0; w < width; w++) {
+            const idx = (((n * channels + c) * height + h) * width + w)
+            out[idx] = (data[idx]! - mean) / std
+          }
+        }
+      }
+    }
+
+    return cpu.tensor(out, shape as unknown as readonly number[], tensor.dtype as DType<string>) as Tensor
   }
 }
 
@@ -124,12 +144,24 @@ export class RandomHorizontalFlip implements Transform<Tensor, Tensor> {
 
   apply(tensor: Tensor): Tensor {
     if (Math.random() < this.p) {
-      // Flip along the last dimension (width)
-      // Uses reverse indexing via narrow slices assembled in reverse order
-      // Note: Full flip implementation requires native support
-      // For now, we return the original tensor as a placeholder
-      // TODO: Implement when flip() is added to Tensor
-      return tensor
+      const shape = tensor.shape as readonly number[]
+      const { batch, channels, height, width } = parseImageShape(shape)
+      const data = toNumberArray(tensor)
+      const out = new Float32Array(data.length)
+
+      for (let n = 0; n < batch; n++) {
+        for (let c = 0; c < channels; c++) {
+          for (let h = 0; h < height; h++) {
+            for (let w = 0; w < width; w++) {
+              const src = (((n * channels + c) * height + h) * width + w)
+              const dst = (((n * channels + c) * height + h) * width + (width - 1 - w))
+              out[dst] = data[src]!
+            }
+          }
+        }
+      }
+
+      return cpu.tensor(out, shape as unknown as readonly number[], tensor.dtype as DType<string>) as Tensor
     }
     return tensor
   }
@@ -213,12 +245,29 @@ export class Resize implements Transform<Tensor, Tensor> {
   }
 
   apply(tensor: Tensor): Tensor {
-    // TODO: Implement resize with interpolation using this.config
-    // This requires native support for interpolation (nearest/bilinear)
-    // For now, return the original tensor
-    void this.config
-    console.warn('Resize transform not yet implemented - returning original tensor')
-    return tensor
+    const { height: targetH, width: targetW } = this.config
+    const shape = tensor.shape as readonly number[]
+    const { batch, channels, height, width } = parseImageShape(shape)
+
+    const data = toNumberArray(tensor)
+    const out = new Float32Array(batch * channels * targetH * targetW)
+
+    for (let n = 0; n < batch; n++) {
+      for (let c = 0; c < channels; c++) {
+        for (let y = 0; y < targetH; y++) {
+          const srcY = Math.min(height - 1, Math.round((y / targetH) * height))
+          for (let x = 0; x < targetW; x++) {
+            const srcX = Math.min(width - 1, Math.round((x / targetW) * width))
+            const src = (((n * channels + c) * height + srcY) * width + srcX)
+            const dst = (((n * channels + c) * targetH + y) * targetW + x)
+            out[dst] = data[src]!
+          }
+        }
+      }
+    }
+
+    const newShape = shape.length === 4 ? [batch, channels, targetH, targetW] : [channels, targetH, targetW]
+    return cpu.tensor(out, newShape as unknown as readonly number[], tensor.dtype as DType<string>) as Tensor
   }
 }
 
@@ -289,12 +338,8 @@ export class CenterCrop implements Transform<Tensor, Tensor> {
  */
 export class ToTensor implements Transform<number[] | number[][] | number[][][], Tensor> {
   apply(_data: number[] | number[][] | number[][][]): Tensor {
-    // TODO: Implement when tensor factory is available in this context
-    // This would need: import { tensor } from '@ts-torch/core'
-    // return tensor(data)
-    throw new Error(
-      'ToTensor not yet implemented - use device.tensor() or device.cpu().tensor() from @ts-torch/core directly',
-    )
+    const { flat, shape } = flattenNested(_data)
+    return cpu.tensor(flat, shape as unknown as readonly number[]) as Tensor
   }
 }
 
@@ -324,12 +369,31 @@ export class Pad implements Transform<Tensor, Tensor> {
   }
 
   apply(tensor: Tensor): Tensor {
-    // TODO: Implement padding using this.config
-    // This requires creating a new tensor with padded dimensions
-    // and copying the original data to the center
-    void this.config
-    console.warn('Pad transform not yet implemented - returning original tensor')
-    return tensor
+    const shape = tensor.shape as readonly number[]
+    const { padding, value } = this.config
+    const [padLeft, padRight, padTop, padBottom] = padding
+    const { batch, channels, height, width } = parseImageShape(shape)
+
+    const outH = height + padTop + padBottom
+    const outW = width + padLeft + padRight
+    const out = new Float32Array(batch * channels * outH * outW)
+    out.fill(value)
+
+    const data = toNumberArray(tensor)
+    for (let n = 0; n < batch; n++) {
+      for (let c = 0; c < channels; c++) {
+        for (let h = 0; h < height; h++) {
+          for (let w = 0; w < width; w++) {
+            const src = (((n * channels + c) * height + h) * width + w)
+            const dst = (((n * channels + c) * outH + (h + padTop)) * outW + (w + padLeft))
+            out[dst] = data[src]!
+          }
+        }
+      }
+    }
+
+    const newShape = shape.length === 4 ? [batch, channels, outH, outW] : [channels, outH, outW]
+    return cpu.tensor(out, newShape as unknown as readonly number[], tensor.dtype as DType<string>) as Tensor
   }
 }
 
@@ -369,11 +433,37 @@ export class RandomErasing implements Transform<Tensor, Tensor> {
       return tensor
     }
 
-    // TODO: Implement random erasing using this.config
-    // This requires in-place modification or creating a new tensor
-    // with a region set to the erase value
-    void this.config
-    return tensor
+    const shape = tensor.shape as readonly number[]
+    const { batch, channels, height, width } = parseImageShape(shape)
+    const data = toNumberArray(tensor)
+    const out = new Float32Array(data)
+
+    for (let n = 0; n < batch; n++) {
+      const area = height * width
+      const targetArea = randomInRange(this.config.scaleRange[0], this.config.scaleRange[1]) * area
+      const aspect = randomInRange(this.config.ratioRange[0], this.config.ratioRange[1])
+
+      const eraseH = Math.max(1, Math.round(Math.sqrt(targetArea * aspect)))
+      const eraseW = Math.max(1, Math.round(Math.sqrt(targetArea / aspect)))
+
+      if (eraseH > height || eraseW > width) {
+        continue
+      }
+
+      const top = Math.floor(Math.random() * (height - eraseH + 1))
+      const left = Math.floor(Math.random() * (width - eraseW + 1))
+
+      for (let c = 0; c < channels; c++) {
+        for (let h = 0; h < eraseH; h++) {
+          for (let w = 0; w < eraseW; w++) {
+            const idx = (((n * channels + c) * height + (top + h)) * width + (left + w))
+            out[idx] = this.config.value
+          }
+        }
+      }
+    }
+
+    return cpu.tensor(out, shape as unknown as readonly number[], tensor.dtype as DType<string>) as Tensor
   }
 }
 
@@ -404,4 +494,60 @@ export class Clamp implements Transform<Tensor, Tensor> {
     // Fallback: return original tensor
     return tensor
   }
+}
+
+function toNumberArray(tensor: Tensor): Float32Array {
+  const data = tensor.toArray() as Iterable<number | bigint>
+  return Float32Array.from(data, (value) => Number(value))
+}
+
+function parseImageShape(shape: readonly number[]): {
+  batch: number
+  channels: number
+  height: number
+  width: number
+} {
+  if (shape.length === 2) {
+    return { batch: 1, channels: 1, height: shape[0]!, width: shape[1]! }
+  }
+  if (shape.length === 3) {
+    return { batch: 1, channels: shape[0]!, height: shape[1]!, width: shape[2]! }
+  }
+  if (shape.length === 4) {
+    return { batch: shape[0]!, channels: shape[1]!, height: shape[2]!, width: shape[3]! }
+  }
+  throw new Error(`Expected tensor with shape [H,W], [C,H,W], or [N,C,H,W], got [${shape.join(', ')}]`)
+}
+
+function flattenNested(data: number[] | number[][] | number[][][]): { flat: number[]; shape: number[] } {
+  if (Array.isArray(data) && typeof data[0] === 'number') {
+    return { flat: data as number[], shape: [data.length] }
+  }
+
+  if (Array.isArray(data) && Array.isArray(data[0])) {
+    const outer = data as number[][]
+    const rows = outer.length
+    const cols = outer[0]?.length ?? 0
+    const flat: number[] = []
+    for (const row of outer) {
+      flat.push(...row)
+    }
+    return { flat, shape: [rows, cols] }
+  }
+
+  const outer = data as number[][][]
+  const depth = outer.length
+  const rows = outer[0]?.length ?? 0
+  const cols = outer[0]?.[0]?.length ?? 0
+  const flat: number[] = []
+  for (const matrix of outer) {
+    for (const row of matrix) {
+      flat.push(...row)
+    }
+  }
+  return { flat, shape: [depth, rows, cols] }
+}
+
+function randomInRange(min: number, max: number): number {
+  return min + Math.random() * (max - min)
 }
