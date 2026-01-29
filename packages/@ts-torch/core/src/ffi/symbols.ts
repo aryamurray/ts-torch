@@ -566,6 +566,90 @@ export const FFI_SYMBOLS = {
     returns: ptr,
   },
 
+  // ==================== Advanced Tensor Operations ====================
+
+  // ts_tensor_triu(tensor, diagonal, error) -> TensorHandle (upper triangular)
+  ts_tensor_triu: {
+    args: [ptr, i64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_tril(tensor, diagonal, error) -> TensorHandle (lower triangular)
+  ts_tensor_tril: {
+    args: [ptr, i64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_masked_fill(tensor, mask, value, error) -> TensorHandle
+  ts_tensor_masked_fill: {
+    args: [ptr, ptr, f64, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_bmm(a, b, error) -> TensorHandle (batched matrix multiply)
+  ts_tensor_bmm: {
+    args: [ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_gather(input, dim, index, error) -> TensorHandle
+  ts_tensor_gather: {
+    args: [ptr, i64, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_scatter(input, dim, index, src, error) -> TensorHandle
+  ts_tensor_scatter: {
+    args: [ptr, i64, ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_topk(tensor, k, dim, largest, sorted, indices_out, error) -> TensorHandle
+  // Returns values tensor; indices tensor handle is written to indices_out
+  ts_tensor_topk: {
+    args: [ptr, i64, i64, i32, i32, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_sort(tensor, dim, descending, indices_out, error) -> TensorHandle
+  // Returns sorted values tensor; indices tensor handle is written to indices_out
+  ts_tensor_sort: {
+    args: [ptr, i64, i32, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_where(condition, x, y, error) -> TensorHandle
+  ts_tensor_where: {
+    args: [ptr, ptr, ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_nonzero(tensor, error) -> TensorHandle
+  ts_tensor_nonzero: {
+    args: [ptr, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_repeat(tensor, repeats, num_dims, error) -> TensorHandle
+  ts_tensor_repeat: {
+    args: [ptr, ptr, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ts_tensor_expand(tensor, sizes, num_dims, error) -> TensorHandle
+  ts_tensor_expand: {
+    args: [ptr, ptr, i32, ptr] as const,
+    returns: ptr,
+  },
+
+  // ==================== Einstein Summation ====================
+
+  // ts_tensor_einsum(equation, tensors_array, num_tensors, error) -> TensorHandle
+  ts_tensor_einsum: {
+    args: [ptr, ptr, i32, ptr] as const,
+    returns: ptr,
+  },
+
   // ==================== In-Place Operations (Phase 4) ====================
 
   // ts_tensor_add_(tensor, other, error)

@@ -59,7 +59,7 @@ export const bfloat16 = DTypeNamespace.bfloat16
 // ===============================
 
 export { Tensor } from './tensor/tensor.js'
-export { cat, rand, stack } from './tensor/factory.js'
+export { cat, rand, stack, einsum } from './tensor/factory.js'
 
 // ===============================
 // Memory Management
@@ -197,4 +197,11 @@ export {
   validateScalar,
   validateNonZero,
 } from './validation/index.js'
+
+// ===============================
+// FFI Utilities (for internal use by other packages)
+// ===============================
+
+export { getLib, closeLib } from './ffi/loader.js'
+export { withErrorFast, withError, createError, checkError, type Pointer, type ErrorBuffer } from './ffi/error.js'
 

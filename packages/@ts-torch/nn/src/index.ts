@@ -51,6 +51,19 @@ export {
   Softmax,
   LeakyReLU,
   GELU,
+  ELU,
+  SELU,
+  SiLU,
+  Swish,
+  Mish,
+  Hardswish,
+  Hardsigmoid,
+  Hardtanh,
+  ReLU6,
+  PReLU,
+  Softplus,
+  Softsign,
+  LogSoftmax,
 } from './modules/activation.js'
 
 export {
@@ -65,6 +78,13 @@ export * from './modules/conv.js'
 export * from './modules/pooling.js'
 export * from './modules/normalization.js'
 export * from './modules/dropout.js'
+export * from './modules/embedding.js'
+export * from './modules/attention.js'
+export * from './modules/rnn.js'
+export * from './modules/transformer.js'
+
+// Weight initialization
+export * from './init.js'
 
 // Functional API (stateless operations)
 export * as F from './functional.js'

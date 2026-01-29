@@ -224,6 +224,50 @@ export class MockTensor {
     return new MockTensor(result, [...this.shape], this._requiresGrad);
   }
 
+  abs(): MockTensor {
+    this._checkNotFreed();
+
+    const result = new Float32Array(this._data.length);
+    for (let i = 0; i < this._data.length; i++) {
+      result[i] = Math.abs(getAt(this._data, i));
+    }
+
+    return new MockTensor(result, [...this.shape], this._requiresGrad);
+  }
+
+  neg(): MockTensor {
+    this._checkNotFreed();
+
+    const result = new Float32Array(this._data.length);
+    for (let i = 0; i < this._data.length; i++) {
+      result[i] = -getAt(this._data, i);
+    }
+
+    return new MockTensor(result, [...this.shape], this._requiresGrad);
+  }
+
+  pow(exponent: number): MockTensor {
+    this._checkNotFreed();
+
+    const result = new Float32Array(this._data.length);
+    for (let i = 0; i < this._data.length; i++) {
+      result[i] = Math.pow(getAt(this._data, i), exponent);
+    }
+
+    return new MockTensor(result, [...this.shape], this._requiresGrad);
+  }
+
+  divScalar(scalar: number): MockTensor {
+    this._checkNotFreed();
+
+    const result = new Float32Array(this._data.length);
+    for (let i = 0; i < this._data.length; i++) {
+      result[i] = getAt(this._data, i) / scalar;
+    }
+
+    return new MockTensor(result, [...this.shape], this._requiresGrad);
+  }
+
   softmax(dim: number = -1): MockTensor {
     this._checkNotFreed();
 

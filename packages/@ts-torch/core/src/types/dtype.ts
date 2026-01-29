@@ -30,15 +30,16 @@ export type DType<Name extends string = string> = {
 /**
  * Runtime dtype constant values matching C enum convention
  * These values are used for interop with native/WASM backends
+ * Must match ts_DType in ts_torch.h
  */
 export const enum DTypeValue {
   float32 = 0,
   float64 = 1,
   int32 = 2,
   int64 = 3,
-  float16 = 4,
-  bfloat16 = 5,
-  bool = 6,
+  bool = 4,
+  float16 = 5,
+  bfloat16 = 6,
 }
 
 /**

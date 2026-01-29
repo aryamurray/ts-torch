@@ -18,6 +18,7 @@ import type {
 } from '../types/tensor.js'
 import { getLib } from '../ffi/loader.js'
 import { withError, checkNull, TorchError, ErrorCode, type Pointer } from '../ffi/error.js'
+import koffi from 'koffi'
 import { BytesPerElement, getDTypeFromValue } from '../types/dtype.js'
 import { escapeTensor as scopeEscapeTensor, inScope, registerTensor } from '../memory/scope.js'
 import {
@@ -2334,6 +2335,465 @@ mean(): Tensor<readonly [], D> {
     // Compute output shape
     const newShape = [...this.shape] as number[]
     newShape[dim] = length
+
+    return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
+  }
+
+  // ==================== Advanced Tensor Operations ====================
+
+  /**
+   * Returns upper triangular part of matrix
+   *
+   * Elements on and above the diagonal are kept, elements below are set to zero.
+   *
+   * @param diagonal - Offset from main diagonal (default: 0)
+   *   - diagonal=0: main diagonal
+   *   - diagonal>0: above main diagonal
+   *   - diagonal<0: below main diagonal
+   * @returns Upper triangular tensor
+   *
+   * @example
+   * ```ts
+   * const a = cpu.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [3, 3])
+   * a.triu()   // [[1, 2, 3], [0, 5, 6], [0, 0, 9]]
+   * a.triu(1)  // [[0, 2, 3], [0, 0, 6], [0, 0, 0]]
+   * a.triu(-1) // [[1, 2, 3], [4, 5, 6], [0, 8, 9]]
+   * ```
+   */
+  triu(diagonal: number = 0): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_triu(this._handle, BigInt(diagonal), err),
+    )
+
+    checkNull(handle, 'Failed to compute triu')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Returns lower triangular part of matrix
+   *
+   * Elements on and below the diagonal are kept, elements above are set to zero.
+   *
+   * @param diagonal - Offset from main diagonal (default: 0)
+   * @returns Lower triangular tensor
+   *
+   * @example
+   * ```ts
+   * const a = cpu.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [3, 3])
+   * a.tril()  // [[1, 0, 0], [4, 5, 0], [7, 8, 9]]
+   * ```
+   */
+  tril(diagonal: number = 0): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_tril(this._handle, BigInt(diagonal), err),
+    )
+
+    checkNull(handle, 'Failed to compute tril')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Fill elements where mask is true with value
+   *
+   * Critical for attention masking in transformers.
+   *
+   * @param mask - Boolean tensor of same shape as input
+   * @param value - Value to fill where mask is true
+   * @returns Tensor with masked positions filled
+   *
+   * @example
+   * ```ts
+   * // Causal attention masking
+   * const mask = cpu.ones([seqLen, seqLen]).triu(1) // upper triangle
+   * const scores = attention.maskedFill(mask, -Infinity)
+   * ```
+   */
+  maskedFill(mask: Tensor<S, DType<'bool'>>, value: number): Tensor<S, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_masked_fill(this._handle, mask._handle, value, err),
+    )
+
+    checkNull(handle, 'Failed to apply masked_fill')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Batched matrix multiplication
+   *
+   * Performs matrix multiplication on batched 3D tensors.
+   * Input: [B, M, K] @ [B, K, N] -> [B, M, N]
+   *
+   * @param other - Second tensor [B, K, N]
+   * @returns Result tensor [B, M, N]
+   *
+   * @example
+   * ```ts
+   * // Batched attention: Q @ K^T
+   * const Q = cpu.randn([batchSize, seqLen, headDim])
+   * const Kt = cpu.randn([batchSize, headDim, seqLen])
+   * const scores = Q.bmm(Kt) // [batchSize, seqLen, seqLen]
+   * ```
+   */
+  bmm<OutN extends number>(
+    other: Tensor<readonly [number, number, OutN], D>,
+  ): Tensor<readonly [number, number, OutN], D> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_bmm(this._handle, other._handle, err),
+    )
+
+    checkNull(handle, 'Failed to apply bmm')
+
+    // Compute output shape [B, M, N]
+    const batch = (this.shape as readonly number[])[0]
+    const m = (this.shape as readonly number[])[1]
+    const n = other.shape[2]
+    const newShape = [batch, m, n] as const
+
+    return new Tensor<readonly [number, number, OutN], D>(
+      handle!,
+      newShape as unknown as readonly [number, number, OutN],
+      this.dtype,
+    )
+  }
+
+  /**
+   * Gather values along an axis using indices
+   *
+   * For each position in index, gathers the value from input at that index
+   * along the specified dimension.
+   *
+   * @param dim - Dimension along which to gather
+   * @param index - Index tensor (int64)
+   * @returns Gathered tensor with same shape as index
+   *
+   * @example
+   * ```ts
+   * const src = cpu.tensor([[1, 2], [3, 4]], [2, 2])
+   * const idx = cpu.tensor([[0, 0], [1, 0]], [2, 2], int64)
+   * src.gather(1, idx) // [[1, 1], [4, 3]]
+   * ```
+   */
+  gather(dim: number, index: Tensor<Shape, DType<'int64'>>): Tensor<Shape, D> {
+    this._checkValid()
+    validateDimension(dim, this.ndim, 'dim')
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_gather(this._handle, BigInt(dim), index._handle, err),
+    )
+
+    checkNull(handle, 'Failed to apply gather')
+
+    // Output shape is same as index shape
+    return new Tensor<Shape, D>(handle!, index.shape, this.dtype)
+  }
+
+  /**
+   * Scatter values into tensor at positions specified by index
+   *
+   * @param dim - Dimension along which to scatter
+   * @param index - Index tensor (int64)
+   * @param src - Source values to scatter
+   * @returns New tensor with scattered values
+   *
+   * @example
+   * ```ts
+   * const dst = cpu.zeros([2, 3])
+   * const idx = cpu.tensor([[0, 2]], [1, 2], int64)
+   * const src = cpu.tensor([[1, 2]], [1, 2])
+   * dst.scatter(1, idx, src) // [[1, 0, 2], [0, 0, 0]]
+   * ```
+   */
+  scatter(
+    dim: number,
+    index: Tensor<Shape, DType<'int64'>>,
+    src: Tensor<Shape, D>,
+  ): Tensor<S, D> {
+    this._checkValid()
+    validateDimension(dim, this.ndim, 'dim')
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_scatter(this._handle, BigInt(dim), index._handle, src._handle, err),
+    )
+
+    checkNull(handle, 'Failed to apply scatter')
+
+    return new Tensor<S, D>(handle!, this.shape, this.dtype)
+  }
+
+  /**
+   * Returns top k elements and their indices
+   *
+   * Essential for top-k sampling in language models.
+   *
+   * @param k - Number of top elements to return
+   * @param dim - Dimension to sort along (default: -1, last dimension)
+   * @param largest - Return largest elements if true (default), smallest if false
+   * @param sorted - Return elements in sorted order (default: true)
+   * @returns Tuple of [values, indices]
+   *
+   * @example
+   * ```ts
+   * const logits = cpu.tensor([1.0, 5.0, 3.0, 2.0], [4])
+   * const [values, indices] = logits.topk(2)
+   * // values: [5.0, 3.0], indices: [1, 2]
+   * ```
+   */
+  topk(
+    k: number,
+    dim: number = -1,
+    largest: boolean = true,
+    sorted: boolean = true,
+  ): [Tensor<Shape, D>, Tensor<Shape, DType<'int64'>>] {
+    this._checkValid()
+    const normalizedDim = dim < 0 ? this.ndim + dim : dim
+    validateDimension(normalizedDim, this.ndim, 'dim')
+    const lib = getLib()
+
+    // Allocate buffer to receive the indices pointer (8 bytes for 64-bit pointer)
+    // C code will write: *indices_out = indices_tensor_handle
+    const indicesPtrBuffer = new BigUint64Array(1)
+
+    const handle = withError((err) =>
+      lib.ts_tensor_topk(
+        this._handle,
+        BigInt(k),
+        BigInt(normalizedDim),
+        largest ? 1 : 0,
+        sorted ? 1 : 0,
+        indicesPtrBuffer.buffer,
+        err,
+      ),
+    )
+
+    checkNull(handle, 'Failed to compute topk')
+
+    // Decode the indices pointer from the buffer using koffi
+    const indicesHandle = koffi.decode(indicesPtrBuffer, 'void*')
+
+    // Compute output shape
+    const newShape = [...(this.shape as readonly number[])]
+    newShape[normalizedDim] = k
+
+    const int64Dtype = { name: 'int64' } as DType<'int64'>
+
+    const values = new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
+    const indices = new Tensor<Shape, DType<'int64'>>(
+      indicesHandle as Pointer,
+      newShape as unknown as Shape,
+      int64Dtype,
+    )
+
+    return [values, indices]
+  }
+
+  /**
+   * Sort tensor along a dimension
+   *
+   * @param dim - Dimension to sort along (default: -1)
+   * @param descending - Sort in descending order (default: false)
+   * @returns Tuple of [sorted values, indices]
+   *
+   * @example
+   * ```ts
+   * const x = cpu.tensor([3, 1, 4, 1, 5], [5])
+   * const [sorted, indices] = x.sort()
+   * // sorted: [1, 1, 3, 4, 5], indices: [1, 3, 0, 2, 4]
+   * ```
+   */
+  sort(
+    dim: number = -1,
+    descending: boolean = false,
+  ): [Tensor<S, D>, Tensor<S, DType<'int64'>>] {
+    this._checkValid()
+    const normalizedDim = dim < 0 ? this.ndim + dim : dim
+    validateDimension(normalizedDim, this.ndim, 'dim')
+    const lib = getLib()
+
+    // Allocate buffer to receive the indices pointer (8 bytes for 64-bit pointer)
+    // C code will write: *indices_out = indices_tensor_handle
+    const indicesPtrBuffer = new BigUint64Array(1)
+
+    const handle = withError((err) =>
+      lib.ts_tensor_sort(
+        this._handle,
+        BigInt(normalizedDim),
+        descending ? 1 : 0,
+        indicesPtrBuffer.buffer,
+        err,
+      ),
+    )
+
+    checkNull(handle, 'Failed to sort tensor')
+
+    // Decode the indices pointer from the buffer using koffi
+    const indicesHandle = koffi.decode(indicesPtrBuffer, 'void*')
+
+    const int64Dtype = { name: 'int64' } as DType<'int64'>
+
+    const values = new Tensor<S, D>(handle!, this.shape, this.dtype)
+    const indices = new Tensor<S, DType<'int64'>>(
+      indicesHandle as Pointer,
+      this.shape,
+      int64Dtype,
+    )
+
+    return [values, indices]
+  }
+
+  /**
+   * Conditional element selection
+   *
+   * Returns a tensor where output[i] = x[i] if condition[i] else y[i]
+   *
+   * @param condition - Boolean condition tensor
+   * @param y - Values to use where condition is false
+   * @returns Tensor with conditionally selected values
+   *
+   * @example
+   * ```ts
+   * const x = cpu.tensor([1, 2, 3], [3])
+   * const y = cpu.tensor([4, 5, 6], [3])
+   * const cond = cpu.tensor([true, false, true], [3], bool)
+   * Tensor.where(cond, x, y) // [1, 5, 3]
+   * ```
+   */
+  static where<S extends Shape, D extends DType<string>>(
+    condition: Tensor<S, DType<'bool'>>,
+    x: Tensor<S, D>,
+    y: Tensor<S, D>,
+  ): Tensor<S, D> {
+    x._checkValid()
+    y._checkValid()
+    condition._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_where(condition._handle, x._handle, y._handle, err),
+    )
+
+    checkNull(handle, 'Failed to apply where')
+
+    return new Tensor<S, D>(handle!, x.shape, x.dtype)
+  }
+
+  /**
+   * Find indices of non-zero elements
+   *
+   * @returns 2D tensor of shape [num_nonzero, ndim] where each row
+   *          contains the indices of a non-zero element
+   *
+   * @example
+   * ```ts
+   * const x = cpu.tensor([[1, 0], [0, 2]], [2, 2])
+   * x.nonzero() // [[0, 0], [1, 1]] - positions of 1 and 2
+   * ```
+   */
+  nonzero(): Tensor<readonly [number, number], DType<'int64'>> {
+    this._checkValid()
+    const lib = getLib()
+
+    const handle = withError((err) =>
+      lib.ts_tensor_nonzero(this._handle, err),
+    )
+
+    checkNull(handle, 'Failed to find nonzero elements')
+
+    // Shape is determined at runtime [num_nonzero, ndim]
+    const int64Dtype = { name: 'int64' } as DType<'int64'>
+    const tensorResult = new Tensor<Shape, DType<'int64'>>(
+      handle!,
+      [0, this.ndim] as unknown as Shape, // Placeholder, actual shape from native
+      int64Dtype,
+    )
+
+    // Get actual shape from native
+    const actualShape = tensorResult.shape as readonly [number, number]
+    return tensorResult as Tensor<readonly [number, number], DType<'int64'>>
+  }
+
+  /**
+   * Repeat tensor along dimensions
+   *
+   * @param repeats - Number of repetitions for each dimension
+   * @returns Repeated tensor
+   *
+   * @example
+   * ```ts
+   * const x = cpu.tensor([[1, 2], [3, 4]], [2, 2])
+   * x.repeat([2, 3]) // [[1,2,1,2,1,2], [3,4,3,4,3,4], [1,2,1,2,1,2], [3,4,3,4,3,4]]
+   * // shape: [4, 6]
+   * ```
+   */
+  repeat(repeats: number[]): Tensor<Shape, D> {
+    this._checkValid()
+    if (repeats.length !== this.ndim) {
+      throw new Error(`repeats length ${repeats.length} must match tensor ndim ${this.ndim}`)
+    }
+    const lib = getLib()
+
+    // Convert to BigInt array for FFI
+    const repeatsPtr = new BigInt64Array(repeats.map((r) => BigInt(r)))
+
+    const handle = withError((err) =>
+      lib.ts_tensor_repeat(this._handle, repeatsPtr, repeats.length, err),
+    )
+
+    checkNull(handle, 'Failed to repeat tensor')
+
+    // Compute output shape
+    const newShape = (this.shape as readonly number[]).map((s, i) => s * repeats[i]!)
+
+    return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
+  }
+
+  /**
+   * Expand tensor to larger size (broadcast without copying)
+   *
+   * Only dimensions of size 1 can be expanded. -1 means keep original size.
+   *
+   * @param sizes - Target sizes for each dimension
+   * @returns Expanded tensor (view, no data copy)
+   *
+   * @example
+   * ```ts
+   * const x = cpu.tensor([[1], [2], [3]], [3, 1])
+   * x.expand([3, 4]) // [[1,1,1,1], [2,2,2,2], [3,3,3,3]]
+   * ```
+   */
+  expand(sizes: number[]): Tensor<Shape, D> {
+    this._checkValid()
+    const lib = getLib()
+
+    // Convert to BigInt array for FFI
+    const sizesPtr = new BigInt64Array(sizes.map((s) => BigInt(s)))
+
+    const handle = withError((err) =>
+      lib.ts_tensor_expand(this._handle, sizesPtr, sizes.length, err),
+    )
+
+    checkNull(handle, 'Failed to expand tensor')
+
+    // Compute output shape (-1 means keep original)
+    const newShape = sizes.map((s, i) =>
+      s === -1 ? (this.shape as readonly number[])[i] : s,
+    )
 
     return new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
   }

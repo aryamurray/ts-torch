@@ -11,8 +11,7 @@
  */
 
 import type { Tensor, Shape, DType, DeviceType } from '@ts-torch/core'
-import { getLib } from '@ts-torch/core/ffi/loader'
-import { withErrorFast, type Pointer } from '@ts-torch/core/ffi/error'
+import { getLib, withErrorFast, type Pointer } from '@ts-torch/core'
 
 /**
  * Wrapper for safe in-place tensor operations in optimizer context.

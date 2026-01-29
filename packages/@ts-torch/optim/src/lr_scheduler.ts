@@ -24,9 +24,35 @@ export abstract class LRScheduler {
     // Store initial learning rates for each parameter group
     this.baseLrs = optimizer['paramGroups'].map((group) => group.lr ?? optimizer['defaults'].lr)
 
-    if (lastEpoch === -1) {
-      // Initialize learning rates
+    // Note: subclasses must call initializeLr() after setting their parameters
+  }
+
+  /**
+   * Initialize learning rates - must be called by subclasses after setting their parameters
+   */
+  protected initializeLr(): void {
+    if (this.lastEpoch === -1) {
+      // Initialize learning rates (will set lastEpoch to 0)
       this.step()
+    } else {
+      // When resuming from checkpoint, update LR without incrementing epoch
+      this.updateLr()
+    }
+  }
+
+  /**
+   * Update the optimizer's learning rates based on current epoch
+   * Called internally to sync LR without incrementing epoch
+   */
+  protected updateLr(): void {
+    const lrs = this.getLr()
+    const paramGroups = this.optimizer['paramGroups']
+    for (let i = 0; i < paramGroups.length; i++) {
+      const group = paramGroups[i]
+      const lr = lrs[i]
+      if (group !== undefined && lr !== undefined) {
+        group.lr = lr
+      }
     }
   }
 
@@ -42,16 +68,7 @@ export abstract class LRScheduler {
    */
   step(): void {
     this.lastEpoch += 1
-    const lrs = this.getLr()
-
-    const paramGroups = this.optimizer['paramGroups']
-    for (let i = 0; i < paramGroups.length; i++) {
-      const group = paramGroups[i]
-      const lr = lrs[i]
-      if (group && lr !== undefined) {
-        group.lr = lr
-      }
-    }
+    this.updateLr()
   }
 
   /**
@@ -111,6 +128,7 @@ export class StepLR extends LRScheduler {
     super(optimizer, lastEpoch)
     this.stepSize = stepSize
     this.gamma = gamma
+    this.initializeLr()
   }
 
   protected getLr(): number[] {
@@ -157,6 +175,7 @@ export class MultiStepLR extends LRScheduler {
     super(optimizer, lastEpoch)
     this.milestones = new Set(milestones.sort((a, b) => a - b))
     this.gamma = gamma
+    this.initializeLr()
   }
 
   protected getLr(): number[] {
@@ -203,6 +222,7 @@ export class ExponentialLR extends LRScheduler {
 
     super(optimizer, lastEpoch)
     this.gamma = gamma
+    this.initializeLr()
   }
 
   protected getLr(): number[] {
@@ -251,6 +271,7 @@ export class CosineAnnealingLR extends LRScheduler {
     super(optimizer, lastEpoch)
     this.tMax = tMax
     this.etaMin = etaMin
+    this.initializeLr()
   }
 
   protected getLr(): number[] {
@@ -313,6 +334,14 @@ export class CosineAnnealingWarmRestarts extends LRScheduler {
     this.etaMin = etaMin
     this.tCur = 0
     this.tI = t0
+
+    // Handle initialization differently since step() increments tCur
+    if (lastEpoch === -1) {
+      this.lastEpoch = 0
+      this.updateLr()
+    } else {
+      this.updateLr()
+    }
   }
 
   protected getLr(): number[] {
@@ -528,6 +557,7 @@ export class LinearWarmup extends LRScheduler {
 
     super(optimizer, lastEpoch)
     this.warmupSteps = warmupSteps
+    this.initializeLr()
   }
 
   protected getLr(): number[] {

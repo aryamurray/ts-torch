@@ -258,11 +258,19 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
    * ```
    */
   tensor<S extends Shape, D extends DType<string> = DType<'float32'>>(
-    data: number[] | Float32Array | Float64Array | Int32Array | BigInt64Array,
+    data: number[] | boolean[] | Float32Array | Float64Array | Int32Array | BigInt64Array | Uint8Array,
     shape: S,
-    dtype: D = DTypeConstants.float32 as D,
+    dtype?: D,
     requiresGrad = false,
   ): Tensor<S, D, Dev> {
+    // Auto-detect boolean arrays and set dtype to bool
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'boolean') {
+      dtype = DTypeConstants.bool as D
+    }
+    // Default to float32 if not specified
+    if (dtype === undefined) {
+      dtype = DTypeConstants.float32 as D
+    }
     validateShapeArray(shape)
     const lib = getLib()
 
@@ -277,26 +285,29 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
     }
 
     // Convert to TypedArray if needed
-    let typedData: Float32Array | Float64Array | Int32Array | BigInt64Array
+    let typedData: Float32Array | Float64Array | Int32Array | BigInt64Array | Uint8Array
     if (Array.isArray(data)) {
       switch (dtype.name) {
         case 'float32':
-          typedData = new Float32Array(data)
+          typedData = new Float32Array(data as number[])
           break
         case 'float64':
-          typedData = new Float64Array(data)
+          typedData = new Float64Array(data as number[])
           break
         case 'int32':
-          typedData = new Int32Array(data)
+          typedData = new Int32Array(data as number[])
           break
         case 'int64':
-          typedData = new BigInt64Array(data.map((x) => BigInt(x)))
+          typedData = new BigInt64Array((data as number[]).map((x) => BigInt(x)))
+          break
+        case 'bool':
+          typedData = new Uint8Array((data as boolean[]).map((x) => (x ? 1 : 0)))
           break
         default:
           throw new Error(`Unsupported dtype: ${dtype.name}`)
       }
     } else {
-      typedData = data as Float32Array | Float64Array | Int32Array | BigInt64Array
+      typedData = data as Float32Array | Float64Array | Int32Array | BigInt64Array | Uint8Array
     }
 
     const shapeBuffer = shapeCache.fillShape(shape)

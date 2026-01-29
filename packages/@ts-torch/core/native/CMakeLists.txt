@@ -55,6 +55,7 @@ set(SOURCES
     src/indexing.cpp
     src/batch_ops.cpp
     src/fused_ops.cpp
+    src/advanced_ops.cpp
 )
 
 # Header files

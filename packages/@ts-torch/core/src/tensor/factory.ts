@@ -613,3 +613,104 @@ export function stack<D extends DType<string> = DType<'float32'>, Dev extends De
   const expanded = tensors.map((tensor) => tensor.unsqueeze(normalizedDim))
   return cat(expanded as unknown as Tensor<Shape, D, Dev>[], normalizedDim)
 }
+
+/**
+ * Einstein summation notation for tensor operations
+ *
+ * Provides a powerful way to express tensor contractions and operations using
+ * Einstein notation. Widely used in attention mechanisms and ML operations.
+ *
+ * @param equation - Einstein summation notation string (e.g., 'ij,jk->ik')
+ * @param tensors - Array of input tensors
+ * @returns Result tensor
+ *
+ * @example
+ * ```ts
+ * // Matrix multiplication: C = A @ B
+ * const result = einsum('ij,jk->ik', [a, b])
+ *
+ * // Batched matrix multiplication
+ * const batched = einsum('bij,bjk->bik', [a, b])
+ *
+ * // Matrix trace
+ * const trace = einsum('ii->', [matrix])
+ *
+ * // Transpose
+ * const transposed = einsum('ij->ji', [matrix])
+ *
+ * // Dot product
+ * const dot = einsum('i,i->', [a, b])
+ *
+ * // Outer product
+ * const outer = einsum('i,j->ij', [a, b])
+ * ```
+ */
+export function einsum<D extends DType<string> = DType<'float32'>, Dev extends DeviceType = DeviceType>(
+  equation: string,
+  tensors: Tensor<Shape, D, Dev>[],
+): Tensor<Shape, D, Dev> {
+  if (tensors.length === 0) {
+    throw new ValidationError('tensors', 'empty array', 'at least one tensor')
+  }
+
+  if (!equation || typeof equation !== 'string') {
+    throw new ValidationError('equation', equation, 'a valid einsum equation string')
+  }
+
+  const first = tensors[0]!
+  const dtype = first.dtype
+  const device = first.device as Dev
+
+  // Validate all tensors have same dtype and device
+  for (let i = 1; i < tensors.length; i++) {
+    const t = tensors[i]!
+    if (t.device !== device) {
+      throw new ValidationError(
+        `tensors[${i}].device`,
+        t.device,
+        `same device as tensors[0] (${device})`,
+      )
+    }
+    if (t.dtype.name !== dtype.name) {
+      throw new ValidationError(
+        `tensors[${i}].dtype`,
+        t.dtype.name,
+        `same dtype as tensors[0] (${dtype.name})`,
+      )
+    }
+  }
+
+  const lib = getLib()
+
+  // Encode the equation string as a null-terminated buffer
+  const encoder = new TextEncoder()
+  const equationBytes = encoder.encode(equation + '\0')
+  const equationBuffer = equationBytes.buffer
+
+  // Get raw pointer addresses from tensor handles using koffi.address()
+  // Pack them into a BigUint64Array buffer for passing to FFI
+  const handleAddresses = new BigUint64Array(tensors.length)
+  for (let i = 0; i < tensors.length; i++) {
+    const handle = tensors[i]!.handle
+    // koffi.address() returns the raw address of an opaque pointer as BigInt
+    handleAddresses[i] = koffi.address(handle)
+  }
+
+  // Call native ts_tensor_einsum
+  const handle = withError((err) =>
+    lib.ts_tensor_einsum(equationBuffer, handleAddresses.buffer, tensors.length, err),
+  )
+
+  checkNull(handle, 'Failed to perform einsum operation')
+
+  // Query the result tensor's shape since einsum's output shape
+  // depends on the equation which is only known at runtime
+  const ndim = withError((err) => lib.ts_tensor_ndim(handle!, err)) as number
+  const shapeArray: number[] = []
+  for (let i = 0; i < ndim; i++) {
+    const size = withError((err) => lib.ts_tensor_size(handle!, i, err)) as number
+    shapeArray.push(size)
+  }
+
+  return new Tensor<Shape, D, Dev>(handle!, shapeArray as unknown as Shape, dtype, device)
+}

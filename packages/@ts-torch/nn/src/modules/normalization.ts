@@ -358,3 +358,257 @@ export class BatchNorm1d<D extends DType<string> = float32> extends Module<
     return `BatchNorm1d(${this.numFeatures}, eps=${this.eps}, momentum=${this.momentum}, affine=${this.affine})`
   }
 }
+
+/**
+ * Group Normalization
+ *
+ * Divides the channels into groups and normalizes within each group.
+ * More stable than BatchNorm for small batch sizes.
+ *
+ * y = (x - mean) / sqrt(var + eps) * gamma + beta
+ *
+ * where mean and variance are computed per group.
+ *
+ * @example
+ * ```ts
+ * // Divide 32 channels into 8 groups (4 channels per group)
+ * const gn = new GroupNorm(8, 32);
+ *
+ * const input: Tensor<readonly [16, 32, 28, 28]> = ...;
+ * const output = gn.forward(input);
+ * ```
+ */
+export class GroupNorm<D extends DType<string> = float32> extends Module<Shape, Shape, D> {
+  readonly numGroups: number
+  readonly numChannels: number
+  readonly eps: number
+  readonly affine: boolean
+
+  /**
+   * Learnable scale parameter (gamma)
+   */
+  readonly weight: Parameter<readonly [number], D> | null
+
+  /**
+   * Learnable shift parameter (beta)
+   */
+  readonly biasParam: Parameter<readonly [number], D> | null
+
+  /**
+   * Create a new GroupNorm layer
+   *
+   * @param numGroups - Number of groups to divide the channels into
+   * @param numChannels - Number of channels expected in input
+   * @param options - Configuration options
+   */
+  constructor(
+    numGroups: number,
+    numChannels: number,
+    options: {
+      eps?: number
+      affine?: boolean
+    } = {},
+  ) {
+    super()
+
+    if (numChannels % numGroups !== 0) {
+      throw new Error(
+        `numChannels (${numChannels}) must be divisible by numGroups (${numGroups})`,
+      )
+    }
+
+    this.numGroups = numGroups
+    this.numChannels = numChannels
+    this.eps = options.eps ?? 1e-5
+    this.affine = options.affine ?? true
+
+    const shape = [numChannels] as const
+
+    if (this.affine) {
+      // gamma (weight) initialized to 1
+      const weightTensor = cpu.ones(shape) as unknown as Tensor<readonly [number], D>
+      weightTensor.escape()
+      this.weight = new Parameter(weightTensor, true)
+      this.registerParameter('weight', this.weight)
+
+      // beta (bias) initialized to 0
+      const biasTensor = cpu.zeros(shape) as unknown as Tensor<readonly [number], D>
+      biasTensor.escape()
+      this.biasParam = new Parameter(biasTensor, true)
+      this.registerParameter('bias', this.biasParam)
+    } else {
+      this.weight = null
+      this.biasParam = null
+    }
+  }
+
+  /**
+   * Forward pass: applies group normalization
+   *
+   * @param input - Input tensor with shape [N, C, *] where * is any spatial dimensions
+   * @returns Normalized tensor with same shape
+   */
+  forward(input: Tensor<Shape, D>): Tensor<Shape, D> {
+    const inputShape = input.shape as readonly number[]
+    const batchSize = inputShape[0]
+    const numChannels = inputShape[1]
+    const spatialDims = inputShape.slice(2)
+    const spatialSize = spatialDims.reduce((a, b) => a * b, 1)
+
+    const channelsPerGroup = numChannels / this.numGroups
+
+    // Reshape to [N, numGroups, channelsPerGroup, *]
+    // Then normalize over [channelsPerGroup, *]
+    const reshapedShape = [batchSize, this.numGroups, channelsPerGroup, ...spatialDims]
+    let x = input.reshape(reshapedShape) as Tensor<Shape, D>
+
+    // Compute mean and variance over channels and spatial dims within each group
+    // Flatten spatial dims for easier computation
+    const flatShape = [batchSize, this.numGroups, channelsPerGroup * spatialSize]
+    x = x.reshape(flatShape) as Tensor<Shape, D>
+
+    // Mean over last dimension
+    const mean = x.mean(-1, true) as Tensor<Shape, D>
+
+    // Variance = E[x^2] - E[x]^2
+    const x2 = x.mul(x as any) as Tensor<Shape, D>
+    const meanX2 = x2.mean(-1, true) as Tensor<Shape, D>
+    const variance = meanX2.sub(mean.mul(mean as any)) as Tensor<Shape, D>
+
+    // Normalize: (x - mean) / sqrt(var + eps)
+    const xNorm = x.sub(mean as any).div(
+      (variance.addScalar(this.eps) as any).sqrt(),
+    ) as Tensor<Shape, D>
+
+    // Reshape back to original
+    let result = xNorm.reshape(inputShape as number[]) as Tensor<Shape, D>
+
+    // Apply affine transformation
+    if (this.affine && this.weight && this.biasParam) {
+      // weight and bias have shape [C], need to broadcast over [N, C, *]
+      // Reshape to [1, C, 1, 1, ...] for broadcasting
+      const broadcastShape = [1, numChannels, ...spatialDims.map(() => 1)]
+
+      const weightBroadcast = this.weight.data.reshape(broadcastShape) as Tensor<Shape, D>
+      const biasBroadcast = this.biasParam.data.reshape(broadcastShape) as Tensor<Shape, D>
+
+      result = result.mul(weightBroadcast as any).add(biasBroadcast as any) as Tensor<Shape, D>
+    }
+
+    return result
+  }
+
+  override toString(): string {
+    return `GroupNorm(${this.numGroups}, ${this.numChannels}, eps=${this.eps}, affine=${this.affine})`
+  }
+}
+
+/**
+ * Instance Normalization for 2D inputs
+ *
+ * Normalizes each instance (sample) independently across spatial dimensions.
+ * Commonly used in style transfer networks.
+ *
+ * This is equivalent to GroupNorm with numGroups = numChannels.
+ *
+ * @example
+ * ```ts
+ * const in_norm = new InstanceNorm2d(64);
+ * const input: Tensor<readonly [16, 64, 28, 28]> = ...;
+ * const output = in_norm.forward(input);
+ * ```
+ */
+export class InstanceNorm2d<D extends DType<string> = float32> extends Module<
+  readonly [number, number, number, number],
+  readonly [number, number, number, number],
+  D
+> {
+  readonly numFeatures: number
+  readonly eps: number
+  readonly momentum: number
+  readonly affine: boolean
+  readonly trackRunningStats: boolean
+
+  readonly weight: Parameter<readonly [number], D> | null
+  readonly biasParam: Parameter<readonly [number], D> | null
+
+  constructor(
+    numFeatures: number,
+    options: {
+      eps?: number
+      momentum?: number
+      affine?: boolean
+      trackRunningStats?: boolean
+    } = {},
+  ) {
+    super()
+
+    this.numFeatures = numFeatures
+    this.eps = options.eps ?? 1e-5
+    this.momentum = options.momentum ?? 0.1
+    this.affine = options.affine ?? false
+    this.trackRunningStats = options.trackRunningStats ?? false
+
+    const shape = [numFeatures] as const
+
+    if (this.affine) {
+      const weightTensor = cpu.ones(shape) as unknown as Tensor<readonly [number], D>
+      weightTensor.escape()
+      this.weight = new Parameter(weightTensor, true)
+      this.registerParameter('weight', this.weight)
+
+      const biasTensor = cpu.zeros(shape) as unknown as Tensor<readonly [number], D>
+      biasTensor.escape()
+      this.biasParam = new Parameter(biasTensor, true)
+      this.registerParameter('bias', this.biasParam)
+    } else {
+      this.weight = null
+      this.biasParam = null
+    }
+  }
+
+  forward(
+    input: Tensor<readonly [number, number, number, number], D>,
+  ): Tensor<readonly [number, number, number, number], D> {
+    const inputShape = input.shape as readonly [number, number, number, number]
+    const [batchSize, channels, height, width] = inputShape
+    const spatialSize = height * width
+
+    // Reshape to [N, C, H*W] for easier mean/var computation
+    const flatShape = [batchSize, channels, spatialSize] as const
+    const x = input.reshape(flatShape as any) as Tensor<Shape, D>
+
+    // Compute mean and variance over spatial dimensions for each channel
+    const mean = x.mean(-1, true) as Tensor<Shape, D>
+    const x2 = x.mul(x as any) as Tensor<Shape, D>
+    const meanX2 = x2.mean(-1, true) as Tensor<Shape, D>
+    const variance = meanX2.sub(mean.mul(mean as any)) as Tensor<Shape, D>
+
+    // Normalize
+    const xNorm = x.sub(mean as any).div(
+      (variance.addScalar(this.eps) as any).sqrt(),
+    ) as Tensor<Shape, D>
+
+    // Reshape back
+    let result = xNorm.reshape(inputShape as any) as Tensor<
+      readonly [number, number, number, number],
+      D
+    >
+
+    // Apply affine transformation
+    if (this.affine && this.weight && this.biasParam) {
+      const weightBroadcast = this.weight.data.reshape([1, channels, 1, 1]) as Tensor<Shape, D>
+      const biasBroadcast = this.biasParam.data.reshape([1, channels, 1, 1]) as Tensor<Shape, D>
+      result = result.mul(weightBroadcast as any).add(biasBroadcast as any) as Tensor<
+        readonly [number, number, number, number],
+        D
+      >
+    }
+
+    return result
+  }
+
+  override toString(): string {
+    return `InstanceNorm2d(${this.numFeatures}, eps=${this.eps}, affine=${this.affine})`
+  }
+}

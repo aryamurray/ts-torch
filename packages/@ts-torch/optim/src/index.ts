@@ -23,3 +23,6 @@ export * from './loss.js'
 
 // Learning rate schedulers
 export * from './lr_scheduler.js'
+
+// Gradient clipping utilities
+export * from './grad_clip.js'

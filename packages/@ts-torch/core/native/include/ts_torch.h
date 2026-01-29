@@ -647,6 +647,114 @@ TS_TORCH_API ts_TensorHandle ts_tensor_clamp_max(
 );
 
 // ============================================================================
+// Advanced Tensor Operations
+// ============================================================================
+
+// Upper triangular matrix
+TS_TORCH_API ts_TensorHandle ts_tensor_triu(
+    ts_TensorHandle tensor,
+    int64_t diagonal,
+    ts_Error* error
+);
+
+// Lower triangular matrix
+TS_TORCH_API ts_TensorHandle ts_tensor_tril(
+    ts_TensorHandle tensor,
+    int64_t diagonal,
+    ts_Error* error
+);
+
+// Masked fill - fill elements where mask is true with value
+TS_TORCH_API ts_TensorHandle ts_tensor_masked_fill(
+    ts_TensorHandle tensor,
+    ts_TensorHandle mask,
+    double value,
+    ts_Error* error
+);
+
+// Batched matrix multiplication: [B, M, K] @ [B, K, N] -> [B, M, N]
+TS_TORCH_API ts_TensorHandle ts_tensor_bmm(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_Error* error
+);
+
+// Gather elements along a dimension using index tensor
+TS_TORCH_API ts_TensorHandle ts_tensor_gather(
+    ts_TensorHandle input,
+    int64_t dim,
+    ts_TensorHandle index,
+    ts_Error* error
+);
+
+// Scatter elements along a dimension using index tensor
+TS_TORCH_API ts_TensorHandle ts_tensor_scatter(
+    ts_TensorHandle input,
+    int64_t dim,
+    ts_TensorHandle index,
+    ts_TensorHandle src,
+    ts_Error* error
+);
+
+// Top-k elements along a dimension - returns values, stores indices in output param
+TS_TORCH_API ts_TensorHandle ts_tensor_topk(
+    ts_TensorHandle tensor,
+    int64_t k,
+    int64_t dim,
+    int largest,
+    int sorted,
+    ts_TensorHandle* indices_out,
+    ts_Error* error
+);
+
+// Sort along a dimension - returns values, stores indices in output param
+TS_TORCH_API ts_TensorHandle ts_tensor_sort(
+    ts_TensorHandle tensor,
+    int64_t dim,
+    int descending,
+    ts_TensorHandle* indices_out,
+    ts_Error* error
+);
+
+// Conditional selection: where(condition, x, y)
+TS_TORCH_API ts_TensorHandle ts_tensor_where(
+    ts_TensorHandle condition,
+    ts_TensorHandle x,
+    ts_TensorHandle y,
+    ts_Error* error
+);
+
+// Find indices of non-zero elements
+TS_TORCH_API ts_TensorHandle ts_tensor_nonzero(
+    ts_TensorHandle tensor,
+    ts_Error* error
+);
+
+// Repeat tensor along dimensions
+TS_TORCH_API ts_TensorHandle ts_tensor_repeat(
+    ts_TensorHandle tensor,
+    int64_t* repeats,
+    int num_dims,
+    ts_Error* error
+);
+
+// Expand tensor (broadcast without copy)
+TS_TORCH_API ts_TensorHandle ts_tensor_expand(
+    ts_TensorHandle tensor,
+    int64_t* sizes,
+    int num_dims,
+    ts_Error* error
+);
+
+// Einstein summation notation
+TS_TORCH_API ts_TensorHandle ts_tensor_einsum(
+    const char* equation,
+    ts_TensorHandle* tensors,
+    size_t num_tensors,
+    ts_Error* error
+);
+
+// ============================================================================
 // In-Place Operations (Phase 4: Memory Efficient Updates)
 // ============================================================================
 
