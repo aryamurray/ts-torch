@@ -225,6 +225,68 @@ describe('gather', () => {
   })
 })
 
+describe('scatter', () => {
+  test('scatters values along dimension 1', () => {
+    run(() => {
+      const src = cpu.tensor([1, 2, 3, 4, 5, 6], [2, 3] as const)
+      const indices = cpu.tensor([0, 1, 2, 2, 1, 0], [2, 3] as const, int64)
+      const input = cpu.zeros([2, 3] as const)
+
+      const result = input.scatter(1, indices, src)
+
+      expect(result.shape).toEqual([2, 3])
+      const data = result.toArray()
+      // Row 0: indices [0,1,2] scatter values [1,2,3] to positions 0,1,2
+      expect(data[0]).toBe(1) // position 0
+      expect(data[1]).toBe(2) // position 1
+      expect(data[2]).toBe(3) // position 2
+      // Row 1: indices [2,1,0] scatter values [4,5,6] to positions 2,1,0
+      expect(data[3]).toBe(6) // position 0 gets value 6
+      expect(data[4]).toBe(5) // position 1 gets value 5
+      expect(data[5]).toBe(4) // position 2 gets value 4
+    })
+  })
+
+  test('scatters values along dimension 0', () => {
+    run(() => {
+      const src = cpu.tensor([10, 20, 30], [1, 3] as const)
+      const indices = cpu.tensor([1, 0, 1], [1, 3] as const, int64)
+      const input = cpu.zeros([2, 3] as const)
+
+      const result = input.scatter(0, indices, src)
+
+      expect(result.shape).toEqual([2, 3])
+      const data = result.toArray()
+      // Column 0: index 1 -> row 1 gets 10
+      // Column 1: index 0 -> row 0 gets 20
+      // Column 2: index 1 -> row 1 gets 30
+      expect(data[0]).toBe(0)  // [0,0]
+      expect(data[1]).toBe(20) // [0,1]
+      expect(data[2]).toBe(0)  // [0,2]
+      expect(data[3]).toBe(10) // [1,0]
+      expect(data[4]).toBe(0)  // [1,1]
+      expect(data[5]).toBe(30) // [1,2]
+    })
+  })
+
+  test('handles overlapping indices (last write wins)', () => {
+    run(() => {
+      const src = cpu.tensor([1, 2, 3], [3] as const)
+      const indices = cpu.tensor([0, 0, 0], [3] as const, int64)
+      const input = cpu.zeros([3] as const)
+
+      const result = input.scatter(0, indices, src)
+
+      expect(result.shape).toEqual([3])
+      // All values scatter to index 0, last write (3) wins
+      const data = result.toArray()
+      expect(data[0]).toBe(3)
+      expect(data[1]).toBe(0)
+      expect(data[2]).toBe(0)
+    })
+  })
+})
+
 describe('topk', () => {
   test('returns top k values and indices', () => {
     run(() => {
