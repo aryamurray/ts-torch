@@ -217,7 +217,9 @@ export class TransformerEncoderLayer<
   private ffBlock(x: Tensor<Shape, D, Dev>): Tensor<Shape, D, Dev> {
     // Flatten for linear layers
     const shape = x.shape as readonly number[]
-    const flatShape = [-1, this.dModel] as const
+    // Compute flat size (product of all dims except last)
+    const flatSize = shape.slice(0, -1).reduce((a, b) => a * b, 1)
+    const flatShape = [flatSize, this.dModel] as const
     let flat = (x as any).reshape(flatShape) as Tensor<Shape, D, Dev>
 
     // Linear1 -> activation -> dropout -> Linear2 -> dropout
@@ -634,7 +636,9 @@ export class TransformerDecoderLayer<
   private ffBlock(x: Tensor<Shape, D, Dev>): Tensor<Shape, D, Dev> {
     // Flatten for linear layers
     const shape = x.shape as readonly number[]
-    const flatShape = [-1, this.dModel] as const
+    // Compute flat size (product of all dims except last)
+    const flatSize = shape.slice(0, -1).reduce((a, b) => a * b, 1)
+    const flatShape = [flatSize, this.dModel] as const
     let flat = (x as any).reshape(flatShape) as Tensor<Shape, D, Dev>
 
     // Linear1 -> activation -> dropout -> Linear2 -> dropout
