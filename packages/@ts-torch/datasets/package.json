@@ -43,7 +43,7 @@
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
-    "@types/jpeg-js": "^0.4.3",
+    "@types/jpeg-js": "^0.4.2",
     "@types/node": "^22.10.5",
     "@types/pngjs": "^6.0.4",
     "typescript": "5.9.2",
