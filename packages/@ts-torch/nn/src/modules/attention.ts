@@ -280,7 +280,8 @@ export class MultiheadAttention<
     let qkv: Tensor<Shape, D, Dev>
 
     // Reshape for projection: [L*N, E] or [N*L, E]
-    const flatQuery = query.reshape([-1, this.embedDim]) as Tensor<Shape, D, Dev>
+    const flatSize = tgtLen * batchSize
+    const flatQuery = query.reshape([flatSize, this.embedDim]) as Tensor<Shape, D, Dev>
 
     // Project to get Q, K, V combined
     qkv = this.inProj.forward(flatQuery as any) as unknown as Tensor<Shape, D, Dev>
@@ -298,24 +299,27 @@ export class MultiheadAttention<
     const seqLen = this.batchFirst ? tgtLen : tgtLen
     const Q = qkvFlat
       .narrow(1, 0, 1)
-      .reshape([seqLen, batchSize, this.numHeads, this.headDim])
-      .transpose(0, 2) // [numHeads, batchSize, seqLen, headDim]
-      .transpose(1, 0) // [batchSize, numHeads, seqLen, headDim]
-      .reshape([batchSize * this.numHeads, seqLen, this.headDim]) as Tensor<Shape, D, Dev>
+      .squeeze(1) // [L*N, E] - narrow keeps the dimension, squeeze removes it
+      .reshape([tgtLen, batchSize, this.numHeads, this.headDim])
+      .transpose(0, 2) // [numHeads, batchSize, tgtLen, headDim]
+      .transpose(1, 0) // [batchSize, numHeads, tgtLen, headDim]
+      .reshape([batchSize * this.numHeads, tgtLen, this.headDim]) as Tensor<Shape, D, Dev>
 
     const K = qkvFlat
       .narrow(1, 1, 1)
-      .reshape([seqLen, batchSize, this.numHeads, this.headDim])
+      .squeeze(1) // [L*N, E]
+      .reshape([tgtLen, batchSize, this.numHeads, this.headDim])
       .transpose(0, 2)
       .transpose(1, 0)
-      .reshape([batchSize * this.numHeads, seqLen, this.headDim]) as Tensor<Shape, D, Dev>
+      .reshape([batchSize * this.numHeads, tgtLen, this.headDim]) as Tensor<Shape, D, Dev>
 
     const V = qkvFlat
       .narrow(1, 2, 1)
-      .reshape([seqLen, batchSize, this.numHeads, this.headDim])
+      .squeeze(1) // [L*N, E]
+      .reshape([tgtLen, batchSize, this.numHeads, this.headDim])
       .transpose(0, 2)
       .transpose(1, 0)
-      .reshape([batchSize * this.numHeads, seqLen, this.headDim]) as Tensor<Shape, D, Dev>
+      .reshape([batchSize * this.numHeads, tgtLen, this.headDim]) as Tensor<Shape, D, Dev>
 
     // Compute attention scores: Q @ K^T / sqrt(d_k)
     // Q: [B*H, L, D], K: [B*H, S, D] -> K^T: [B*H, D, S]
@@ -353,9 +357,12 @@ export class MultiheadAttention<
     let attnOutput = attnWeights.bmm(V as any) as Tensor<Shape, D, Dev>
 
     // Reshape back: [B*H, L, D] -> [L, N, E]
+    // First reshape from [B*H, L, D] to [B, H, L, D]
+    // Then transpose to [B, L, H, D], clone for contiguous memory, and reshape to [B, L, E]
     attnOutput = attnOutput
       .reshape([batchSize, this.numHeads, tgtLen, this.headDim])
       .transpose(1, 2) // [N, L, H, D]
+      .clone() // Ensure contiguous memory layout before reshape
       .reshape([batchSize, tgtLen, this.embedDim]) as Tensor<Shape, D, Dev>
 
     if (!this.batchFirst) {
@@ -363,7 +370,7 @@ export class MultiheadAttention<
     }
 
     // Output projection
-    const outputFlat = attnOutput.reshape([-1, this.embedDim]) as Tensor<Shape, D, Dev>
+    const outputFlat = attnOutput.reshape([flatSize, this.embedDim]) as Tensor<Shape, D, Dev>
     let output = this.outProj.forward(outputFlat as any) as unknown as Tensor<Shape, D, Dev>
 
     // Reshape to original format
@@ -386,7 +393,7 @@ export class MultiheadAttention<
 
       if (averageAttnWeights) {
         // Average over heads: [N, H, L, S] -> [N, L, S]
-        attnWeightsOut = attnWeightsOut.mean(1) as Tensor<Shape, D, Dev>
+        attnWeightsOut = attnWeightsOut.meanDim(1) as Tensor<Shape, D, Dev>
       }
     }
 
@@ -425,11 +432,15 @@ export function scaledDotProductAttention<
   } = {},
 ): Tensor<S, D, Dev> {
   const queryShape = query.shape as readonly number[]
+  const keyShape = key.shape as readonly number[]
   const d = queryShape[queryShape.length - 1]
   const scale = options.scale ?? Math.sqrt(d)
 
-  // Q @ K^T
-  const kt = key.transpose(-2, -1) as Tensor<Shape, D, Dev>
+  // Q @ K^T - convert negative indices to positive
+  const ndim = keyShape.length
+  const dim0 = ndim - 2 // -2 in positive form
+  const dim1 = ndim - 1 // -1 in positive form
+  const kt = key.transpose(dim0, dim1) as Tensor<Shape, D, Dev>
   let attnWeights = query.matmul(kt as any) as Tensor<Shape, D, Dev>
   attnWeights = attnWeights.divScalar(scale) as Tensor<Shape, D, Dev>
 
