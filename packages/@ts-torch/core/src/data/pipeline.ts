@@ -199,20 +199,21 @@ export class DataPipeline<T> implements AsyncIterable<T> {
    * ```
    */
   map<U>(fn: (item: T) => U): DataPipeline<U> {
-    const self = this
+    const parentSource = this.source
+    const parentConfig = this.config
     const source: Dataset<U> = {
-      getItem(index: number) {
-        const item = self.source.getItem(index)
+      getItem: (index: number) => {
+        const item = parentSource.getItem(index)
         if (item instanceof Promise) {
           return item.then(fn) as Promise<U>
         }
         return fn(item as T)
       },
       get length() {
-        return self.source.length
+        return parentSource.length
       },
     }
-    return new DataPipeline<U>(source, self.config)
+    return new DataPipeline<U>(source, parentConfig)
   }
 
   /**

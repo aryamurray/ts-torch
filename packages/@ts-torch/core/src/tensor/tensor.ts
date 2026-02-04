@@ -2723,8 +2723,6 @@ mean(): Tensor<readonly [], D> {
       int64Dtype,
     )
 
-    // Get actual shape from native
-    const actualShape = tensorResult.shape as readonly [number, number]
     return tensorResult as Tensor<readonly [number, number], DType<'int64'>>
   }
 

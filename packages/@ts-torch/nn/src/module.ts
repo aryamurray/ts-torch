@@ -161,7 +161,7 @@ export class Parameter<S extends Shape = Shape, D extends DType<string> = float3
  *   .pipe(new Linear(64, 10));
  * ```
  */
-export abstract class Module<
+export class Module<
   InShape extends Shape = Shape,
   OutShape extends Shape = Shape,
   D extends DType<string> = float32,
@@ -176,8 +176,13 @@ export abstract class Module<
    *
    * @param input - Input tensor with shape InShape
    * @returns Output tensor with shape OutShape
+   *
+   * Note: This is not abstract to allow subclasses (like Transformers) to
+   * override with different signatures (e.g., multiple input tensors).
    */
-  abstract forward(input: Tensor<InShape, D, Dev>): Tensor<OutShape, D, Dev>
+  forward(_input: Tensor<InShape, D, Dev>): Tensor<OutShape, D, Dev> {
+    throw new Error(`forward() must be implemented by ${this.constructor.name}`)
+  }
 
   /**
    * Callable syntax for forward pass
@@ -279,6 +284,15 @@ export abstract class Module<
     }
 
     return namedParams
+  }
+
+  /**
+   * Get all child modules registered with this module
+   *
+   * @returns Map of module name to Module
+   */
+  modules(): Map<string, Module<any, any, D, Dev>> {
+    return this._modules
   }
 
   /**

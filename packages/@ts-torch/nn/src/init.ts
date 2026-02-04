@@ -375,8 +375,8 @@ export function sparse_<S extends Shape, D extends DType<string>, Dev extends De
   }
 
   const rows = shape[0]
-  const cols = shape[1]
-  const numZeros = Math.round(rows * sparsity)
+  const _cols = shape[1]
+  const _numZeros = Math.round(rows * sparsity)
 
   // Generate normal distribution
   let result = cpu.randn(shape as number[]).mulScalar(std) as Tensor<Shape, D, 'cpu'>
@@ -412,8 +412,8 @@ export function trunc_normal_<S extends Shape, D extends DType<string>, Dev exte
   tensor: Tensor<S, D, Dev>,
   mean: number = 0.0,
   std: number = 1.0,
-  a: number = -2.0,
-  b: number = 2.0,
+  _a: number = -2.0,
+  _b: number = 2.0,
 ): Tensor<S, D, Dev> {
   // Approximate truncated normal using clipping
   // This is a simplified version; true truncated normal would redraw samples

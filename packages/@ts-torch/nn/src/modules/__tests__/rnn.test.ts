@@ -114,7 +114,7 @@ describe('RNN', () => {
         const rnn = new RNN(64, 128)
         const input = cpu.randn([1, 2, 64] as const)
 
-        const [output, hidden] = rnn.forward(input)
+        const [output, _hidden] = rnn.forward(input)
 
         expect(output.shape).toEqual([1, 2, 128])
       })
@@ -191,7 +191,7 @@ describe('LSTM', () => {
         const lstm = new LSTM(64, 128, { batchFirst: true })
         const input = cpu.randn([2, 10, 64] as const) // [batch, seq, input]
 
-        const [output, [hn, cn]] = lstm.forward(input)
+        const [output, [_hn, _cn]] = lstm.forward(input)
 
         expect(output.shape).toEqual([2, 10, 128])
       })
@@ -204,7 +204,7 @@ describe('LSTM', () => {
         const h0 = cpu.randn([1, 2, 128] as const)
         const c0 = cpu.randn([1, 2, 128] as const)
 
-        const [output, [hn, cn]] = lstm.forward(input, [h0, c0])
+        const [output, [_hn, _cn]] = lstm.forward(input, [h0, c0])
 
         expect(output.shape).toEqual([10, 2, 128])
       })
@@ -273,7 +273,7 @@ describe('GRU', () => {
         const gru = new GRU(64, 128, { batchFirst: true })
         const input = cpu.randn([2, 10, 64] as const) // [batch, seq, input]
 
-        const [output, hn] = gru.forward(input)
+        const [output, _hn] = gru.forward(input)
 
         expect(output.shape).toEqual([2, 10, 128])
       })
@@ -285,7 +285,7 @@ describe('GRU', () => {
         const input = cpu.randn([10, 2, 64] as const)
         const h0 = cpu.randn([1, 2, 128] as const)
 
-        const [output, hn] = gru.forward(input, h0)
+        const [output, _hn] = gru.forward(input, h0)
 
         expect(output.shape).toEqual([10, 2, 128])
       })

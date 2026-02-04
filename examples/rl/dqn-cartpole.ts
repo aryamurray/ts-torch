@@ -90,7 +90,7 @@ async function main() {
   // Training loop
   const t0 = Date.now()
   let obs = env.reset()
-  let episodeReward = 0
+  let _episodeReward = 0
   let episodeCount = 0
 
   for (let step = 0; step < config.totalSteps; step++) {
@@ -100,7 +100,7 @@ async function main() {
     // Step environment
     const result = env.step(action)
     const reward = typeof result.reward === 'number' ? result.reward : result.reward[0]!
-    episodeReward += reward
+    _episodeReward += reward
 
     // Store transition
     buffer.push({
@@ -117,7 +117,7 @@ async function main() {
     if (result.done) {
       episodeCount++
       obs = env.reset()
-      episodeReward = 0
+      _episodeReward = 0
     }
 
     // Linear epsilon decay

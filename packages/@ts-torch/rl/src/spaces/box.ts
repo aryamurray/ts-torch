@@ -194,8 +194,8 @@ export function box(config: BoxConfig): BoxSpace {
 export function boxUniform(low: number, high: number, shape: number[]): BoxSpace {
   const size = shape.reduce((a, b) => a * b, 1)
   return new BoxSpaceImpl({
-    low: new Array(size).fill(low),
-    high: new Array(size).fill(high),
+    low: Array.from({ length: size }, () => low),
+    high: Array.from({ length: size }, () => high),
     shape,
   })
 }

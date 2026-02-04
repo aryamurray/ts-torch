@@ -163,11 +163,8 @@ export class SAC extends OffPolicyAlgorithm {
    * Setup entropy coefficient (possibly learnable)
    */
   private setupEntropyCoef(): void {
-    // Determine target entropy
-    if (typeof this.targetEntropy === 'number') {
-      this.targetEntropy = this.targetEntropy
-    } else {
-      // auto: -dim(action_space)
+    // Determine target entropy (auto: -dim(action_space))
+    if (typeof this.targetEntropy !== 'number') {
       this.targetEntropy = -this.actionDim
     }
 

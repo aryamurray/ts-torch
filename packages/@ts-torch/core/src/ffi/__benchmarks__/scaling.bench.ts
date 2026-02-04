@@ -5,7 +5,7 @@
  */
 
 import { bench, describe } from 'vitest'
-import { zeros, randn, fromArray } from '../../tensor/factory.js'
+import { zeros, randn } from '../../tensor/factory.js'
 
 describe('Tensor Size Scaling - zeros', () => {
   bench('zeros [32, 32] (1K elements)', () => {
@@ -158,7 +158,7 @@ describe('Realistic ML Workloads', () => {
   })
 
   // Conv-like workload (flattened)
-  const convInput = randn([16, 3, 32, 32] as const)  // batch=16, 3 channels, 32x32
+  const _convInput = randn([16, 3, 32, 32] as const)  // batch=16, 3 channels, 32x32
   bench('4D tensor creation [16, 3, 32, 32]', () => {
     randn([16, 3, 32, 32] as const)
   })

@@ -71,13 +71,11 @@ const transformFactories: Partial<Record<TransformType, TransformFactory>> = {
       }
 
       // Simple normalization for flat arrays
-      const result = new Array(input.length)
-      for (let i = 0; i < input.length; i++) {
+      return Array.from({ length: input.length }, (_, i) => {
         const m = meanArr[i % meanArr.length]!
         const s = stdArr[i % stdArr.length]!
-        result[i] = (input[i]! - m) / s
-      }
-      return result
+        return (input[i]! - m) / s
+      })
     }
   },
 

@@ -4,13 +4,10 @@
  * Implements MultiheadAttention as used in "Attention Is All You Need"
  */
 
-import { Module, Parameter, type Tensor, type float32 } from '../module.js'
-import { device, type DType, type DeviceType, type Shape } from '@ts-torch/core'
+import { Module, type Tensor, type float32 } from '../module.js'
+import { type DType, type DeviceType, type Shape } from '@ts-torch/core'
 import { Linear } from './linear.js'
 import { Dropout } from './dropout.js'
-
-// CPU device for weight initialization
-const cpu = device.cpu()
 
 /**
  * MultiheadAttention options
@@ -296,7 +293,6 @@ export class MultiheadAttention<
 
     // Reshape Q, K, V for multi-head attention
     // [L, N, E] -> [N, numHeads, L, headDim]
-    const seqLen = this.batchFirst ? tgtLen : tgtLen
     const Q = qkvFlat
       .narrow(1, 0, 1)
       .squeeze(1) // [L*N, E] - narrow keeps the dimension, squeeze removes it

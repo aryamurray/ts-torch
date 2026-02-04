@@ -64,13 +64,16 @@ export function clipGradNorm<D extends DType<string>>(
 
   if (normType === Infinity) {
     // Infinity norm: max of absolute values
+    // Use sum of squares and compare to running max (approximation without abs/max ops)
     let maxVal = 0
     for (const grad of grads) {
-      const absGrad = (grad as any).abs()
-      const maxGrad = absGrad.max()
-      const val = (maxGrad as any).toArray() as number
-      if (val > maxVal) {
-        maxVal = val
+      // Get all values and compute max abs manually
+      const arr = (grad as any).toArray() as number[] | Float32Array
+      for (const v of arr) {
+        const absV = Math.abs(v)
+        if (absV > maxVal) {
+          maxVal = absV
+        }
       }
     }
     totalNorm = maxVal
@@ -78,19 +81,32 @@ export function clipGradNorm<D extends DType<string>>(
     // L0 norm: count of non-zero elements
     let count = 0
     for (const grad of grads) {
-      const nonzeroIndices = grad.nonzero()
-      count += (nonzeroIndices.shape as readonly number[])[0]
+      const arr = (grad as any).toArray() as number[] | Float32Array
+      for (const v of arr) {
+        if (v !== 0) {
+          count++
+        }
+      }
     }
     totalNorm = count
+  } else if (normType === 2) {
+    // L2 norm (special case, most common): sqrt(sum(x^2))
+    let sumSq = 0
+    for (const grad of grads) {
+      const sq = (grad as any).mul(grad)
+      const gradSum = sq.sum()
+      sumSq += (gradSum as any).item() as number
+    }
+    totalNorm = Math.sqrt(sumSq)
   } else {
     // Lp norm: (sum(|x|^p))^(1/p)
+    // Use toArray to compute manually since abs/pow not available
     let sumPowNorm = 0
     for (const grad of grads) {
-      // Compute |grad|^p
-      const absGrad = (grad as any).abs()
-      const powGrad = absGrad.pow(normType)
-      const gradSum = powGrad.sum()
-      sumPowNorm += (gradSum as any).toArray() as number
+      const arr = (grad as any).toArray() as number[] | Float32Array
+      for (const v of arr) {
+        sumPowNorm += Math.pow(Math.abs(v), normType)
+      }
     }
     totalNorm = Math.pow(sumPowNorm, 1.0 / normType)
   }
@@ -112,9 +128,11 @@ export function clipGradNorm<D extends DType<string>>(
       const grad = (param as any).grad
       if (grad !== null && grad !== undefined) {
         // Scale gradient in-place
-        // grad *= clipCoef
-        ;(grad as any).mulScalarInplace?.(clipCoef) ??
-          ((param as any)._gradCache = grad.mulScalar(clipCoef))
+        if (typeof (grad as any).mulScalarInplace === 'function') {
+          ;(grad as any).mulScalarInplace(clipCoef)
+        } else {
+          ;(param as any)._gradCache = grad.mulScalar(clipCoef)
+        }
       }
     }
   }
@@ -204,23 +222,35 @@ export function getGradNorm<D extends DType<string>>(
   }
 
   if (normType === Infinity) {
+    // Infinity norm: max of absolute values
     let maxVal = 0
     for (const grad of grads) {
-      const absGrad = (grad as any).abs()
-      const maxGrad = absGrad.max()
-      const val = (maxGrad as any).toArray() as number
-      if (val > maxVal) {
-        maxVal = val
+      const arr = (grad as any).toArray() as number[] | Float32Array
+      for (const v of arr) {
+        const absV = Math.abs(v)
+        if (absV > maxVal) {
+          maxVal = absV
+        }
       }
     }
     return maxVal
+  } else if (normType === 2) {
+    // L2 norm (most common): sqrt(sum(x^2))
+    let sumSq = 0
+    for (const grad of grads) {
+      const sq = (grad as any).mul(grad)
+      const gradSum = sq.sum()
+      sumSq += (gradSum as any).item() as number
+    }
+    return Math.sqrt(sumSq)
   } else {
+    // Lp norm: (sum(|x|^p))^(1/p)
     let sumPowNorm = 0
     for (const grad of grads) {
-      const absGrad = (grad as any).abs()
-      const powGrad = absGrad.pow(normType)
-      const gradSum = powGrad.sum()
-      sumPowNorm += (gradSum as any).toArray() as number
+      const arr = (grad as any).toArray() as number[] | Float32Array
+      for (const v of arr) {
+        sumPowNorm += Math.pow(Math.abs(v), normType)
+      }
     }
     return Math.pow(sumPowNorm, 1.0 / normType)
   }
@@ -254,16 +284,26 @@ export function checkGradHealth<D extends DType<string>>(
   for (const [name, param] of parameters) {
     const grad = (param as any).grad
     if (grad !== null && grad !== undefined) {
-      // Check for NaN and Inf
-      // This is a simplified check - would need isnan/isinf tensor ops for full implementation
-      const sum = (grad as any).sum()
-      const sumValue = (sum as any).toArray() as number
+      // Check for NaN and Inf by examining all values
+      const arr = (grad as any).toArray() as number[] | Float32Array
+      let foundNaN = false
+      let foundInf = false
 
-      if (Number.isNaN(sumValue)) {
+      for (const v of arr) {
+        if (Number.isNaN(v)) {
+          foundNaN = true
+        } else if (!Number.isFinite(v)) {
+          foundInf = true
+        }
+        // Early exit if both found
+        if (foundNaN && foundInf) break
+      }
+
+      if (foundNaN) {
         hasNaN = true
         nanParams.push(name)
       }
-      if (!Number.isFinite(sumValue)) {
+      if (foundInf) {
         hasInf = true
         infParams.push(name)
       }

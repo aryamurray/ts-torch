@@ -17,6 +17,7 @@ export default defineConfig({
         // Node built-ins (both with and without node: prefix)
         'path',
         'fs',
+        'fs/promises',
         'url',
         'module',
         'os',
@@ -24,6 +25,7 @@ export default defineConfig({
         'node:os',
         'node:path',
         'node:fs',
+        'node:fs/promises',
         'node:url',
         'node:module',
         'node:process',

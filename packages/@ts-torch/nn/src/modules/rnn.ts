@@ -57,18 +57,6 @@ export interface RNNOptions<D extends DType<string> = float32> extends RNNBaseOp
 }
 
 /**
- * RNN cell computation types
- */
-type RNNCellFn<D extends DType<string>, Dev extends DeviceType> = (
-  input: Tensor<Shape, D, Dev>,
-  hidden: Tensor<Shape, D, Dev>,
-  weightIh: Tensor<Shape, D, Dev>,
-  weightHh: Tensor<Shape, D, Dev>,
-  biasIh: Tensor<Shape, D, Dev> | null,
-  biasHh: Tensor<Shape, D, Dev> | null,
-) => Tensor<Shape, D, Dev>
-
-/**
  * Elman RNN layer
  *
  * Applies a multi-layer Elman RNN with tanh or ReLU non-linearity to an input sequence.

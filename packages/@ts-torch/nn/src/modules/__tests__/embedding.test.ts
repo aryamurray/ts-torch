@@ -4,6 +4,7 @@
 
 import { describe, test, expect } from 'vitest'
 import { Embedding, embeddingFromPretrained } from '../embedding.js'
+import { Linear } from '../linear.js'
 import { device, run, int64 } from '@ts-torch/core'
 
 const cpu = device.cpu()
@@ -179,8 +180,6 @@ describe('Embedding', () => {
     test('can be piped with other modules', () => {
       run(() => {
         const embedding = new Embedding(100, 64)
-        // Import Linear for piping
-        const { Linear } = require('../linear.js')
         const linear = new Linear(64, 10)
 
         const piped = embedding.pipe(linear)

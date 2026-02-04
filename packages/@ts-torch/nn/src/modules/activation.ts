@@ -4,8 +4,8 @@
  * Activation functions maintain input shape, making them easy to compose.
  */
 
-import { Module, type Tensor, type float32 } from '../module.js'
-import type { Shape, DType, DeviceType } from '@ts-torch/core'
+import { Module, Parameter, type Tensor, type float32 } from '../module.js'
+import { device, type Shape, type DType, type DeviceType } from '@ts-torch/core'
 
 /**
  * Rectified Linear Unit activation: ReLU(x) = max(0, x)
@@ -298,8 +298,8 @@ export class ELU<S extends Shape = Shape, D extends DType<string> = float32, Dev
  * where alpha ≈ 1.6733 and scale ≈ 1.0507
  */
 export class SELU<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<S, S, D, Dev> {
-  private readonly alpha = 1.6732632423543772848170429916717
-  private readonly scale = 1.0507009873554804934193349852946
+  private readonly alpha = 1.673263242354377
+  private readonly scale = 1.050700987355480
 
   constructor(public readonly inplace: boolean = false) {
     super()
@@ -474,12 +474,9 @@ export class PReLU<S extends Shape = Shape, D extends DType<string> = float32, D
   ) {
     super()
 
-    // Import device dynamically to avoid circular dependencies
-    const { device } = require('@ts-torch/core')
     const cpu = device.cpu()
 
     // Initialize weight parameter
-    const { Parameter } = require('../module.js')
     const weightTensor = cpu.ones([numParameters]).mulScalar(init)
     weightTensor.escape()
     this.weight = new Parameter(weightTensor, true)

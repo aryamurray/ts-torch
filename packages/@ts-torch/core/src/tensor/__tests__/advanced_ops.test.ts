@@ -140,7 +140,7 @@ describe('maskedFill', () => {
     run(() => {
       const tensor = cpu.randn([3, 4, 5] as const)
       // Create a bool tensor with all false values
-      const maskData = new Array(3 * 4 * 5).fill(false)
+      const maskData = Array.from({ length: 3 * 4 * 5 }, () => false)
       const mask = cpu.tensor(maskData, [3, 4, 5] as const)
 
       const result = tensor.maskedFill(mask as any, 0)
@@ -309,7 +309,7 @@ describe('topk', () => {
     run(() => {
       const tensor = cpu.tensor([3, 1, 4, 1, 5, 9, 2, 6], [8] as const)
 
-      const [values, indices] = tensor.topk(3, -1, false)
+      const [values, _indices] = tensor.topk(3, -1, false)
 
       // Smallest 3 values should be 1, 1, 2
       const valuesData = values.toArray()
@@ -334,7 +334,7 @@ describe('topk', () => {
     run(() => {
       const tensor = cpu.tensor([3, 1, 4, 1, 5, 9], [2, 3] as const)
 
-      const [values, indices] = tensor.topk(1, 0) // Top along dim 0
+      const [values, _indices] = tensor.topk(1, 0) // Top along dim 0
 
       expect(values.shape).toEqual([1, 3])
     })
@@ -363,7 +363,7 @@ describe('sort', () => {
     run(() => {
       const tensor = cpu.tensor([3, 1, 4, 1, 5, 9, 2, 6], [8] as const)
 
-      const [sorted, indices] = tensor.sort(-1, true) // descending=true
+      const [sorted, _indices] = tensor.sort(-1, true) // descending=true
 
       const data = sorted.toArray()
       for (let i = 1; i < data.length; i++) {

@@ -94,8 +94,8 @@ export class DummyVecEnv<S> implements VecEnv {
 
     // Create observation space
     this.observationSpace_ = box({
-      low: new Array(this.obsSize).fill(-Infinity),
-      high: new Array(this.obsSize).fill(Infinity),
+      low: Array.from({ length: this.obsSize }, () => -Infinity),
+      high: Array.from({ length: this.obsSize }, () => Infinity),
       shape: [this.obsSize],
     })
 
@@ -117,8 +117,8 @@ export class DummyVecEnv<S> implements VecEnv {
     this.doneBuffer = new Uint8Array(this.nEnvs_)
 
     // Episode tracking
-    this.episodeLengths = new Array(this.nEnvs_).fill(0)
-    this.episodeRewards = new Array(this.nEnvs_).fill(0)
+    this.episodeLengths = Array.from({ length: this.nEnvs_ }, () => 0)
+    this.episodeRewards = Array.from({ length: this.nEnvs_ }, () => 0)
   }
 
   /**

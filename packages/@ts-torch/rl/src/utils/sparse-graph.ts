@@ -147,11 +147,7 @@ export class SparseGraph {
     }
 
     const numNodes = maxNode + 1
-    const adjArray: AdjacencyEntry[][] = new Array(numNodes)
-
-    for (let i = 0; i < numNodes; i++) {
-      adjArray[i] = adjacency.get(i) ?? []
-    }
+    const adjArray: AdjacencyEntry[][] = Array.from({ length: numNodes }, (_, i) => adjacency.get(i) ?? [])
 
     return SparseGraph.fromAdjacencyList(adjArray)
   }

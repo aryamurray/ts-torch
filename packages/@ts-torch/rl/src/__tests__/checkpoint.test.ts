@@ -11,7 +11,6 @@ import {
   float32Tensor,
   paramsToTensors,
   type CheckpointData,
-  type TensorData,
 } from '@ts-torch/nn'
 
 describe('Checkpoint', () => {

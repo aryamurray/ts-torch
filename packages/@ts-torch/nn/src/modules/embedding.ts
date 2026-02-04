@@ -193,7 +193,8 @@ export class Embedding<
   ): Tensor<Shape, D, Dev> {
     // Flatten input for indexSelect, then reshape back
     const inputShape = input.shape as readonly number[]
-    const flatInput = input.reshape([-1]) as Tensor<readonly [number], DType<'int64'>, Dev>
+    const numElements = inputShape.reduce((a, b) => a * b, 1)
+    const flatInput = input.reshape([numElements] as const) as Tensor<readonly [number], DType<'int64'>, Dev>
 
     // Use indexSelect on dimension 0 of weight matrix
     // weight: [numEmbeddings, embeddingDim]

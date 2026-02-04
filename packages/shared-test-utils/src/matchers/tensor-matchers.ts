@@ -98,18 +98,38 @@ export const tensorMatchers = {
     };
   },
 
-  toBeCloseTo(received: Tensor, expected: number[], tolerance: number = 1e-5) {
-    const actual = toNumberArray(received.toArray());
-    const pass = arraysClose(actual, expected, tolerance);
+  toBeCloseTo(received: Tensor | number, expected: number[] | number, numDigitsOrTolerance: number = 2) {
+    // Handle number case (fallback to default behavior with vitest semantics)
+    // In vitest, the third arg is numDigits (default 2), not tolerance
+    if (typeof received === 'number' && typeof expected === 'number') {
+      const numDigits = numDigitsOrTolerance;
+      const diff = Math.abs(received - expected);
+      const pass = diff < Math.pow(10, -numDigits) / 2;
+      return {
+        pass,
+        message: () =>
+          pass
+            ? `Expected ${received} not to be close to ${expected}`
+            : `Expected ${received} to be close to ${expected} (difference: ${diff})`,
+        actual: received,
+        expected,
+      };
+    }
+
+    // Handle tensor case - here the third arg is a tolerance value
+    const tolerance = numDigitsOrTolerance < 1 ? numDigitsOrTolerance : 1e-5;
+    const actual = toNumberArray((received as Tensor).toArray());
+    const expectedArr = Array.isArray(expected) ? expected : [expected];
+    const pass = arraysClose(actual, expectedArr, tolerance);
 
     return {
       pass,
       message: () =>
         pass
-          ? `Expected tensor values not to be close to [${expected.join(', ')}] within tolerance ${tolerance}, but they are`
-          : `Expected tensor values to be close to [${expected.join(', ')}] within tolerance ${tolerance}, but got [${actual.join(', ')}]`,
+          ? `Expected tensor values not to be close to [${expectedArr.join(', ')}] within tolerance ${tolerance}, but they are`
+          : `Expected tensor values to be close to [${expectedArr.join(', ')}] within tolerance ${tolerance}, but got [${actual.join(', ')}]`,
       actual,
-      expected,
+      expected: expectedArr,
     };
   },
 
