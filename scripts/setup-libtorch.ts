@@ -1,6 +1,7 @@
 import { existsSync, rmSync, createWriteStream, writeFileSync, readFileSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 import { createHash } from "crypto";
+import { execSync } from "child_process";
 import path from "path";
 import AdmZip from "adm-zip";
 
@@ -292,6 +293,75 @@ async function buildNative(): Promise<void> {
 }
 
 /**
+ * Check that required build tools are installed before proceeding
+ */
+function checkBuildDependencies(): void {
+  console.log("Checking build dependencies...\n");
+
+  const missing: { name: string; install: string }[] = [];
+
+  // Check for cmake
+  try {
+    execSync("cmake --version", { stdio: "ignore" });
+  } catch {
+    const install =
+      platform === "darwin"
+        ? "brew install cmake"
+        : platform === "linux"
+          ? "sudo apt-get install cmake  (or your distro's equivalent)"
+          : "Download from https://cmake.org/download/";
+    missing.push({ name: "cmake", install });
+  }
+
+  // Check for a C++ compiler
+  if (platform === "win32") {
+    try {
+      execSync("cl /?", { stdio: "ignore" });
+    } catch {
+      missing.push({
+        name: "MSVC C++ compiler (cl)",
+        install: "Install Visual Studio Build Tools with the C++ workload",
+      });
+    }
+  } else {
+    // macOS / Linux — check for c++ (covers both clang++ and g++)
+    try {
+      execSync("c++ --version", { stdio: "ignore" });
+    } catch {
+      const install =
+        platform === "darwin"
+          ? "xcode-select --install"
+          : "sudo apt-get install build-essential  (or your distro's equivalent)";
+      missing.push({ name: "C++ compiler", install });
+    }
+  }
+
+  // Check for make (Unix) or ninja
+  if (platform !== "win32") {
+    try {
+      execSync("make --version", { stdio: "ignore" });
+    } catch {
+      const install =
+        platform === "darwin"
+          ? "xcode-select --install"
+          : "sudo apt-get install build-essential  (or your distro's equivalent)";
+      missing.push({ name: "make", install });
+    }
+  }
+
+  if (missing.length > 0) {
+    console.error("✗ Missing required build dependencies:\n");
+    for (const dep of missing) {
+      console.error(`  • ${dep.name}`);
+      console.error(`    Install: ${dep.install}\n`);
+    }
+    throw new Error("Please install the missing dependencies above and re-run setup.");
+  }
+
+  console.log("✓ All build dependencies found\n");
+}
+
+/**
  * Main setup function
  */
 async function setup() {
@@ -317,6 +387,9 @@ async function setup() {
   }
 
   try {
+    // Verify build tools are available before doing any work
+    checkBuildDependencies();
+
     const libDir = path.join(LIBTORCH_DIR, "lib");
 
     if (!existsSync(libDir)) {
