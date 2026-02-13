@@ -15,14 +15,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
-    },
-    "./ffi": {
-      "types": "./dist/ffi/index.d.ts",
-      "import": "./dist/ffi/index.js"
-    },
-    "./ffi/loader": {
-      "types": "./dist/ffi/loader.d.ts",
-      "import": "./dist/ffi/loader.js"
     }
   },
   "publishConfig": {
