@@ -190,88 +190,80 @@ export class CustomMetric implements Metric {
 }
 
 /**
- * Metrics configuration
- *
- * Supports both boolean flags for built-in metrics and custom metric functions.
- *
- * @example
- * ```ts
- * // Built-in metrics
- * metrics: { loss: true, accuracy: true, topK: [1, 5] }
- *
- * // Custom metrics
- * metrics: {
- *   accuracy: true,
- *   f1Score: (pred, target) => computeF1(pred, target)
- * }
- * ```
+ * Built-in metric names
  */
-export interface MetricsConfig {
-  /** Track loss */
-  loss?: boolean
-  /** Track accuracy */
-  accuracy?: boolean
-  /** Track top-k accuracy */
-  topK?: number[]
-  /** Custom metrics as functions */
-  [key: string]: boolean | number[] | MetricFn | undefined
+export type BuiltinMetricName = 'loss' | 'accuracy'
+
+/**
+ * A named custom metric
+ */
+export interface NamedMetric {
+  name: string
+  fn: MetricFn
 }
 
 /**
- * Create metrics from configuration
+ * Metric specification - either a built-in name or a custom named metric
+ */
+export type MetricSpec = BuiltinMetricName | NamedMetric
+
+/**
+ * Create a named custom metric (convenience factory)
  *
- * @param config - Metrics configuration
+ * @example
+ * ```ts
+ * metrics: ['loss', 'accuracy', metric('f1', computeF1)]
+ * ```
+ */
+export function metric(name: string, fn: MetricFn): NamedMetric {
+  return { name, fn }
+}
+
+/**
+ * Create metrics from an array of metric specs.
+ * Always includes 'loss' even if not explicitly listed.
+ *
+ * @param specs - Array of metric specs
  * @returns Array of metric instances
  *
  * @example
  * ```ts
- * // Built-in metrics
- * const metrics = createMetrics({ loss: true, accuracy: true, topK: [1, 5] })
- *
- * // Custom metrics
- * const metrics = createMetrics({
- *   accuracy: true,
- *   f1Score: (pred, target) => computeF1(pred, target)
- * })
+ * const metrics = createMetrics(['loss', 'accuracy'])
+ * const metrics = createMetrics(['loss', metric('f1', computeF1)])
  * ```
  */
-export function createMetrics(config: MetricsConfig): Metric[] {
+export function createMetrics(specs: MetricSpec[]): Metric[] {
   const metrics: Metric[] = []
+  const seen = new Set<string>()
 
-  // Built-in metrics
-  if (config.loss) {
-    metrics.push(new LossMetric())
-  }
-
-  if (config.accuracy) {
-    metrics.push(new AccuracyMetric())
-  }
-
-  if (config.topK) {
-    for (const k of config.topK) {
-      metrics.push(new TopKAccuracyMetric(k))
+  for (const spec of specs) {
+    if (typeof spec === 'string') {
+      if (seen.has(spec)) continue
+      seen.add(spec)
+      switch (spec) {
+        case 'loss':
+          metrics.push(new LossMetric())
+          break
+        case 'accuracy':
+          metrics.push(new AccuracyMetric())
+          break
+        default:
+          throw new Error(`Unknown built-in metric: ${spec}`)
+      }
+    } else {
+      if (seen.has(spec.name)) continue
+      seen.add(spec.name)
+      metrics.push(new CustomMetric(spec.name, spec.fn))
     }
   }
 
-  // Custom metrics (functions)
-  for (const [name, value] of Object.entries(config)) {
-    // Skip built-in keys
-    if (name === 'loss' || name === 'accuracy' || name === 'topK') {
-      continue
-    }
-    // If it's a function, create a CustomMetric
-    if (typeof value === 'function') {
-      metrics.push(new CustomMetric(name, value as MetricFn))
-    }
+  // Always include loss if not already present
+  if (!seen.has('loss')) {
+    metrics.unshift(new LossMetric())
   }
 
   return metrics
 }
-
-/**
- * Metrics result type
- */
-export type MetricsResult = Record<string, number>
 
 /**
  * Compute all metrics and return results
@@ -279,8 +271,8 @@ export type MetricsResult = Record<string, number>
  * @param metrics - Array of metrics
  * @returns Object with metric names as keys and values
  */
-export function computeMetrics(metrics: Metric[]): MetricsResult {
-  const result: MetricsResult = {}
+export function computeMetrics(metrics: Metric[]): Record<string, number> {
+  const result: Record<string, number> = {}
 
   for (const metric of metrics) {
     const value = metric.compute()

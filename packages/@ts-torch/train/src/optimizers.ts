@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * await trainer.fit(data, {
+ * new Trainer({ ...,
  *   optimizer: Adam({ lr: 1e-3, weightDecay: 1e-4 }),
  *   // ...
  * })
@@ -53,7 +53,7 @@ export interface AdamConfig {
  *
  * @example
  * ```ts
- * await trainer.fit(data, {
+ * new Trainer({ ...,
  *   optimizer: Adam({ lr: 1e-3, weightDecay: 1e-4 }),
  *   // ...
  * })
@@ -95,7 +95,7 @@ export interface SGDConfig {
  *
  * @example
  * ```ts
- * await trainer.fit(data, {
+ * new Trainer({ ...,
  *   optimizer: SGD({ lr: 0.01, momentum: 0.9 }),
  *   // ...
  * })
@@ -140,7 +140,7 @@ export interface AdamWConfig {
  *
  * @example
  * ```ts
- * await trainer.fit(data, {
+ * new Trainer({ ...,
  *   optimizer: AdamW({ lr: 1e-3, weightDecay: 0.01 }),
  *   // ...
  * })
@@ -184,7 +184,7 @@ export interface RMSpropConfig {
  *
  * @example
  * ```ts
- * await trainer.fit(data, {
+ * new Trainer({ ...,
  *   optimizer: RMSprop({ lr: 0.01 }),
  *   // ...
  * })

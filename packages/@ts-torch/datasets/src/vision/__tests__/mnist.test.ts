@@ -317,10 +317,10 @@ describe('MNIST', () => {
 
         const batch = mnist.getBatch(0, 5);
 
-        expect(batch.images).toBeDefined();
-        expect(batch.labels).toBeDefined();
-        expect(batch.images).toHaveShape([5, 784]);
-        expect(batch.labels).toHaveLength(5);
+        expect(batch.input).toBeDefined();
+        expect(batch.target).toBeDefined();
+        expect(batch.input).toHaveShape([5, 784]);
+        expect(batch.target).toHaveShape([5]);
       });
     });
 
@@ -337,8 +337,8 @@ describe('MNIST', () => {
 
         const batch = mnist.getBatch(15, 10);
 
-        expect(batch.images).toHaveShape([5, 784]); // Only 5 samples left
-        expect(batch.labels).toHaveLength(5);
+        expect(batch.input).toHaveShape([5, 784]); // Only 5 samples left
+        expect(batch.target).toHaveShape([5]);
       });
     });
 
@@ -349,7 +349,8 @@ describe('MNIST', () => {
 
         const batch = mnist.getBatch(0, 10);
 
-        expect(batch.labels).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        const labels = Array.from(batch.target.toArray() as Iterable<number | bigint>).map(Number);
+        expect(labels).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
       });
     });
   });
@@ -377,9 +378,8 @@ describe('MNIST', () => {
 
         expect(batches).toHaveLength(5);
         batches.forEach((batch) => {
-          expect(batch.images).toHaveShape([5, 784]);
-          expect(batch.labels).toHaveLength(5);
-          expect(batch.labelsTensor).toHaveShape([5]);
+          expect(batch.input).toHaveShape([5, 784]);
+          expect(batch.target).toHaveShape([5]);
         });
       });
     });
@@ -398,9 +398,9 @@ describe('MNIST', () => {
         const batches = Array.from(mnist.batches(10));
 
         expect(batches).toHaveLength(3);
-        expect(batches[0]!.images).toHaveShape([10, 784]);
-        expect(batches[1]!.images).toHaveShape([10, 784]);
-        expect(batches[2]!.images).toHaveShape([5, 784]); // Last batch
+        expect(batches[0]!.input).toHaveShape([10, 784]);
+        expect(batches[1]!.input).toHaveShape([10, 784]);
+        expect(batches[2]!.input).toHaveShape([5, 784]); // Last batch
       });
     });
 
@@ -413,8 +413,8 @@ describe('MNIST', () => {
         const batches2 = Array.from(mnist.batches(25, true));
 
         // Both should have same total labels (sorted for comparison)
-        const labels1 = batches1[0]!.labels.slice().sort((a, b) => a - b);
-        const labels2 = batches2[0]!.labels.slice().sort((a, b) => a - b);
+        const labels1 = Array.from(batches1[0]!.target.toArray() as Iterable<number | bigint>).map(Number).sort((a, b) => a - b);
+        const labels2 = Array.from(batches2[0]!.target.toArray() as Iterable<number | bigint>).map(Number).sort((a, b) => a - b);
 
         // Expected: 25 labels where label[i] = i % 10, then sorted
         const expectedSorted = Array.from({ length: 25 }, (_, i) => i % 10).sort((a, b) => a - b);
@@ -430,19 +430,21 @@ describe('MNIST', () => {
 
         const batches = Array.from(mnist.batches(10));
 
-        expect(batches[0]!.labels).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-        expect(batches[1]!.labels).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        const labels0 = Array.from(batches[0]!.target.toArray() as Iterable<number | bigint>).map(Number);
+        const labels1 = Array.from(batches[1]!.target.toArray() as Iterable<number | bigint>).map(Number);
+        expect(labels0).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        expect(labels1).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
       });
     });
 
-    it('should create labelsTensor with int64 dtype', async () => {
+    it('should create target tensor with int64 dtype', async () => {
       await scopedTest(async () => {
         const mnist = new MNIST('./data', true);
         await mnist.load();
 
         const batches = Array.from(mnist.batches(5));
 
-        expect(batches[0]!.labelsTensor.dtype.name).toBe('int64');
+        expect(batches[0]!.target.dtype.name).toBe('int64');
       });
     });
 
@@ -454,7 +456,7 @@ describe('MNIST', () => {
         const batches = Array.from(mnist.batches(100));
 
         expect(batches).toHaveLength(1);
-        expect(batches[0]!.images).toHaveShape([25, 784]);
+        expect(batches[0]!.input).toHaveShape([25, 784]);
       });
     });
 
@@ -467,8 +469,8 @@ describe('MNIST', () => {
 
         expect(batches).toHaveLength(25);
         batches.forEach((batch) => {
-          expect(batch.images).toHaveShape([1, 784]);
-          expect(batch.labels).toHaveLength(1);
+          expect(batch.input).toHaveShape([1, 784]);
+          expect(batch.target).toHaveShape([1]);
         });
       });
     });

@@ -11,6 +11,7 @@ import {
   createMetrics,
   computeMetrics,
   resetMetrics,
+  metric,
   type Metric,
   type MetricFn,
 } from '../metrics'
@@ -260,57 +261,57 @@ describe('CustomMetric', () => {
 })
 
 describe('createMetrics', () => {
-  test('creates empty array for empty config', () => {
-    const metrics = createMetrics({})
-    expect(metrics).toHaveLength(0)
-  })
-
-  test('creates LossMetric when loss: true', () => {
-    const metrics = createMetrics({ loss: true })
+  test('creates loss metric for empty array (always includes loss)', () => {
+    const metrics = createMetrics([])
     expect(metrics).toHaveLength(1)
     expect(metrics[0].name).toBe('loss')
   })
 
-  test('creates AccuracyMetric when accuracy: true', () => {
-    const metrics = createMetrics({ accuracy: true })
+  test('creates LossMetric for "loss"', () => {
+    const metrics = createMetrics(['loss'])
     expect(metrics).toHaveLength(1)
-    expect(metrics[0].name).toBe('accuracy')
+    expect(metrics[0].name).toBe('loss')
   })
 
-  test('creates TopKAccuracyMetric for each k in topK array', () => {
-    const metrics = createMetrics({ topK: [1, 5, 10] })
-    expect(metrics).toHaveLength(3)
-    expect(metrics[0].name).toBe('top1_accuracy')
-    expect(metrics[1].name).toBe('top5_accuracy')
-    expect(metrics[2].name).toBe('top10_accuracy')
+  test('creates AccuracyMetric for "accuracy"', () => {
+    const metrics = createMetrics(['accuracy'])
+    expect(metrics).toHaveLength(2) // loss is always included
+    const names = metrics.map((m) => m.name)
+    expect(names).toContain('loss')
+    expect(names).toContain('accuracy')
   })
 
-  test('creates CustomMetric for function values', () => {
+  test('creates custom metric from NamedMetric', () => {
     const customFn: MetricFn = () => 42
-    const metrics = createMetrics({ myCustom: customFn })
-    expect(metrics).toHaveLength(1)
-    expect(metrics[0].name).toBe('myCustom')
+    const metrics = createMetrics([metric('myCustom', customFn)])
+    expect(metrics).toHaveLength(2) // loss + custom
+    const names = metrics.map((m) => m.name)
+    expect(names).toContain('loss')
+    expect(names).toContain('myCustom')
   })
 
   test('combines multiple metric types', () => {
     const customFn: MetricFn = () => 0
-    const metrics = createMetrics({
-      loss: true,
-      accuracy: true,
-      topK: [5],
-      f1: customFn,
-    })
-    expect(metrics).toHaveLength(4)
+    const metrics = createMetrics(['loss', 'accuracy', metric('f1', customFn)])
+    expect(metrics).toHaveLength(3)
     const names = metrics.map((m) => m.name)
     expect(names).toContain('loss')
     expect(names).toContain('accuracy')
-    expect(names).toContain('top5_accuracy')
     expect(names).toContain('f1')
   })
 
-  test('ignores false boolean values', () => {
-    const metrics = createMetrics({ loss: false, accuracy: false })
-    expect(metrics).toHaveLength(0)
+  test('deduplicates metric specs', () => {
+    const metrics = createMetrics(['loss', 'loss', 'accuracy', 'accuracy'])
+    expect(metrics).toHaveLength(2)
+  })
+})
+
+describe('metric() factory', () => {
+  test('creates a NamedMetric', () => {
+    const fn: MetricFn = () => 0
+    const m = metric('myMetric', fn)
+    expect(m.name).toBe('myMetric')
+    expect(m.fn).toBe(fn)
   })
 })
 

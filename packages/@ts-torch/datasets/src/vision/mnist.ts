@@ -64,8 +64,8 @@ export interface MNISTSample {
  *
  * // Iterate over batches
  * for (const batch of mnist.batches(64)) {
- *   // batch.images: [64, 784]
- *   // batch.labels: number[]
+ *   // batch.input: [64, 784]
+ *   // batch.target: [64]
  * }
  * ```
  */
@@ -303,7 +303,10 @@ export class MNIST {
   getBatch(
     startIndex: number,
     batchSize: number,
-  ): { images: Tensor<readonly [number, 784], DType<'float32'>>; labels: number[] } {
+  ): {
+    input: Tensor<readonly [number, 784], DType<'float32'>>
+    target: Tensor<readonly [number], DType<'int64'>>
+  } {
     if (!this.images || !this.labels) {
       throw new Error('MNIST not loaded. Call load() first.')
     }
@@ -322,24 +325,30 @@ export class MNIST {
       batchLabels.push(label)
     }
 
-    const images = cpu.tensor(batchData, [actualBatchSize, 784] as const) as Tensor<
+    const input = cpu.tensor(batchData, [actualBatchSize, 784] as const) as Tensor<
       readonly [number, 784],
       DType<'float32'>
     >
 
-    return { images, labels: batchLabels }
+    const target = cpu.tensor(batchLabels, [actualBatchSize] as const, int64) as Tensor<
+      readonly [number],
+      DType<'int64'>
+    >
+
+    return { input, target }
   }
 
   /**
-   * Iterate over the dataset in batches
+   * Iterate over the dataset in batches.
+   * Yields `{ input, target }` where input is a float32 image tensor
+   * and target is an int64 label tensor.
    */
   *batches(
     batchSize: number,
     shuffle = false,
   ): Generator<{
-    images: Tensor<readonly [number, 784], DType<'float32'>>
-    labels: number[]
-    labelsTensor: Tensor<readonly [number], DType<'int64'>>
+    input: Tensor<readonly [number, 784], DType<'float32'>>
+    target: Tensor<readonly [number], DType<'int64'>>
   }> {
     if (!this.images || !this.labels) {
       throw new Error('MNIST not loaded. Call load() first.')
@@ -392,7 +401,7 @@ export class MNIST {
         DType<'int64'>
       >
 
-      yield { images, labels: batchLabels, labelsTensor }
+      yield { input: images, target: labelsTensor }
     }
   }
 
@@ -407,9 +416,8 @@ export class MNIST {
    * @param indices - Array of sample indices to include in batch
    */
   getBatchByIndices(indices: number[]): {
-    images: Tensor<readonly [number, 784], DType<'float32'>>
-    labels: number[]
-    labelsTensor: Tensor<readonly [number], DType<'int64'>>
+    input: Tensor<readonly [number, 784], DType<'float32'>>
+    target: Tensor<readonly [number], DType<'int64'>>
   } {
     if (!this.images || !this.labels) {
       throw new Error('MNIST not loaded. Call load() first.')
@@ -444,7 +452,7 @@ export class MNIST {
       DType<'int64'>
     >
 
-    return { images, labels: batchLabels, labelsTensor }
+    return { input: images, target: labelsTensor }
   }
 
   /**

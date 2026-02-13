@@ -19,7 +19,7 @@
  *
  * const agent = dqn({
  *   device: device.cuda(0),
- *   model: nn.sequence(4, nn.fc(64).relu(), nn.fc(2)),
+ *   model: nn.sequence(nn.input(4), nn.fc(64).relu(), nn.fc(2)),
  *   optimizer: { lr: 1e-3 },
  *   gamma: 0.99,
  *   targetUpdateFreq: 1000
@@ -762,7 +762,7 @@ export class DQNAgent implements Agent, MOAgent {
  * ```ts
  * const agent = dqn({
  *   device: device.cuda(0),
- *   model: nn.sequence(4,
+ *   model: nn.sequence(nn.input(4),
  *     nn.fc(128).relu(),
  *     nn.fc(64).relu(),
  *     nn.fc(2)

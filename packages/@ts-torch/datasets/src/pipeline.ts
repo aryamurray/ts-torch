@@ -14,10 +14,10 @@
  * const pipeline = Data.pipeline(mnist)
  *   .shuffle()
  *   .batch(64)
- *   .map(b => ({ data: b.images, label: b.labelsTensor }))
+ *   // Batches yield { input, target } directly — no .map() needed
  *
  * // Trainer handles CPU → GPU transfer internally
- * await trainer.fit(pipeline, { ... })
+ * new Trainer({ data: pipeline, ... })
  * ```
  */
 
@@ -142,10 +142,10 @@ async function* toAsyncIterable<T>(
  * const trainLoader = Data.pipeline(mnist)
  *   .shuffle()
  *   .batch(64)
- *   .map(b => ({ data: b.images, label: b.labelsTensor }))
+ *   // Batches yield { input, target } directly — no .map() needed
  *
  * // Trainer handles device transfer
- * await trainer.fit(trainLoader, { ... })
+ * new Trainer({ data: trainLoader, ... })
  * ```
  */
 export const Data = {

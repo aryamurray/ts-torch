@@ -10,7 +10,8 @@
  * import { device } from '@ts-torch/core'
  *
  * // 1. Define Model (No memory allocated - just JS objects)
- * const VisionConfig = nn.sequence(784,
+ * const VisionConfig = nn.sequence(
+ *   nn.input(784),
  *   nn.fc(128).relu().dropout(0.2),
  *   nn.fc(64).gelu(),
  *   nn.fc(10)
@@ -36,6 +37,15 @@ import type { DeviceContext as DeviceContextType } from '@ts-torch/core'
 type DeviceContext<Dev extends DeviceType = DeviceType> = DeviceContextType<Dev>
 
 // ==================== Types ====================
+
+/**
+ * Input layer definition - declares the shape of a single sample (excludes batch dimension).
+ * Used as the first argument to `nn.sequence()`.
+ */
+export interface InputDef {
+  kind: 'input'
+  shape: number[]
+}
 
 /**
  * Supported activation functions
@@ -83,12 +93,12 @@ export interface BlockDef {
 }
 
 /**
- * Sequence definition - holds input size and block configurations.
+ * Sequence definition - holds input definition and block configurations.
  * Pure JS object with no memory allocation until `.init()` is called.
  */
 export interface SequenceDef {
-  /** Input feature size */
-  readonly inputSize: number
+  /** Input definition describing sample shape */
+  readonly inputDef: InputDef
   /** Array of block definitions */
   readonly blocks: readonly BlockDef[]
 
@@ -193,13 +203,13 @@ class BlockDefImpl implements BlockDef {
  */
 class SequenceDefImpl implements SequenceDef {
   constructor(
-    readonly inputSize: number,
+    readonly inputDef: InputDef,
     readonly blocks: readonly BlockDef[],
   ) {}
 
   init<Dev extends DeviceType>(device: DeviceContext<Dev>): Sequential<Shape, Shape, float32, Dev> {
     const layers: Module<any, any, float32, 'cpu'>[] = []
-    let prevSize = this.inputSize
+    let prevSize = this.inputDef.shape.reduce((a, b) => a * b, 1)
 
     for (const block of this.blocks) {
       // Linear layer
@@ -286,18 +296,43 @@ export function fc(outFeatures: number): BlockDef {
 }
 
 /**
- * Create a sequence definition from an input size and block definitions.
+ * Create an input layer definition describing the shape of a single sample.
+ * Shape excludes the batch dimension — batching is a data pipeline concern.
+ *
+ * @example
+ * ```ts
+ * nn.input(784)           // flat input (sugar for [784])
+ * nn.input([1, 28, 28])   // explicit shape (e.g. image)
+ * nn.input({ shape: [1, 28, 28] })  // object form
+ * ```
+ */
+export function input(size: number): InputDef
+export function input(shape: number[]): InputDef
+export function input(opts: { shape: number[] }): InputDef
+export function input(arg: number | number[] | { shape: number[] }): InputDef {
+  if (typeof arg === 'number') {
+    return { kind: 'input', shape: [arg] }
+  }
+  if (Array.isArray(arg)) {
+    return { kind: 'input', shape: arg }
+  }
+  return { kind: 'input', shape: arg.shape }
+}
+
+/**
+ * Create a sequence definition from an input definition and block definitions.
  *
  * This returns a pure JS configuration object - no memory is allocated.
  * Call `.init(device)` to compile the model and allocate memory.
  *
- * @param inputSize - Number of input features
+ * @param inputDef - Input definition created with `nn.input()`
  * @param blocks - Block definitions created with `nn.fc()`
  * @returns SequenceDef that can be initialized with `.init(device)`
  *
  * @example
  * ```ts
- * const config = nn.sequence(784,
+ * const config = nn.sequence(
+ *   nn.input(784),
  *   nn.fc(128).relu().dropout(0.2),
  *   nn.fc(64).gelu(),
  *   nn.fc(10)
@@ -306,11 +341,14 @@ export function fc(outFeatures: number): BlockDef {
  * const model = config.init(device.cuda(0))
  * ```
  */
-export function sequence(inputSize: number, ...blocks: BlockDef[]): SequenceDef {
+export function sequence(inputDef: InputDef, ...blocks: BlockDef[]): SequenceDef {
+  if (inputDef.kind !== 'input') {
+    throw new Error('First argument to sequence() must be an InputDef created with nn.input()')
+  }
   if (blocks.length === 0) {
     throw new Error('Sequence requires at least one block')
   }
-  return new SequenceDefImpl(inputSize, blocks)
+  return new SequenceDefImpl(inputDef, blocks)
 }
 
 // ==================== nn Namespace ====================
@@ -324,7 +362,8 @@ export function sequence(inputSize: number, ...blocks: BlockDef[]): SequenceDef 
  * import { device } from '@ts-torch/core'
  *
  * // Define model architecture (no memory allocated)
- * const config = nn.sequence(784,
+ * const config = nn.sequence(
+ *   nn.input(784),
  *   nn.fc(128).relu().dropout(0.2),
  *   nn.fc(64).gelu(),
  *   nn.fc(10)
@@ -335,6 +374,7 @@ export function sequence(inputSize: number, ...blocks: BlockDef[]): SequenceDef 
  * ```
  */
 export const nn = {
+  input,
   sequence,
   fc,
 }

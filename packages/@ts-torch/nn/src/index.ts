@@ -124,7 +124,8 @@ export * as functional from './functional.js'
  * import { device } from '@ts-torch/core';
  *
  * // Define model (no memory allocated - just JS objects)
- * const config = nn.sequence(784,
+ * const config = nn.sequence(
+ *   nn.input(784),
  *   nn.fc(128).relu().dropout(0.2),
  *   nn.fc(64).gelu(),
  *   nn.fc(10)
@@ -134,5 +135,5 @@ export * as functional from './functional.js'
  * const model = config.init(device.cuda(0));
  * ```
  */
-export { nn, sequence, fc } from './builders.js'
-export type { BlockDef, SequenceDef, ActivationType, InitStrategy } from './builders.js'
+export { nn, input, sequence, fc } from './builders.js'
+export type { InputDef, BlockDef, SequenceDef, ActivationType, InitStrategy } from './builders.js'

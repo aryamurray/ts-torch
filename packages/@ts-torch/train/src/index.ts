@@ -6,32 +6,43 @@
  *
  * @example
  * ```ts
- * import { Trainer, Adam } from '@ts-torch/train'
+ * import { Trainer, Adam, loss, logger } from '@ts-torch/train'
  *
- * const trainer = new Trainer(model)
- *
- * await trainer.fit(trainLoader, {
+ * const trainer = new Trainer({
+ *   model,
+ *   data: trainLoader,
  *   epochs: 10,
  *   optimizer: Adam({ lr: 1e-3 }),
- *   loss: 'crossEntropy',
- *   metrics: { accuracy: true },
- *   validateOn: testLoader,
- *   onEpochEnd: ({ metrics }) => console.log(metrics)
+ *   loss: loss.crossEntropy(),
+ *   metrics: ['loss', 'accuracy'],
+ *   validation: testLoader,
+ *   callbacks: [logger.console()],
  * })
+ *
+ * const history = await trainer.fit()
  * ```
  */
 
 // Trainer
 export { Trainer } from './trainer.js'
-export type { FitOptions, EvaluateOptions, EpochContext, BatchContext, History, LossType, LossFn, TrainerConfig } from './trainer.js'
+export type { TrainerOptions, EvaluateOptions, Batch, TensorTree } from './trainer.js'
+export { mapTensorTree } from './trainer.js'
+
+// Loss
+export { loss, resolveLoss } from './loss.js'
+export type { LossConfig } from './loss.js'
+
+// Callbacks
+export { consoleLogger, earlyStop, checkpoint, logger } from './callbacks.js'
+export type { Callback, CallbackResult, EpochContext, BatchContext, History, EpochRecord } from './callbacks.js'
 
 // Optimizer factories
 export { Adam, SGD, AdamW, RMSprop } from './optimizers.js'
 export type { OptimizerConfig, AdamConfig, SGDConfig, AdamWConfig, RMSpropConfig } from './optimizers.js'
 
 // Metrics
-export { LossMetric, AccuracyMetric, TopKAccuracyMetric, CustomMetric, createMetrics, computeMetrics, resetMetrics } from './metrics.js'
-export type { Metric, MetricsConfig, MetricsResult, MetricFn } from './metrics.js'
+export { LossMetric, AccuracyMetric, TopKAccuracyMetric, CustomMetric, createMetrics, computeMetrics, resetMetrics, metric } from './metrics.js'
+export type { Metric, MetricFn, MetricSpec, BuiltinMetricName, NamedMetric } from './metrics.js'
 
 // Learning rate schedulers
 export {

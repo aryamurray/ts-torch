@@ -314,7 +314,8 @@ export class Module<
    * const model = new Linear(10, 5).to('cuda')  // model: Linear<..., 'cuda'>
    *
    * // CORRECT: Use fluent builders with .init()
-   * const cudaModel = nn.sequence(784,
+   * const cudaModel = nn.sequence(
+   *   nn.input(784),
    *   nn.fc(128).relu(),
    *   nn.fc(10)
    * ).init(device.cuda(0))

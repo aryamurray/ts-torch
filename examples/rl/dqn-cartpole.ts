@@ -39,7 +39,8 @@ async function main() {
   }
 
   // Define Q-network: observation (4) -> hidden (64x2) -> Q-values (2)
-  const qNetDef = nn.sequence(4,
+  const qNetDef = nn.sequence(
+    nn.input(4),
     nn.fc(64).relu(),
     nn.fc(64).relu(),
     nn.fc(2)

@@ -11,14 +11,13 @@
  * const mnist = new MNIST('./data/mnist', true)
  * await mnist.load()
  *
+ * // Batches yield { input, target } directly
  * const pipeline = Data.pipeline(mnist)
  *   .shuffle()
  *   .batch(64)
- *   .to('cuda')
- *   .map(b => ({ data: b.images, label: b.labelsTensor }))
  *
  * for await (const batch of pipeline) {
- *   // train...
+ *   // batch.input, batch.target
  * }
  * ```
  */
