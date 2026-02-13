@@ -7,7 +7,7 @@
  */
 
 import type { Tensor } from '@ts-torch/core'
-import { crossEntropyLoss, mseLoss, nllLoss } from '@ts-torch/optim'
+import { crossEntropyLoss, mseLoss, nllLoss, bceLoss, bceWithLogitsLoss, l1Loss, smoothL1Loss, klDivLoss } from '@ts-torch/optim'
 
 /**
  * Loss function signature
@@ -21,6 +21,11 @@ export type LossConfig =
   | { kind: 'crossEntropy'; labelSmoothing?: number }
   | { kind: 'mse' }
   | { kind: 'nll' }
+  | { kind: 'bce'; reduction?: 'none' | 'mean' | 'sum' }
+  | { kind: 'bceWithLogits'; reduction?: 'none' | 'mean' | 'sum' }
+  | { kind: 'l1'; reduction?: 'none' | 'mean' | 'sum' }
+  | { kind: 'smoothL1'; reduction?: 'none' | 'mean' | 'sum'; beta?: number }
+  | { kind: 'klDiv'; reduction?: 'none' | 'mean' | 'sum' | 'batchmean'; logTarget?: boolean }
   | { kind: 'custom'; name: string; fn: LossFn }
 
 /**
@@ -35,6 +40,16 @@ export function resolveLoss(config: LossConfig): LossFn {
       return mseLoss as unknown as LossFn
     case 'nll':
       return nllLoss as unknown as LossFn
+    case 'bce':
+      return ((pred, target) => bceLoss(pred, target, config.reduction)) as LossFn
+    case 'bceWithLogits':
+      return ((pred, target) => bceWithLogitsLoss(pred, target, config.reduction)) as LossFn
+    case 'l1':
+      return ((pred, target) => l1Loss(pred, target, config.reduction)) as LossFn
+    case 'smoothL1':
+      return ((pred, target) => smoothL1Loss(pred, target, config.reduction, config.beta)) as LossFn
+    case 'klDiv':
+      return ((pred, target) => klDivLoss(pred, target, config.reduction as any, config.logTarget)) as LossFn
     case 'custom':
       return config.fn
     default:
@@ -65,6 +80,21 @@ export const loss = {
   },
   nll(): LossConfig {
     return { kind: 'nll' }
+  },
+  bce(opts?: { reduction?: 'none' | 'mean' | 'sum' }): LossConfig {
+    return { kind: 'bce', ...opts }
+  },
+  bceWithLogits(opts?: { reduction?: 'none' | 'mean' | 'sum' }): LossConfig {
+    return { kind: 'bceWithLogits', ...opts }
+  },
+  l1(opts?: { reduction?: 'none' | 'mean' | 'sum' }): LossConfig {
+    return { kind: 'l1', ...opts }
+  },
+  smoothL1(opts?: { reduction?: 'none' | 'mean' | 'sum'; beta?: number }): LossConfig {
+    return { kind: 'smoothL1', ...opts }
+  },
+  klDiv(opts?: { reduction?: 'none' | 'mean' | 'sum' | 'batchmean'; logTarget?: boolean }): LossConfig {
+    return { kind: 'klDiv', ...opts }
   },
   custom(name: string, fn: LossFn): LossConfig {
     return { kind: 'custom', name, fn }
