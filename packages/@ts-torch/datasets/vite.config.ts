@@ -22,6 +22,9 @@ export default defineConfig({
         'module',
         'os',
         'process',
+        'util',
+        'stream',
+        'zlib',
         'node:os',
         'node:path',
         'node:fs',
@@ -29,7 +32,10 @@ export default defineConfig({
         'node:url',
         'node:module',
         'node:process',
-        'node:worker_threads'
+        'node:worker_threads',
+        'node:util',
+        'node:stream',
+        'node:zlib'
       ],
     },
     sourcemap: true,
