@@ -20,7 +20,7 @@
  */
 
 import type { Tensor, DeviceType } from '@ts-torch/core'
-import { run, cat } from '@ts-torch/core'
+import { run, runAsync, cat } from '@ts-torch/core'
 import type { Module } from '@ts-torch/nn'
 import type { Optimizer } from '@ts-torch/optim'
 import { crossEntropyLoss, mseLoss, nllLoss } from '@ts-torch/optim'
@@ -515,90 +515,86 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
     _debug?: FitOptions['debug'],
   ): Promise<number> {
     const shouldStep = (batchIdx + 1) % accumulate === 0
+    const hasAsyncHooks = !!(hooks.onForward || hooks.onBackward || hooks.onBeforeOptimizerStep)
 
     let lossValue = 0
-    let forwardResult: { predictions: Tensor; targets: Tensor; loss: Tensor } | null = null
 
-    // Forward pass and loss computation in scope
-    run(() => {
-      // Zero gradients at start of accumulation window
-      if (batchIdx % accumulate === 0) {
-        this.optimizer!.zeroGrad()
-      }
-
-      // Forward pass
-      const { predictions, targets } = this.forwardBatch(batch)
-
-      // Compute loss
-      const loss = this.lossFn(predictions, targets)
-
-      // Escape tensors so they persist outside run() scope for hooks
-      if ('escape' in predictions) (predictions as any).escape()
-      if ('escape' in targets) (targets as any).escape()
-      if ('escape' in loss) (loss as any).escape()
-
-      forwardResult = { predictions, targets, loss }
-    })
-
-    if (!forwardResult) {
-      throw new Error('Forward pass failed')
-    }
-
-    // TypeScript doesn't know run() executes synchronously, so we need to help it
-    const result = forwardResult as { predictions: Tensor; targets: Tensor; loss: Tensor }
-    const { predictions, targets } = result
-    let loss: Tensor = result.loss
-
-    // onForward hook - can modify or replace the loss (async, outside run scope)
-    if (hooks.onForward) {
-      const modifiedLoss = await hooks.onForward({ predictions, targets, loss, batch })
-      if (modifiedLoss) {
-        loss = modifiedLoss
-      }
-    }
-
-    // Backward pass in scope
-    run(() => {
-      // Scale loss for gradient accumulation
-      const scaledLoss = accumulate > 1 ? (loss as any).divScalar(accumulate) : loss
-
-      // Backward pass
-      ;(scaledLoss as any).backward()
-
-      // Get loss value for reporting
-      lossValue = (loss as any).item?.() ?? (loss as any).toArray?.()[0] ?? 0
-
-      // Update metrics
-      for (const metric of this.metrics) {
-        metric.update(predictions, targets, loss)
-      }
-    })
-
-    // onBackward hook (async, outside run scope)
-    if (hooks.onBackward) {
-      await hooks.onBackward({ loss: lossValue, step: batchIdx, epoch })
-    }
-
-    // Optimizer step - wrap in scope to free intermediate tensors
-    if (shouldStep) {
-      // onBeforeOptimizerStep hook - can skip optimizer step by returning false
-      let shouldDoStep = true
-      if (hooks.onBeforeOptimizerStep) {
-        const result = await hooks.onBeforeOptimizerStep({ step: batchIdx, epoch })
-        if (result === false) {
-          shouldDoStep = false
+    if (!hasAsyncHooks) {
+      // Fast path: single scope keeps entire computation graph alive through backward pass.
+      // Previously forward and backward were in separate scopes, which caused intermediate
+      // computation graph tensors to be freed before backward() could traverse them (use-after-free).
+      run(() => {
+        if (batchIdx % accumulate === 0) {
+          this.optimizer!.zeroGrad()
         }
+
+        const { predictions, targets } = this.forwardBatch(batch)
+        const loss = this.lossFn(predictions, targets)
+
+        const scaledLoss = accumulate > 1 ? (loss as any).divScalar(accumulate) : loss
+        ;(scaledLoss as any).backward()
+
+        lossValue = (loss as any).item?.() ?? (loss as any).toArray?.()[0] ?? 0
+
+        for (const metric of this.metrics) {
+          metric.update(predictions, targets, loss)
+        }
+
+        if (shouldStep) {
+          if (clipGradNorm) this.clipGradients(clipGradNorm)
+          this.optimizer!.step()
+        }
+      })
+    } else {
+      // Hook path: forward + backward in one async scope to support async hooks
+      // while keeping the computation graph alive through backward pass.
+      await runAsync(async () => {
+        if (batchIdx % accumulate === 0) {
+          this.optimizer!.zeroGrad()
+        }
+
+        const { predictions, targets } = this.forwardBatch(batch)
+        let loss: Tensor = this.lossFn(predictions, targets)
+
+        // onForward hook - can modify or replace the loss
+        if (hooks.onForward) {
+          const modifiedLoss = await hooks.onForward({ predictions, targets, loss, batch })
+          if (modifiedLoss) {
+            loss = modifiedLoss
+          }
+        }
+
+        const scaledLoss = accumulate > 1 ? (loss as any).divScalar(accumulate) : loss
+        ;(scaledLoss as any).backward()
+
+        lossValue = (loss as any).item?.() ?? (loss as any).toArray?.()[0] ?? 0
+
+        for (const metric of this.metrics) {
+          metric.update(predictions, targets, loss)
+        }
+      })
+
+      // onBackward hook (async, outside scope - loss value already extracted)
+      if (hooks.onBackward) {
+        await hooks.onBackward({ loss: lossValue, step: batchIdx, epoch })
       }
 
-      if (shouldDoStep) {
-        run(() => {
-          // Gradient clipping
-          if (clipGradNorm) {
-            this.clipGradients(clipGradNorm)
+      // Optimizer step in separate scope (only touches model params/grads, not computation graph)
+      if (shouldStep) {
+        let shouldDoStep = true
+        if (hooks.onBeforeOptimizerStep) {
+          const result = await hooks.onBeforeOptimizerStep({ step: batchIdx, epoch })
+          if (result === false) {
+            shouldDoStep = false
           }
+        }
 
-          this.optimizer!.step()
-        })
+        if (shouldDoStep) {
+          run(() => {
+            if (clipGradNorm) this.clipGradients(clipGradNorm)
+            this.optimizer!.step()
+          })
+        }
       }
     }
 

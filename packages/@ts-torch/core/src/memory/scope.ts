@@ -174,9 +174,12 @@ export function registerTensor(tensor: ScopedTensor): void {
   if (currentScope !== null) {
     currentScope.tensors.add(tensor)
 
-    // Register with native scope - pass scope handle and tensor handle
-    const lib = getLib()
-    lib.ts_scope_register_tensor(currentScope.nativeHandle, tensor.handle)
+    // NOTE: Do NOT call ts_scope_register_tensor here. The native tensor
+    // creation functions (matmul, add, transpose, etc.) already call
+    // register_in_scope() in C++. Double-registering the same handle causes
+    // use-after-free during scope cleanup: ts_scope_end iterates the list,
+    // deletes the handle on first encounter, then accesses freed memory on
+    // the duplicate entry.
   }
 }
 
