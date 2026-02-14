@@ -48,7 +48,7 @@ export type { Distribution } from './distributions/index.js'
 // ==================== Environment ====================
 
 export { env, FunctionalEnv } from './environment.js'
-export type { EnvConfig, StepResult } from './environment.js'
+export type { EnvConfig, EnvStepResult, StepResult } from './environment.js'
 
 // ==================== Vectorized Environments ====================
 
@@ -152,7 +152,7 @@ export type { AdjacencyEntry, NeighborView } from './utils/index.js'
 
 // ==================== Built-in Environments ====================
 
-export { CartPole, CartPoleRaw } from './envs/index.js'
+export { CartPole, CartPoleRaw, CartPoleVec } from './envs/index.js'
 export type { CartPoleState } from './envs/index.js'
 
 // ==================== Main Namespaces ====================
@@ -163,7 +163,7 @@ import { vecEnv } from './vec-env/index.js'
 import { discrete, box } from './spaces/index.js'
 import { actorCriticPolicy, mlpPolicy, sacPolicy } from './policies/index.js'
 import { scalarize, sampleSimplex, normalizeWeights, uniformWeights, weightGrid } from './utils/index.js'
-import { CartPole, CartPoleRaw } from './envs/index.js'
+import { CartPole, CartPoleRaw, CartPoleVec } from './envs/index.js'
 
 /**
  * Main RL namespace - declarative reinforcement learning API
@@ -250,6 +250,7 @@ export const RL = {
   envs: {
     CartPole,
     CartPoleRaw,
+    CartPoleVec,
   },
 
   /**

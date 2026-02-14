@@ -6,3 +6,4 @@
 
 export { CartPole, CartPoleRaw } from './cartpole.js'
 export type { CartPoleState } from './cartpole.js'
+export { CartPoleVec } from './cartpole-vec.js'

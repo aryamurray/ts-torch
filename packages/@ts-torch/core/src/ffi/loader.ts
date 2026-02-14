@@ -250,6 +250,29 @@ export type NativeModule = {
   // Fused add operations
   ts_tensor_add_relu: (a: unknown, b: unknown) => unknown
 
+  // Policy fused operations
+  ts_policy_forward: (
+    observations: Float32Array,
+    actions: Float32Array,
+    batchSize: number,
+    obsSize: number,
+    nActions: number,
+    piParams: unknown[],
+    vfParams: unknown[],
+    activationType: number,
+  ) => { actionLogProbs: unknown; entropy: unknown; values: unknown }
+  ts_backward_and_clip: (loss: unknown, parameters: unknown[], maxGradNorm: number) => number
+
+  // RL fused operations
+  ts_compute_gae: (
+    rewards: Float32Array, values: Float32Array, episodeStarts: Uint8Array,
+    lastValues: Float32Array, lastDones: Uint8Array,
+    bufferSize: number, nEnvs: number, gamma: number, gaeLambda: number,
+    advantagesOut: Float32Array, returnsOut: Float32Array,
+  ) => void
+  ts_clip_grad_norm_: (parameters: unknown[], maxNorm: number) => number
+  ts_normalize_inplace: (data: Float32Array) => void
+
   // Other operations not explicitly typed - use flexible signature
   [key: string]: (...args: any[]) => any
 }

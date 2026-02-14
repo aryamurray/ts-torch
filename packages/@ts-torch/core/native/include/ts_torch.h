@@ -1146,6 +1146,138 @@ TS_TORCH_API ts_TensorHandle ts_tensor_mlp_forward(
 );
 
 // ============================================================================
+// RL Fused Operations (Phase 7: Reduced FFI overhead for RL training)
+// ============================================================================
+
+/**
+ * Compute Generalized Advantage Estimation (GAE) in a single native call.
+ * Operates directly on TypedArray buffers — no tensor creation needed.
+ *
+ * @param rewards - Reward buffer [bufferSize * nEnvs]
+ * @param values - Value estimates [bufferSize * nEnvs]
+ * @param episode_starts - Episode start flags [bufferSize * nEnvs]
+ * @param last_values - Last observation values [nEnvs]
+ * @param last_dones - Last done flags [nEnvs]
+ * @param buffer_size - Number of steps per rollout
+ * @param n_envs - Number of parallel environments
+ * @param gamma - Discount factor
+ * @param gae_lambda - GAE lambda parameter
+ * @param advantages_out - Output advantages [bufferSize * nEnvs]
+ * @param returns_out - Output returns [bufferSize * nEnvs]
+ * @param error - Error output
+ */
+TS_TORCH_API void ts_compute_gae(
+    const float* rewards,
+    const float* values,
+    const uint8_t* episode_starts,
+    const float* last_values,
+    const uint8_t* last_dones,
+    int buffer_size,
+    int n_envs,
+    double gamma,
+    double gae_lambda,
+    float* advantages_out,
+    float* returns_out,
+    ts_Error* error
+);
+
+/**
+ * Clip gradient norm for a set of parameter tensors.
+ * Computes total gradient norm and clips in a single pass.
+ *
+ * @param parameters - Array of parameter tensor handles
+ * @param num_params - Number of parameters
+ * @param max_norm - Maximum gradient norm
+ * @param error - Error output
+ * @return Pre-clip total gradient norm
+ */
+TS_TORCH_API double ts_clip_grad_norm_(
+    ts_TensorHandle* parameters,
+    size_t num_params,
+    double max_norm,
+    ts_Error* error
+);
+
+/**
+ * In-place normalize a float array (mean=0, std=1).
+ * Operates directly on TypedArray buffer.
+ *
+ * @param data - Float data to normalize in-place
+ * @param length - Number of elements
+ * @param error - Error output
+ */
+TS_TORCH_API void ts_normalize_inplace(
+    float* data,
+    size_t length,
+    ts_Error* error
+);
+
+// ============================================================================
+// Policy Fused Operations (Phase 8: Composable forward + backward)
+// ============================================================================
+
+/**
+ * Result of fused policy forward pass.
+ * All tensors have live autograd graphs for subsequent backward().
+ */
+typedef struct {
+    ts_TensorHandle action_log_probs;  // [batch] log-probs of taken actions
+    ts_TensorHandle entropy;           // scalar mean entropy
+    ts_TensorHandle values;            // [batch] value estimates
+} ts_PolicyForwardResult;
+
+/**
+ * Fused forward pass: piNet + vfNet + categorical distribution.
+ * Eliminates ~19 FFI calls per minibatch for discrete-action policies.
+ *
+ * Parameters come in [weight0, bias0, weight1, bias1, ...] order.
+ * Activation is applied between all layers except the last.
+ *
+ * @param observations - Raw float buffer [batch_size * obs_size]
+ * @param actions - Discrete action indices as floats [batch_size]
+ * @param batch_size - Number of samples in batch
+ * @param obs_size - Observation vector dimension
+ * @param n_actions - Number of discrete actions
+ * @param pi_params - Policy network parameter handles [w0,b0,w1,b1,...]
+ * @param n_pi_params - Number of policy parameters
+ * @param vf_params - Value network parameter handles [w0,b0,w1,b1,...]
+ * @param n_vf_params - Number of value parameters
+ * @param activation_type - 0=tanh, 1=relu, 2=gelu
+ * @param error - Error output
+ * @return Struct with action_log_probs, entropy, values handles
+ */
+TS_TORCH_API ts_PolicyForwardResult ts_policy_forward(
+    const float* observations,
+    const float* actions,
+    int batch_size,
+    int obs_size,
+    int n_actions,
+    ts_TensorHandle* pi_params, int n_pi_params,
+    ts_TensorHandle* vf_params, int n_vf_params,
+    int activation_type,
+    ts_Error* error
+);
+
+/**
+ * Fused zero_grad + backward + gradient clipping.
+ * Eliminates ~61 FFI calls per minibatch.
+ *
+ * @param loss - Scalar loss tensor with autograd graph
+ * @param parameters - All parameter handles to update
+ * @param num_params - Number of parameters
+ * @param max_grad_norm - Max gradient norm (0 = skip clipping)
+ * @param error - Error output
+ * @return Pre-clip total gradient norm
+ */
+TS_TORCH_API double ts_backward_and_clip(
+    ts_TensorHandle loss,
+    ts_TensorHandle* parameters,
+    size_t num_params,
+    double max_grad_norm,
+    ts_Error* error
+);
+
+// ============================================================================
 // Thread Controls (Phase 6)
 // ============================================================================
 

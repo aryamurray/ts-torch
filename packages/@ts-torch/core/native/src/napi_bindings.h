@@ -231,5 +231,16 @@ Napi::Value NapiScopeEnd(const Napi::CallbackInfo& info);
 Napi::Value NapiScopeRegisterTensor(const Napi::CallbackInfo& info);
 Napi::Value NapiScopeEscapeTensor(const Napi::CallbackInfo& info);
 
+// napi_rl_ops.cpp
+Napi::Value NapiComputeGae(const Napi::CallbackInfo& info);
+Napi::Value NapiClipGradNorm(const Napi::CallbackInfo& info);
+Napi::Value NapiNormalizeInplace(const Napi::CallbackInfo& info);
+void RegisterRLOps(Napi::Env env, Napi::Object exports);
+
+// napi_policy_ops.cpp
+Napi::Value NapiPolicyForward(const Napi::CallbackInfo& info);
+Napi::Value NapiBackwardAndClip(const Napi::CallbackInfo& info);
+void RegisterPolicyOps(Napi::Env env, Napi::Object exports);
+
 // init.cpp
 Napi::Object Init(Napi::Env env, Napi::Object exports);

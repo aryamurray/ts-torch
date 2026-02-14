@@ -152,6 +152,7 @@ export class ActorCriticPolicy<Dev extends DeviceType = DeviceType> {
 
   // Configuration
   private readonly logStdInit: number
+  private readonly activation_: PolicyActivation
 
   constructor(
     device: DeviceContext<Dev>,
@@ -167,6 +168,7 @@ export class ActorCriticPolicy<Dev extends DeviceType = DeviceType> {
     this.piNet = piNet
     this.vfNet = vfNet
     this.logStdInit = config.logStdInit ?? 0
+    this.activation_ = config.activation ?? 'tanh'
 
     // Initialize log_std for continuous actions
     if (!this.isDiscrete) {
@@ -358,6 +360,42 @@ export class ActorCriticPolicy<Dev extends DeviceType = DeviceType> {
    */
   isDiscreteAction(): boolean {
     return this.isDiscrete
+  }
+
+  // ==================== Parameter Access (for native ops) ====================
+
+  /**
+   * Get policy network parameters in [w0, b0, w1, b1, ...] order
+   */
+  policyNetParameters(): any[] {
+    return this.piNet.parameters()
+  }
+
+  /**
+   * Get value network parameters in [w0, b0, w1, b1, ...] order
+   */
+  valueNetParameters(): any[] {
+    return this.vfNet.parameters()
+  }
+
+  /**
+   * Get numeric activation type for native ops (0=tanh, 1=relu, 2=gelu)
+   */
+  getActivationType(): number {
+    switch (this.activation_) {
+      case 'tanh': return 0
+      case 'relu': return 1
+      case 'gelu': return 2
+      default: return 0
+    }
+  }
+
+  /**
+   * Get the number of discrete actions (only valid for discrete action spaces)
+   */
+  getNumActions(): number {
+    if (!this.isDiscrete) return 0
+    return (this.actionSpace_ as DiscreteSpace).n
   }
 
   // ==================== Array Methods (for inference) ====================

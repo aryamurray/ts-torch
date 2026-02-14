@@ -483,6 +483,8 @@ extern void RegisterTensorUnaryOps(Napi::Env env, Napi::Object exports);
 extern void RegisterTensorReductions(Napi::Env env, Napi::Object exports);
 extern void RegisterNNOps(Napi::Env env, Napi::Object exports);
 extern void InitRemainingOps(Napi::Env env, Napi::Object exports);
+extern void RegisterRLOps(Napi::Env env, Napi::Object exports);
+extern void RegisterPolicyOps(Napi::Env env, Napi::Object exports);
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
   // Phase 1: Core functions (inlined here)
@@ -543,6 +545,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   RegisterTensorReductions(env, exports);
   RegisterNNOps(env, exports);
   InitRemainingOps(env, exports);
+  RegisterRLOps(env, exports);
+  RegisterPolicyOps(env, exports);
 
   return exports;
 }

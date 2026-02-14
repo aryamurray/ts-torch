@@ -98,6 +98,19 @@ export interface VecEnv {
   getObservations(): Float32Array
 
   /**
+   * Step all environments, writing observations into a caller-provided buffer.
+   *
+   * Used for shared-memory mode: the rollout buffer provides a write target
+   * and the env writes observations directly into it, eliminating one copy.
+   * The returned observations field points to obsTarget.
+   *
+   * @param actions - Actions for each env
+   * @param obsTarget - Buffer to write observations into [nEnvs * obsSize]
+   * @returns Step results (observations field points to obsTarget)
+   */
+  stepInto?(actions: Int32Array | Float32Array, obsTarget: Float32Array): VecEnvStepResult
+
+  /**
    * Close all environments and free resources
    */
   close(): void

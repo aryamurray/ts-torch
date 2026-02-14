@@ -3,6 +3,7 @@
  *
  * Stores trajectories collected during rollouts for PPO/A2C training.
  * Computes returns and advantages using Generalized Advantage Estimation (GAE).
+ * Uses native fused GAE when available for reduced overhead.
  *
  * Key Design:
  * - Pre-allocated TypedArrays for zero-allocation rollouts
@@ -32,6 +33,33 @@
  * }
  * ```
  */
+
+import { getLib } from '@ts-torch/core'
+
+type NativeGaeFn = (
+  rewards: Float32Array, values: Float32Array, episodeStarts: Uint8Array,
+  lastValues: Float32Array, lastDones: Uint8Array,
+  bufferSize: number, nEnvs: number, gamma: number, gaeLambda: number,
+  advantagesOut: Float32Array, returnsOut: Float32Array,
+) => void
+
+// Lazily resolved native GAE function
+let nativeGae: NativeGaeFn | null | undefined
+
+function getNativeGae(): NativeGaeFn | null {
+  if (nativeGae !== undefined) return nativeGae
+  try {
+    const lib = getLib()
+    if (typeof lib.ts_compute_gae === 'function') {
+      nativeGae = lib.ts_compute_gae as unknown as NativeGaeFn
+    } else {
+      nativeGae = null
+    }
+  } catch {
+    nativeGae = null
+  }
+  return nativeGae
+}
 
 // ==================== Types ====================
 
@@ -101,6 +129,15 @@ export class RolloutBuffer {
   private readonly advantages: Float32Array
   private readonly returns: Float32Array
 
+  // Reusable batch buffers (lazily allocated on first get() call)
+  private batchObs_: Float32Array | null = null
+  private batchActions_: Float32Array | null = null
+  private batchOldValues_: Float32Array | null = null
+  private batchOldLogProbs_: Float32Array | null = null
+  private batchAdvantages_: Float32Array | null = null
+  private batchReturns_: Float32Array | null = null
+  private lastBatchSize_: number = 0
+
   // State
   private position: number = 0
   private full: boolean = false
@@ -158,39 +195,24 @@ export class RolloutBuffer {
 
     const offset = this.position * this.nEnvs
 
-    // Copy observations [nEnvs, obsSize] -> flat
-    for (let i = 0; i < this.nEnvs; i++) {
-      const srcOffset = i * this.observationSize
-      const dstOffset = (offset + i) * this.observationSize
-      for (let j = 0; j < this.observationSize; j++) {
-        this.observations[dstOffset + j] = obs[srcOffset + j]!
-      }
-    }
+    // Bulk copy observations [nEnvs * obsSize] using memcpy-backed set()
+    this.observations.set(obs, offset * this.observationSize)
 
-    // Copy actions
+    // Bulk copy actions
     if (this.actionDim === 1) {
-      // Discrete: [nEnvs]
+      // Discrete: actions may be Int32Array, need to copy element-wise into Float32Array
       for (let i = 0; i < this.nEnvs; i++) {
         this.actions[offset + i] = actions[i]!
       }
     } else {
-      // Continuous: [nEnvs, actionDim]
-      for (let i = 0; i < this.nEnvs; i++) {
-        const srcOffset = i * this.actionDim
-        const dstOffset = (offset + i) * this.actionDim
-        for (let j = 0; j < this.actionDim; j++) {
-          this.actions[dstOffset + j] = actions[srcOffset + j]!
-        }
-      }
+      this.actions.set(actions as Float32Array, offset * this.actionDim)
     }
 
-    // Copy scalars
-    for (let i = 0; i < this.nEnvs; i++) {
-      this.rewards[offset + i] = rewards[i]!
-      this.episodeStarts[offset + i] = episodeStarts[i]!
-      this.values[offset + i] = values[i]!
-      this.logProbs[offset + i] = logProbs[i]!
-    }
+    // Bulk copy scalars using set()
+    this.rewards.set(rewards, offset)
+    this.episodeStarts.set(episodeStarts, offset)
+    this.values.set(values, offset)
+    this.logProbs.set(logProbs, offset)
 
     this.position++
     if (this.position === this.bufferSize) {
@@ -211,11 +233,25 @@ export class RolloutBuffer {
       throw new Error('Buffer not full. Cannot compute returns yet.')
     }
 
-    // GAE computation (reverse iteration)
-    // A_t = delta_t + gamma * lambda * (1 - done_{t+1}) * A_{t+1}
-    // where delta_t = r_t + gamma * (1 - done_{t+1}) * V(s_{t+1}) - V(s_t)
+    // Try native fused GAE (single FFI call instead of nested JS loops)
+    const gae = getNativeGae()
+    if (gae) {
+      try {
+        gae(
+          this.rewards, this.values, this.episodeStarts,
+          lastValues, lastDones,
+          this.bufferSize, this.nEnvs, this.gamma, this.gaeLambda,
+          this.advantages, this.returns,
+        )
+        this.generatorReady = true
+        return
+      } catch {
+        // Fall through to JS implementation
+      }
+    }
 
-    let lastGaeLam = new Float32Array(this.nEnvs)
+    // JS fallback: GAE computation (reverse iteration)
+    const lastGaeLam = new Float32Array(this.nEnvs)
 
     for (let step = this.bufferSize - 1; step >= 0; step--) {
       const offset = step * this.nEnvs
@@ -223,28 +259,23 @@ export class RolloutBuffer {
       for (let envIdx = 0; envIdx < this.nEnvs; envIdx++) {
         const idx = offset + envIdx
 
-        // Determine if next step is terminal
         let nextNonTerminal: number
         let nextValue: number
 
         if (step === this.bufferSize - 1) {
-          // Last step: use provided lastValues and lastDones
           nextNonTerminal = 1.0 - lastDones[envIdx]!
           nextValue = lastValues[envIdx]!
         } else {
-          // Use next step's episode start to determine if this step was terminal
           const nextOffset = (step + 1) * this.nEnvs
           nextNonTerminal = 1.0 - this.episodeStarts[nextOffset + envIdx]!
           nextValue = this.values[nextOffset + envIdx]!
         }
 
-        // TD error
         const delta =
           this.rewards[idx]! +
           this.gamma * nextValue * nextNonTerminal -
           this.values[idx]!
 
-        // GAE
         lastGaeLam[envIdx] =
           delta + this.gamma * this.gaeLambda * nextNonTerminal * lastGaeLam[envIdx]!
 
@@ -252,7 +283,6 @@ export class RolloutBuffer {
       }
     }
 
-    // Returns = advantages + values
     for (let i = 0; i < this.advantages.length; i++) {
       this.returns[i] = this.advantages[i]! + this.values[i]!
     }
@@ -278,6 +308,17 @@ export class RolloutBuffer {
     // Use full buffer if batchSize is null
     const actualBatchSize = batchSize ?? totalSize
 
+    // Lazily allocate (or resize) reusable batch buffers
+    if (this.lastBatchSize_ !== actualBatchSize) {
+      this.batchObs_ = new Float32Array(actualBatchSize * this.observationSize)
+      this.batchActions_ = new Float32Array(actualBatchSize * this.actionDim)
+      this.batchOldValues_ = new Float32Array(actualBatchSize)
+      this.batchOldLogProbs_ = new Float32Array(actualBatchSize)
+      this.batchAdvantages_ = new Float32Array(actualBatchSize)
+      this.batchReturns_ = new Float32Array(actualBatchSize)
+      this.lastBatchSize_ = actualBatchSize
+    }
+
     // Generate random permutation
     const indices = new Uint32Array(totalSize)
     for (let i = 0; i < totalSize; i++) {
@@ -291,40 +332,36 @@ export class RolloutBuffer {
       indices[j] = temp
     }
 
-    // Generate batches
+    const batchObs = this.batchObs_!
+    const batchActions = this.batchActions_!
+    const batchOldValues = this.batchOldValues_!
+    const batchOldLogProbs = this.batchOldLogProbs_!
+    const batchAdvantages = this.batchAdvantages_!
+    const batchReturns = this.batchReturns_!
+    const obsSize = this.observationSize
+    const actionDim = this.actionDim
+
+    // Generate batches (reuse pre-allocated buffers)
     let startIdx = 0
     while (startIdx < totalSize) {
       const endIdx = Math.min(startIdx + actualBatchSize, totalSize)
       const currentBatchSize = endIdx - startIdx
 
-      // Allocate batch arrays
-      const batchObs = new Float32Array(currentBatchSize * this.observationSize)
-      const batchActions = new Float32Array(currentBatchSize * this.actionDim)
-      const batchOldValues = new Float32Array(currentBatchSize)
-      const batchOldLogProbs = new Float32Array(currentBatchSize)
-      const batchAdvantages = new Float32Array(currentBatchSize)
-      const batchReturns = new Float32Array(currentBatchSize)
-
       // Copy data using shuffled indices
       for (let i = 0; i < currentBatchSize; i++) {
         const srcIdx = indices[startIdx + i]!
 
-        // Copy observation
-        const obsSrcOffset = srcIdx * this.observationSize
-        const obsDstOffset = i * this.observationSize
-        for (let j = 0; j < this.observationSize; j++) {
-          batchObs[obsDstOffset + j] = this.observations[obsSrcOffset + j]!
-        }
+        // Copy observation using subarray + set for contiguous chunks
+        batchObs.set(this.observations.subarray(srcIdx * obsSize, srcIdx * obsSize + obsSize), i * obsSize)
 
         // Copy action
-        if (this.actionDim === 1) {
+        if (actionDim === 1) {
           batchActions[i] = this.actions[srcIdx]!
         } else {
-          const actSrcOffset = srcIdx * this.actionDim
-          const actDstOffset = i * this.actionDim
-          for (let j = 0; j < this.actionDim; j++) {
-            batchActions[actDstOffset + j] = this.actions[actSrcOffset + j]!
-          }
+          batchActions.set(
+            this.actions.subarray(srcIdx * actionDim, srcIdx * actionDim + actionDim),
+            i * actionDim,
+          )
         }
 
         // Copy scalars
@@ -335,12 +372,12 @@ export class RolloutBuffer {
       }
 
       yield {
-        observations: batchObs,
-        actions: batchActions,
-        oldValues: batchOldValues,
-        oldLogProbs: batchOldLogProbs,
-        advantages: batchAdvantages,
-        returns: batchReturns,
+        observations: currentBatchSize === actualBatchSize ? batchObs : batchObs.subarray(0, currentBatchSize * obsSize),
+        actions: currentBatchSize === actualBatchSize ? batchActions : batchActions.subarray(0, currentBatchSize * actionDim),
+        oldValues: currentBatchSize === actualBatchSize ? batchOldValues : batchOldValues.subarray(0, currentBatchSize),
+        oldLogProbs: currentBatchSize === actualBatchSize ? batchOldLogProbs : batchOldLogProbs.subarray(0, currentBatchSize),
+        advantages: currentBatchSize === actualBatchSize ? batchAdvantages : batchAdvantages.subarray(0, currentBatchSize),
+        returns: currentBatchSize === actualBatchSize ? batchReturns : batchReturns.subarray(0, currentBatchSize),
         batchSize: currentBatchSize,
       }
 
@@ -376,5 +413,60 @@ export class RolloutBuffer {
    */
   get totalSize(): number {
     return this.bufferSize * this.nEnvs
+  }
+
+  /**
+   * Get a writable view into the observations array for a given step.
+   *
+   * Used for shared-memory mode: the VecEnv writes observations directly
+   * into the rollout buffer, eliminating one copy per step.
+   *
+   * @param step - Step index [0, bufferSize)
+   * @returns Float32Array subarray view of length [nEnvs * observationSize]
+   */
+  getObsWriteTarget(step: number): Float32Array {
+    const offset = step * this.nEnvs * this.observationSize
+    return this.observations.subarray(offset, offset + this.nEnvs * this.observationSize)
+  }
+
+  /**
+   * Add a step of experience WITHOUT copying observations.
+   *
+   * Used with shared-memory mode where obs were already written
+   * via getObsWriteTarget(). Copies only actions, rewards, episodeStarts,
+   * values, and logProbs.
+   */
+  addWithoutObs(
+    actions: Float32Array | Int32Array,
+    rewards: Float32Array,
+    episodeStarts: Uint8Array,
+    values: Float32Array,
+    logProbs: Float32Array,
+  ): void {
+    if (this.full) {
+      throw new Error('Rollout buffer is full. Call reset() before adding more data.')
+    }
+
+    const offset = this.position * this.nEnvs
+
+    // Bulk copy actions
+    if (this.actionDim === 1) {
+      for (let i = 0; i < this.nEnvs; i++) {
+        this.actions[offset + i] = actions[i]!
+      }
+    } else {
+      this.actions.set(actions as Float32Array, offset * this.actionDim)
+    }
+
+    // Bulk copy scalars using set()
+    this.rewards.set(rewards, offset)
+    this.episodeStarts.set(episodeStarts, offset)
+    this.values.set(values, offset)
+    this.logProbs.set(logProbs, offset)
+
+    this.position++
+    if (this.position === this.bufferSize) {
+      this.full = true
+    }
   }
 }
