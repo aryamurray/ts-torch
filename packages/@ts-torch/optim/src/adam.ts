@@ -90,30 +90,53 @@ export class Adam extends Optimizer {
 
         state.step++
 
+        // Bias correction (compute once, reuse)
+        const bc1 = 1 - Math.pow(beta1, state.step)
+        const bc2 = 1 - Math.pow(beta2, state.step)
+        const lr_scaled = lr / bc1  // Learning rate with first moment bias correction baked in
+
         // Apply weight decay to gradient if needed
         let g = grad
         if (weightDecay !== 0) {
+          // weight decay: gradient += weight_decay * param
           g = (grad as any).add((tensor as any).mulScalar(weightDecay)) as Tensor
         }
 
-        // Update biased first moment: exp_avg = beta1 * exp_avg + (1 - beta1) * g
-        const old_exp_avg = state.exp_avg
-        const m_scaled = (old_exp_avg as any).mulScalar(beta1) as Tensor
-        const g_scaled = (g as any).mulScalar(1 - beta1) as Tensor
-        const new_exp_avg = (m_scaled as any).add(g_scaled) as Tensor
-        if ('escape' in new_exp_avg) (new_exp_avg as any).escape()
-        if ('free' in old_exp_avg) (old_exp_avg as any).free()
-        state.exp_avg = new_exp_avg
+        // Update biased first moment in-place: exp_avg = beta1 * exp_avg + (1 - beta1) * g
+        // Use the fact that mulScalarInplace exists for in-place mul
+        if ('mulScalarInplace' in state.exp_avg && 'addScaledInplace' in state.exp_avg) {
+          // exp_avg *= beta1
+          ;(state.exp_avg as any).mulScalarInplace(beta1)
+          // exp_avg += (1 - beta1) * g
+          ;(state.exp_avg as any).addScaledInplace(g, 1 - beta1)
+        } else {
+          // Fallback: create new tensor (old behavior)
+          const m_scaled = (state.exp_avg as any).mulScalar(beta1) as Tensor
+          const g_scaled = (g as any).mulScalar(1 - beta1) as Tensor
+          const new_exp_avg = (m_scaled as any).add(g_scaled) as Tensor
+          if ('escape' in new_exp_avg) (new_exp_avg as any).escape()
+          if ('free' in state.exp_avg) (state.exp_avg as any).free()
+          state.exp_avg = new_exp_avg
+        }
 
-        // Update biased second moment: exp_avg_sq = beta2 * exp_avg_sq + (1 - beta2) * g^2
-        const old_exp_avg_sq = state.exp_avg_sq
-        const v_scaled = (old_exp_avg_sq as any).mulScalar(beta2) as Tensor
-        const g_sq = (g as any).mul(g) as Tensor
-        const g_sq_scaled = (g_sq as any).mulScalar(1 - beta2) as Tensor
-        const new_exp_avg_sq = (v_scaled as any).add(g_sq_scaled) as Tensor
-        if ('escape' in new_exp_avg_sq) (new_exp_avg_sq as any).escape()
-        if ('free' in old_exp_avg_sq) (old_exp_avg_sq as any).free()
-        state.exp_avg_sq = new_exp_avg_sq
+        // Update biased second moment in-place: exp_avg_sq = beta2 * exp_avg_sq + (1 - beta2) * g^2
+        if ('mulScalarInplace' in state.exp_avg_sq && 'addScaledInplace' in state.exp_avg_sq) {
+          // exp_avg_sq *= beta2
+          ;(state.exp_avg_sq as any).mulScalarInplace(beta2)
+          // exp_avg_sq += (1 - beta2) * (g * g)
+          const g_sq = (g as any).mul(g) as Tensor
+          ;(state.exp_avg_sq as any).addScaledInplace(g_sq, 1 - beta2)
+          if ('free' in g_sq) (g_sq as any).free()
+        } else {
+          // Fallback: create new tensor (old behavior)
+          const v_scaled = (state.exp_avg_sq as any).mulScalar(beta2) as Tensor
+          const g_sq = (g as any).mul(g) as Tensor
+          const g_sq_scaled = (g_sq as any).mulScalar(1 - beta2) as Tensor
+          const new_exp_avg_sq = (v_scaled as any).add(g_sq_scaled) as Tensor
+          if ('escape' in new_exp_avg_sq) (new_exp_avg_sq as any).escape()
+          if ('free' in state.exp_avg_sq) (state.exp_avg_sq as any).free()
+          state.exp_avg_sq = new_exp_avg_sq
+        }
 
         // AMSGrad: maintain max of all exp_avg_sq
         let denom_sq = state.exp_avg_sq
@@ -129,20 +152,17 @@ export class Adam extends Optimizer {
           denom_sq = new_max
         }
 
-        // Bias correction
-        const bc1 = 1 - Math.pow(beta1, state.step)
-        const bc2 = 1 - Math.pow(beta2, state.step)
-
         // Compute update: lr * m_hat / (sqrt(v_hat) + eps)
-        // m_hat = exp_avg / bc1, v_hat = denom_sq / bc2
-        const m_hat = (state.exp_avg as any).divScalar(bc1) as Tensor
+        // m_hat = exp_avg (already bias-corrected in lr_scaled)
+        // v_hat = denom_sq / bc2
         const v_hat = (denom_sq as any).divScalar(bc2) as Tensor
         const v_sqrt = (v_hat as any).sqrt() as Tensor
         const denom = (v_sqrt as any).addScalar(eps) as Tensor
-        const update = (m_hat as any).div(denom) as Tensor
+        const update = (state.exp_avg as any).div(denom) as Tensor
 
         // param -= lr * update (in-place)
-        ;(tensor as any).addScaledInplace(update, -lr)
+        // lr_scaled already includes bc1 correction
+        ;(tensor as any).addScaledInplace(update, -lr_scaled)
       }
     }
   }
