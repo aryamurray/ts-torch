@@ -39,6 +39,14 @@ type ShapeBuffer = any
 export type NativeModule = {
   // Utility functions
   ts_version: () => string
+  ts_cuda_is_available: () => number
+  ts_cuda_device_count: () => number
+  ts_set_num_threads: (numThreads: number) => void
+  ts_get_num_threads: () => number
+
+  // Tensor property queries
+  ts_tensor_ndim: (tensor: unknown) => number
+  ts_tensor_size: (tensor: unknown, dim: number) => number
 
   // Tensor factories - take (shapeBuffer, dtype, device, deviceIndex)
   ts_tensor_zeros: (shapeBuffer: ShapeBuffer, dtype: number, device: number, deviceIndex: number) => unknown
@@ -106,11 +114,141 @@ export type NativeModule = {
   ts_tensor_div_out: (a: unknown, b: unknown, out: unknown) => void
   ts_tensor_matmul_out: (a: unknown, b: unknown, out: unknown) => void
 
+  // In-place variants (modify tensor in place)
+  ts_tensor_add_: (a: unknown, b: unknown) => void
+  ts_tensor_sub_inplace: (a: unknown, b: unknown) => void
+  ts_tensor_mul_: (a: unknown, b: unknown) => void
+  ts_tensor_div_: (a: unknown, b: unknown) => void
+  ts_tensor_mul_scalar_: (tensor: unknown, scalar: number) => void
+  ts_tensor_div_scalar_: (tensor: unknown, scalar: number) => void
+  ts_tensor_add_scaled_inplace: (tensor: unknown, other: unknown, scalar: number) => void
+  ts_tensor_optim_add_: (tensor: unknown, other: unknown, alpha: number) => void
+  ts_tensor_zero_grad_: (tensor: unknown) => void
+
   // Buffer operations
   ts_tensor_copy_to_buffer: (tensor: unknown, buffer: ArrayBufferLike) => void
 
   // Autograd operations
   ts_tensor_backward: (tensor: unknown) => void
+
+  // Scope operations (memory management)
+  ts_scope_begin: () => unknown
+  ts_scope_end: (scope: unknown) => void
+  ts_scope_escape_tensor: (scope: unknown, tensor: unknown) => void
+
+  // Batch operations (graph compilation)
+  ts_batch_begin: () => unknown
+  ts_batch_end: (batch: unknown) => void
+  ts_batch_abort: (batch: unknown) => void
+  ts_batch_is_recording: () => number
+  ts_tensor_chain_matmul: (tensors: unknown[]) => unknown
+  ts_tensor_mlp_forward: (input: unknown, weights: unknown[], biases: unknown[], applyReluExceptLast: boolean) => unknown
+
+  // Additional tensor operations
+  ts_tensor_cat: (tensors: unknown[], dim: number) => unknown
+  ts_tensor_einsum: (equation: string, tensors: unknown[]) => unknown
+  ts_tensor_clamp_min: (tensor: unknown, min: number) => unknown
+  ts_tensor_clamp_max: (tensor: unknown, max: number) => unknown
+  ts_tensor_grad: (tensor: unknown) => unknown
+  ts_tensor_to_device: (tensor: unknown, device: number, deviceIndex: number) => unknown
+
+  // Reshaping operations
+  ts_tensor_flatten: (tensor: unknown, startDim: number, endDim: number) => unknown
+  ts_tensor_view: (tensor: unknown, shapeBuffer: ShapeBuffer) => unknown
+  ts_tensor_unsqueeze: (tensor: unknown, dim: number) => unknown
+  ts_tensor_squeeze: (tensor: unknown, dim: number) => unknown
+  ts_tensor_flatten_from_index: (tensor: unknown, startIdx: number) => unknown
+
+  // Padding and advanced reshaping
+  ts_tensor_pad: (tensor: unknown, padSizes: ShapeBuffer) => unknown
+
+  // Reduction with dimension
+  ts_tensor_max_dim: (tensor: unknown, dim: number, keepdim: boolean) => unknown
+  ts_tensor_min_dim: (tensor: unknown, dim: number, keepdim: boolean) => unknown
+  ts_tensor_argmin: (tensor: unknown, dim: number, keepdim: boolean) => unknown
+
+  // Indexing and selection
+  ts_tensor_index_select: (tensor: unknown, dim: number, indices: unknown) => unknown
+  ts_tensor_argmax: (tensor: unknown, dim: number, keepdim: boolean) => unknown
+  ts_tensor_narrow: (tensor: unknown, dim: number, start: number, length: number) => unknown
+  ts_tensor_topk: (tensor: unknown, k: number, dim: number, largest: boolean, sorted: boolean) => unknown
+  ts_tensor_sort: (tensor: unknown, dim: number, descending: boolean) => unknown
+
+  // Triangle operations
+  ts_tensor_triu: (tensor: unknown, diagonal: number) => unknown
+  ts_tensor_tril: (tensor: unknown, diagonal: number) => unknown
+
+  // Masking and advanced operations
+  ts_tensor_masked_fill: (tensor: unknown, mask: unknown, value: number) => unknown
+  ts_tensor_bmm: (a: unknown, b: unknown) => unknown
+  ts_tensor_gather: (tensor: unknown, dim: number, indices: unknown) => unknown
+  ts_tensor_scatter: (tensor: unknown, dim: number, indices: unknown, src: unknown) => unknown
+  ts_tensor_where: (condition: unknown, x: unknown, y: unknown) => unknown
+  ts_tensor_nonzero: (tensor: unknown) => unknown
+
+  // Repetition and expansion (take buffer and length)
+  ts_tensor_repeat: (tensor: unknown, repeats: ShapeBuffer, numRepeats: number) => unknown
+  ts_tensor_expand: (tensor: unknown, sizes: ShapeBuffer, numSizes: number) => unknown
+
+  // Loss functions (take just input and target, return scalar)
+  ts_tensor_cross_entropy_loss: (input: unknown, target: unknown) => unknown
+  ts_tensor_nll_loss: (input: unknown, target: unknown) => unknown
+  ts_tensor_mse_loss: (input: unknown, target: unknown) => unknown
+
+  // Neural network operations
+  ts_tensor_conv2d: (
+    input: unknown,
+    weight: unknown,
+    bias: unknown | null,
+    strideH: number,
+    strideW: number,
+    paddingH: number,
+    paddingW: number,
+    dilationH: number,
+    dilationW: number,
+    groups: number,
+  ) => unknown
+  ts_tensor_max_pool2d: (
+    input: unknown,
+    kernelH: number,
+    kernelW: number,
+    strideH: number,
+    strideW: number,
+    paddingH: number,
+    paddingW: number,
+  ) => unknown
+  ts_tensor_avg_pool2d: (
+    input: unknown,
+    kernelH: number,
+    kernelW: number,
+    strideH: number,
+    strideW: number,
+    paddingH: number,
+    paddingW: number,
+  ) => unknown
+  ts_tensor_dropout: (tensor: unknown, p: number, training: number) => unknown
+  ts_tensor_batch_norm: (
+    input: unknown,
+    weight: unknown | null,
+    bias: unknown | null,
+    runningMean: unknown | null,
+    runningVar: unknown | null,
+    training: number,
+    momentum: number,
+    eps: number,
+  ) => unknown
+  ts_tensor_layer_norm: (input: unknown, normalizedShape: ShapeBuffer, weight: unknown | null, bias: unknown | null, eps: number) => unknown
+
+  // Comparison operations
+  ts_tensor_eq: (a: unknown, b: unknown) => unknown
+
+  // Fused linear operations
+  ts_tensor_linear_relu: (input: unknown, weight: unknown, bias: unknown | null) => unknown
+  ts_tensor_linear_sigmoid: (input: unknown, weight: unknown, bias: unknown | null) => unknown
+  ts_tensor_linear_tanh: (input: unknown, weight: unknown, bias: unknown | null) => unknown
+
+  // Fused add operations
+  ts_tensor_add_relu: (a: unknown, b: unknown) => unknown
 
   // Other operations not explicitly typed - use flexible signature
   [key: string]: (...args: any[]) => any

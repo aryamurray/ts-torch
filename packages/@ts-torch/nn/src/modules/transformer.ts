@@ -541,6 +541,7 @@ export class TransformerDecoderLayer<
    * @param options - Forward options
    * @returns Output sequence with same shape as tgt
    */
+  // @ts-ignore - forward signature differs from Module base class (requires two params instead of one)
   forward(
     tgt: Tensor<Shape, D, Dev>,
     memory: Tensor<Shape, D, Dev>,
@@ -767,6 +768,7 @@ export class TransformerDecoder<
    * @param options - Forward options
    * @returns Decoded sequence
    */
+  // @ts-ignore - forward signature differs from Module base class (requires two params instead of one)
   forward(
     tgt: Tensor<Shape, D, Dev>,
     memory: Tensor<Shape, D, Dev>,

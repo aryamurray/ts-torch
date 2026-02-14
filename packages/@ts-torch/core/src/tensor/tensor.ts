@@ -18,7 +18,7 @@ import type {
 } from '../types/tensor.js'
 import { getLib } from '../ffi/loader.js'
 import { checkNull, TorchError, ErrorCode, type Pointer } from '../ffi/error.js'
-import { BytesPerElement, getDTypeFromValue } from '../types/dtype.js'
+import { getDTypeFromValue } from '../types/dtype.js'
 import { escapeTensor as scopeEscapeTensor, inScope, registerTensor } from '../memory/scope.js'
 import {
   validateMatmulShapes,

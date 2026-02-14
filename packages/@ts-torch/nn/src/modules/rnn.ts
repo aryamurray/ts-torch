@@ -178,11 +178,11 @@ export class RNN<
     let batchSize: number
 
     if (this.batchFirst) {
-      batchSize = inputShape[0]
-      seqLen = inputShape[1]
+      batchSize = inputShape[0] ?? 1
+      seqLen = inputShape[1] ?? 1
     } else {
-      seqLen = inputShape[0]
-      batchSize = inputShape[1]
+      seqLen = inputShape[0] ?? 1
+      batchSize = inputShape[1] ?? 1
     }
 
     // Initialize hidden state if not provided
@@ -211,7 +211,7 @@ export class RNN<
       const layerOutputs: Tensor<Shape, D, Dev>[] = []
 
       // Forward direction
-      let hForward = hidden.narrow(0, layer * this.numDirections, 1).squeeze(0) as Tensor<Shape, D, Dev>
+      let hForward = (hidden as any).narrow(0, layer * this.numDirections, 1).squeeze(0) as Tensor<Shape, D, Dev>
 
       const suffix = this.numDirections === 1 ? `l${layer}` : `l${layer}_`
       const weightIhF = (this as any)._parameters.get(`weight_ih_${suffix}`)?.data as Tensor<
@@ -232,7 +232,7 @@ export class RNN<
         : null
 
       for (let t = 0; t < seqLen; t++) {
-        const xt = output.narrow(0, t, 1).squeeze(0) as Tensor<Shape, D, Dev>
+        const xt = (output as any).narrow(0, t, 1).squeeze(0) as Tensor<Shape, D, Dev>
         hForward = this.rnnCell(xt, hForward, weightIhF, weightHhF, biasIhF, biasHhF)
         layerOutputs.push(hForward.reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
       }
@@ -405,11 +405,11 @@ export class LSTM<
     let batchSize: number
 
     if (this.batchFirst) {
-      batchSize = inputShape[0]
-      seqLen = inputShape[1]
+      batchSize = inputShape[0] ?? 1
+      seqLen = inputShape[1] ?? 1
     } else {
-      seqLen = inputShape[0]
-      batchSize = inputShape[1]
+      seqLen = inputShape[0] ?? 1
+      batchSize = inputShape[1] ?? 1
     }
 
     // Initialize hidden and cell states
@@ -444,8 +444,8 @@ export class LSTM<
     for (let layer = 0; layer < this.numLayers; layer++) {
       const layerOutputs: Tensor<Shape, D, Dev>[] = []
 
-      let hLayer = h.narrow(0, layer * this.numDirections, 1).squeeze(0) as Tensor<Shape, D, Dev>
-      let cLayer = c.narrow(0, layer * this.numDirections, 1).squeeze(0) as Tensor<Shape, D, Dev>
+      let hLayer = (h as any).narrow(0, layer * this.numDirections, 1).squeeze(0) as Tensor<Shape, D, Dev>
+      let cLayer = (c as any).narrow(0, layer * this.numDirections, 1).squeeze(0) as Tensor<Shape, D, Dev>
 
       const suffix = this.numDirections === 1 ? `l${layer}` : `l${layer}_`
       const weightIh = (this as any)._parameters.get(`weight_ih_${suffix}`)?.data as Tensor<
@@ -466,12 +466,12 @@ export class LSTM<
         : null
 
       for (let t = 0; t < seqLen; t++) {
-        const xt = output.narrow(0, t, 1).squeeze(0) as Tensor<Shape, D, Dev>
+        const xt = (output as any).narrow(0, t, 1).squeeze(0) as Tensor<Shape, D, Dev>
         ;[hLayer, cLayer] = this.lstmCell(xt, hLayer, cLayer, weightIh, weightHh, biasIh, biasHh)
-        layerOutputs.push(hLayer.reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
+        layerOutputs.push((hLayer as any).reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
       }
 
-      newHiddens.push(hLayer.reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
+      newHiddens.push((hLayer as any).reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
       newCells.push(cLayer.reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
 
       // Concatenate outputs
@@ -517,10 +517,10 @@ export class LSTM<
     const gatesShape = gates.shape as readonly number[]
     const chunkSize = gatesShape[1] / 4
 
-    const i = gates.narrow(1, 0, chunkSize).sigmoid() as Tensor<Shape, D, Dev> // input gate
-    const f = gates.narrow(1, chunkSize, chunkSize).sigmoid() as Tensor<Shape, D, Dev> // forget gate
-    const g = gates.narrow(1, chunkSize * 2, chunkSize).tanh() as Tensor<Shape, D, Dev> // cell gate
-    const o = gates.narrow(1, chunkSize * 3, chunkSize).sigmoid() as Tensor<Shape, D, Dev> // output gate
+    const i = (gates as any).narrow(1, 0, chunkSize).sigmoid() as Tensor<Shape, D, Dev> // input gate
+    const f = (gates as any).narrow(1, chunkSize, chunkSize).sigmoid() as Tensor<Shape, D, Dev> // forget gate
+    const g = (gates as any).narrow(1, chunkSize * 2, chunkSize).tanh() as Tensor<Shape, D, Dev> // cell gate
+    const o = (gates as any).narrow(1, chunkSize * 3, chunkSize).sigmoid() as Tensor<Shape, D, Dev> // output gate
 
     // Update cell and hidden state
     const newCell = f.mul(cell as any).add(i.mul(g as any) as any) as Tensor<Shape, D, Dev>
@@ -632,6 +632,7 @@ export class GRU<
    * @param h0 - Initial hidden state
    * @returns Tuple of [output, h_n]
    */
+  // @ts-ignore - forward signature differs from Module base class (returns tuple instead of Tensor)
   forward(
     input: Tensor<Shape, D, Dev>,
     h0?: Tensor<Shape, D, Dev>,
@@ -641,11 +642,11 @@ export class GRU<
     let batchSize: number
 
     if (this.batchFirst) {
-      batchSize = inputShape[0]
-      seqLen = inputShape[1]
+      batchSize = inputShape[0] ?? 1
+      seqLen = inputShape[1] ?? 1
     } else {
-      seqLen = inputShape[0]
-      batchSize = inputShape[1]
+      seqLen = inputShape[0] ?? 1
+      batchSize = inputShape[1] ?? 1
     }
 
     // Initialize hidden state
@@ -671,7 +672,7 @@ export class GRU<
     for (let layer = 0; layer < this.numLayers; layer++) {
       const layerOutputs: Tensor<Shape, D, Dev>[] = []
 
-      let hLayer = h.narrow(0, layer * this.numDirections, 1).squeeze(0) as Tensor<Shape, D, Dev>
+      let hLayer = (h as any).narrow(0, layer * this.numDirections, 1).squeeze(0) as Tensor<Shape, D, Dev>
 
       const suffix = this.numDirections === 1 ? `l${layer}` : `l${layer}_`
       const weightIh = (this as any)._parameters.get(`weight_ih_${suffix}`)?.data as Tensor<
@@ -692,13 +693,14 @@ export class GRU<
         : null
 
       for (let t = 0; t < seqLen; t++) {
-        const xt = output.narrow(0, t, 1).squeeze(0) as Tensor<Shape, D, Dev>
+        const xt = (output as any).narrow(0, t, 1).squeeze(0) as Tensor<Shape, D, Dev>
         hLayer = this.gruCell(xt, hLayer, weightIh, weightHh, biasIh, biasHh)
-        layerOutputs.push(hLayer.reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
+        layerOutputs.push((hLayer as any).reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
       }
 
-      newHiddens.push(hLayer.reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
+      newHiddens.push((hLayer as any).reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
 
+      // @ts-ignore - cat() returns Tensor from core package, type narrowing issue
       output = cat(layerOutputs, 0) as Tensor<Shape, D, Dev>
 
       if (this.dropout > 0 && layer < this.numLayers - 1 && this._training) {
@@ -706,6 +708,7 @@ export class GRU<
       }
     }
 
+    // @ts-ignore - cat() returns Tensor from core package, type narrowing issue
     const hn = cat(newHiddens, 0) as Tensor<Shape, D, Dev>
 
     if (this.batchFirst) {
@@ -734,16 +737,16 @@ export class GRU<
     if (biasHh) gatesHh = gatesHh.add(biasHh as any) as Tensor<Shape, D, Dev>
 
     const gatesShape = gatesIh.shape as readonly number[]
-    const chunkSize = gatesShape[1] / 3
+    const chunkSize = (gatesShape[1] ?? 1) / 3
 
     // Reset and update gates
-    const rIh = gatesIh.narrow(1, 0, chunkSize) as Tensor<Shape, D, Dev>
-    const zIh = gatesIh.narrow(1, chunkSize, chunkSize) as Tensor<Shape, D, Dev>
-    const nIh = gatesIh.narrow(1, chunkSize * 2, chunkSize) as Tensor<Shape, D, Dev>
+    const rIh = (gatesIh as any).narrow(1, 0, chunkSize) as Tensor<Shape, D, Dev>
+    const zIh = (gatesIh as any).narrow(1, chunkSize, chunkSize) as Tensor<Shape, D, Dev>
+    const nIh = (gatesIh as any).narrow(1, chunkSize * 2, chunkSize) as Tensor<Shape, D, Dev>
 
-    const rHh = gatesHh.narrow(1, 0, chunkSize) as Tensor<Shape, D, Dev>
-    const zHh = gatesHh.narrow(1, chunkSize, chunkSize) as Tensor<Shape, D, Dev>
-    const nHh = gatesHh.narrow(1, chunkSize * 2, chunkSize) as Tensor<Shape, D, Dev>
+    const rHh = (gatesHh as any).narrow(1, 0, chunkSize) as Tensor<Shape, D, Dev>
+    const zHh = (gatesHh as any).narrow(1, chunkSize, chunkSize) as Tensor<Shape, D, Dev>
+    const nHh = (gatesHh as any).narrow(1, chunkSize * 2, chunkSize) as Tensor<Shape, D, Dev>
 
     const r = rIh.add(rHh as any).sigmoid() as Tensor<Shape, D, Dev> // reset gate
     const z = zIh.add(zHh as any).sigmoid() as Tensor<Shape, D, Dev> // update gate

@@ -82,7 +82,7 @@ export function nllLoss<B extends number, C extends number, D extends DType<stri
 /**
  * Reduction type for loss functions
  */
-export type Reduction = 'none' | 'mean' | 'sum'
+export type Reduction = 'none' | 'mean' | 'sum' | 'batchmean'
 
 /**
  * Binary cross entropy loss
@@ -126,11 +126,11 @@ export function bceLoss<S extends Shape, D extends DType<string>>(
   let loss = term1.add(term2).mulScalar(-1) as Tensor<S, D>
 
   if (reduction === 'mean') {
-    return loss.mean() as Tensor<Shape, D>
+    return (loss as any).mean()
   } else if (reduction === 'sum') {
-    return loss.sum() as Tensor<Shape, D>
+    return (loss as any).sum()
   }
-  return loss as Tensor<Shape, D>
+  return loss
 }
 
 /**
@@ -185,11 +185,11 @@ export function bceWithLogitsLoss<S extends Shape, D extends DType<string>>(
   }
 
   if (reduction === 'mean') {
-    return loss.mean() as Tensor<Shape, D>
+    return (loss as any).mean()
   } else if (reduction === 'sum') {
-    return loss.sum() as Tensor<Shape, D>
+    return (loss as any).sum()
   }
-  return loss as Tensor<Shape, D>
+  return loss
 }
 
 /**
@@ -221,11 +221,11 @@ export function l1Loss<S extends Shape, D extends DType<string>>(
   let loss = diff.maximum((diff as any).neg()) as Tensor<S, D>
 
   if (reduction === 'mean') {
-    return loss.mean() as Tensor<Shape, D>
+    return (loss as any).mean()
   } else if (reduction === 'sum') {
-    return loss.sum() as Tensor<Shape, D>
+    return (loss as any).sum()
   }
-  return loss as Tensor<Shape, D>
+  return loss
 }
 
 /**
@@ -274,11 +274,11 @@ export function smoothL1Loss<S extends Shape, D extends DType<string>>(
   ) as Tensor<S, D>
 
   if (reduction === 'mean') {
-    return loss.mean() as Tensor<Shape, D>
+    return (loss as any).mean()
   } else if (reduction === 'sum') {
-    return loss.sum() as Tensor<Shape, D>
+    return (loss as any).sum()
   }
-  return loss as Tensor<Shape, D>
+  return loss
 }
 
 /**
@@ -350,14 +350,15 @@ export function klDivLoss<S extends Shape, D extends DType<string>>(
   }
 
   if (reduction === 'mean') {
-    return loss.mean() as Tensor<Shape, D>
+    return (loss as any).mean()
   } else if (reduction === 'sum') {
-    return loss.sum() as Tensor<Shape, D>
+    return (loss as any).sum()
   } else if (reduction === 'batchmean') {
     // Sum over all dimensions except batch, then mean over batch
-    return loss.sum().divScalar((loss.shape as readonly number[])[0]) as Tensor<Shape, D>
+    const batchSize = (loss.shape as readonly number[])[0] ?? 1
+    return (loss as any).sum().divScalar(batchSize)
   }
-  return loss as Tensor<Shape, D>
+  return loss
 }
 
 /**
@@ -405,11 +406,11 @@ export function cosineEmbeddingLoss<S extends Shape, D extends DType<string>>(
   let loss = yPlusOne.mul(positiveCase as any).add(oneMinusY.mul(negativeCase as any)) as Tensor<Shape, D>
 
   if (reduction === 'mean') {
-    return loss.mean() as Tensor<Shape, D>
+    return (loss as any).mean()
   } else if (reduction === 'sum') {
-    return loss.sum() as Tensor<Shape, D>
+    return (loss as any).sum()
   }
-  return loss as Tensor<Shape, D>
+  return loss
 }
 
 /**
@@ -476,9 +477,9 @@ export function tripletMarginLoss<S extends Shape, D extends DType<string>>(
   loss = (loss as any).clamp(0, Infinity) as Tensor<Shape, D>
 
   if (reduction === 'mean') {
-    return loss.mean() as Tensor<Shape, D>
+    return (loss as any).mean()
   } else if (reduction === 'sum') {
-    return loss.sum() as Tensor<Shape, D>
+    return (loss as any).sum()
   }
-  return loss as Tensor<Shape, D>
+  return loss
 }

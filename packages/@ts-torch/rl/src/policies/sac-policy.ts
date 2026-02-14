@@ -613,7 +613,7 @@ function buildSacMlp(
   }
   blocks.push(nn.fc(outputSize))
 
-  return nn.sequence(inputSize, ...blocks)
+  return nn.sequence(nn.input(inputSize), ...blocks)
 }
 
 /**
