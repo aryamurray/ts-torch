@@ -66,8 +66,6 @@ jobs:
             packages/@ts-torch/core/native/build
             packages/@ts-torch-platform/${{ matrix.platform }}/lib
           key: native-${{ matrix.platform }}-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
-          restore-keys: |
-            native-${{ matrix.platform }}-
 
       # Run setup - same script as local development for parity
       # This downloads LibTorch (if not cached) and builds native library
