@@ -7,6 +7,14 @@
  * - V8 value marshalling (JS objects ↔ C pointers)
  * - Memory management (automatic cleanup via finalizers)
  * - Error handling (C errors → JavaScript exceptions)
+ *
+ * IMPORTANT - TypedArray Convention for C++ developers:
+ * When creating Napi wrappers that accept buffer data:
+ * - Accept Napi::TypedArray, NOT Napi::ArrayBuffer
+ * - Extract the underlying pointer via: data_arr.ArrayBuffer().Data() + data_arr.ByteOffset()
+ * - This matches JavaScript calling convention: lib.ts_tensor_foo(typedArray, ...)
+ * - Do NOT expect callers to pass .buffer (raw ArrayBuffer)
+ * - Napi finalizers automatically clean up External handles on GC
  */
 
 #include <napi.h>

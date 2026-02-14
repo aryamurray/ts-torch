@@ -9,6 +9,13 @@
  *
  * The .node module is built by cmake-js and contains all 131 C functions
  * directly callable from JavaScript with minimal overhead.
+ *
+ * IMPORTANT - Napi TypedArray vs ArrayBuffer convention:
+ * - Koffi accepted raw ArrayBuffer objects (.buffer property)
+ * - Napi expects TypedArray objects directly (Float32Array, BigInt64Array, etc.)
+ * - The underlying ArrayBuffer and ByteOffset are extracted automatically by Napi
+ * - When creating Napi wrappers, always accept TypedArray, NOT ArrayBuffer.buffer
+ * - This convention applies to all buffer parameters (shape, data, weights, etc.)
  */
 
 import { createRequire } from 'module'
