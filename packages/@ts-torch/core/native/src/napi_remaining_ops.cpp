@@ -440,6 +440,48 @@ Napi::Value NapiTensorIsLeaf(const Napi::CallbackInfo& info) {
   return Napi::Boolean::New(env, result != 0);
 }
 
+Napi::Value NapiTensorZeroGrad(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1) {
+    throw Napi::Error::New(env, "zero_grad requires 1 argument");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  ts_Error err = {0, ""};
+  ts_tensor_zero_grad(tensor, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_zero_grad")) {
+    return env.Null();
+  }
+
+  return env.Undefined();
+}
+
+Napi::Value NapiTensorDetach(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1) {
+    throw Napi::Error::New(env, "detach requires 1 argument");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_detach(tensor, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_detach")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
 // ============================================================================
 // Scalar Extraction: item()
 // ============================================================================
@@ -620,6 +662,10 @@ void InitRemainingOps(Napi::Env env, Napi::Object exports) {
     Napi::Function::New(env, NapiTensorRetainGrad));
   exports.Set("ts_tensor_is_leaf",
     Napi::Function::New(env, NapiTensorIsLeaf));
+  exports.Set("ts_tensor_zero_grad",
+    Napi::Function::New(env, NapiTensorZeroGrad));
+  exports.Set("ts_tensor_detach",
+    Napi::Function::New(env, NapiTensorDetach));
   exports.Set("ts_tensor_item",
     Napi::Function::New(env, NapiTensorItem));
 

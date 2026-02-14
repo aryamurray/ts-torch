@@ -96,6 +96,7 @@ export type KoffiLibrary = {
   ts_tensor_dtype: (tensor: unknown) => number
   ts_tensor_clone: (tensor: unknown) => unknown
   ts_tensor_detach: (tensor: unknown) => unknown
+  ts_tensor_zero_grad: (tensor: unknown) => void
   ts_tensor_delete: (tensor: unknown) => void
 
   // Binary operations

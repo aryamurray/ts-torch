@@ -44,8 +44,5 @@ export {
 // Re-export buffer pooling
 export { errorPool, shapeCache } from './buffer-pool.js'
 
-// Re-export FFI symbols and types
-export { FFI_SYMBOLS, type TensorHandle, type FFISymbols } from './symbols.js'
-
-// Re-export koffi for direct access if needed
+// Re-export koffi for direct access (used for address/decode in cat/stack operations)
 export { default as koffi } from 'koffi'
