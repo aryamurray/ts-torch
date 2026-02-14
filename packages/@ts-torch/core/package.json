@@ -37,8 +37,7 @@
     "check-types": "tsc --noEmit",
     "test": "vitest run --dangerouslyIgnoreUnhandledErrors",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "install": "cd native && bun x cmake-js rebuild"
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@ts-torch-platform/loader": "^0.1.0"
