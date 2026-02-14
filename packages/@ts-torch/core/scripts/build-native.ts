@@ -25,23 +25,26 @@ function getPlatformConfig(): PlatformConfig {
   const platform = process.platform
   const arch = process.arch
 
+  // Node-API addon is always ts_torch.node on all platforms
+  const libName = 'ts_torch.node'
+
   switch (platform) {
     case 'win32':
       return {
         packageDir: `@ts-torch-platform/win32-${arch}`,
-        libName: 'ts_torch.dll',
+        libName,
         buildSubdir: 'Release',
       }
     case 'darwin':
       return {
         packageDir: `@ts-torch-platform/darwin-${arch}`,
-        libName: 'libts_torch.dylib',
+        libName,
         buildSubdir: '',
       }
     case 'linux':
       return {
         packageDir: `@ts-torch-platform/linux-${arch}`,
-        libName: 'libts_torch.so',
+        libName,
         buildSubdir: '',
       }
     default:
@@ -152,21 +155,13 @@ async function main(): Promise<void> {
   // Save LibTorch path for future cache checks
   saveLibtorchPath(libtorchPath)
 
-  // Configure CMake - quote the path for Windows paths with spaces
-  console.log('\n--- Configuring CMake ---')
-  const cmakePrefixPath = process.platform === 'win32'
-    ? `"${libtorchPath}"` // Quote for Windows
-    : libtorchPath
-
+  // Build using cmake-js which handles Node.js header discovery automatically
+  console.log('\n--- Building with cmake-js ---')
   runCommand(
-    'cmake',
-    ['-B', 'build', `-DCMAKE_PREFIX_PATH=${cmakePrefixPath}`, '-DCMAKE_BUILD_TYPE=Release'],
+    'bunx',
+    ['cmake-js', 'build', '--release', '-O', 'build', `--CDCMAKE_PREFIX_PATH=${libtorchPath}`],
     NATIVE_DIR
   )
-
-  // Build
-  console.log('\n--- Building ---')
-  runCommand('cmake', ['--build', 'build', '--config', 'Release'], NATIVE_DIR)
 
   // Copy to platform package
   console.log('\n--- Copying to platform package ---')
