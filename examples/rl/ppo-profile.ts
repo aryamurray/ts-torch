@@ -82,8 +82,16 @@ RolloutBuffer.prototype.get = function* (this: any, batchSize?: number) {
 // Resolve native functions once
 let _nativePF: Function | null = null
 let _nativeBAC: Function | null = null
-try { _nativePF = (getLib() as any).ts_policy_forward ?? null } catch { /* */ }
-try { _nativeBAC = (getLib() as any).ts_backward_and_clip ?? null } catch { /* */ }
+try {
+  _nativePF = (getLib() as any).ts_policy_forward ?? null
+} catch {
+  /* */
+}
+try {
+  _nativeBAC = (getLib() as any).ts_backward_and_clip ?? null
+} catch {
+  /* */
+}
 
 // Replace _trainNative with an instrumented version that times each sub-phase.
 // This is a copy of the real _trainNative with performance.now() calls inserted.
@@ -104,12 +112,6 @@ try { _nativeBAC = (getLib() as any).ts_backward_and_clip ?? null } catch { /* *
   const allHandles = [...piHandles, ...vfHandles]
   const activationType = this.policy.getActivationType()
   const nActions = this.policy.getNumActions()
-
-  let totalPolicyLoss = 0
-  let totalValueLoss = 0
-  let totalEntropyLoss = 0
-  let totalApproxKl = 0
-  let nUpdates = 0
 
   for (let epoch = 0; epoch < this.nEpochs; epoch++) {
     for (const batch of this.rolloutBuffer.get(this.batchSize)) {
@@ -133,9 +135,6 @@ try { _nativeBAC = (getLib() as any).ts_backward_and_clip ?? null } catch { /* *
       }
       t.advNorm += performance.now() - tPhase
 
-      let policyLossValue = 0
-      let valueLossValue = 0
-      let entropyValue = 0
       let approxKlValue = 0
 
       // ---- Scope overhead: measure run() wrapper cost ----
@@ -148,8 +147,14 @@ try { _nativeBAC = (getLib() as any).ts_backward_and_clip ?? null } catch { /* *
         // ---- Forward ----
         let tp = performance.now()
         const fwdResult = nativePolicyForward(
-          observations, actions, batch.batchSize, obsSize, nActions,
-          piHandles, vfHandles, activationType,
+          observations,
+          actions,
+          batch.batchSize,
+          obsSize,
+          nActions,
+          piHandles,
+          vfHandles,
+          activationType,
         )
         const TensorCtor = Tensor as any
         const actionLogProbs = new TensorCtor(fwdResult.actionLogProbs, [batch.batchSize] as const, float32)
@@ -180,8 +185,12 @@ try { _nativeBAC = (getLib() as any).ts_backward_and_clip ?? null } catch { /* *
         // ---- Backward + grad clip ----
         tp = performance.now()
         nativeBackwardAndClip((totalLoss as any)._handle, allHandles, this.maxGradNorm)
-        for (const p of piParams) { ;(p as any).data._gradCache = undefined }
-        for (const p of vfParams) { ;(p as any).data._gradCache = undefined }
+        for (const p of piParams) {
+          ;(p as any).data._gradCache = undefined
+        }
+        for (const p of vfParams) {
+          ;(p as any).data._gradCache = undefined
+        }
         t.backward += performance.now() - tp
 
         // ---- Optimizer step ----
@@ -191,9 +200,6 @@ try { _nativeBAC = (getLib() as any).ts_backward_and_clip ?? null } catch { /* *
 
         // ---- Metric extraction ----
         tp = performance.now()
-        policyLossValue = (policyLoss as any).item?.() ?? 0
-        valueLossValue = (valueLoss as any).item?.() ?? 0
-        entropyValue = (entropy as any).item?.() ?? 0
         if (needsKl) {
           const klDiff = (oldLogProbsTensor as any).sub(actionLogProbs)
           const klSquared = (klDiff as any).mul(klDiff)
@@ -204,11 +210,6 @@ try { _nativeBAC = (getLib() as any).ts_backward_and_clip ?? null } catch { /* *
         // Scope exit overhead is captured on next iteration's tScopeStart
       })
 
-      totalPolicyLoss += policyLossValue
-      totalValueLoss += valueLossValue
-      totalEntropyLoss += entropyValue
-      totalApproxKl += approxKlValue
-      nUpdates++
       t.minibatches++
 
       if (needsKl && approxKlValue > 1.5 * this.targetKl!) return
@@ -283,7 +284,8 @@ async function main() {
   const netTrain = t.trainTotal - t.bufferGet
   const overhead = wallMs - t.rolloutCollect - t.trainTotal
   // Scope exit time = trainTotal - (advNorm + forward + loss + backward + optimizerStep + metrics + bufferGet + scopeOverhead)
-  const scopeExit = netTrain - t.advNorm - t.forward - t.loss - t.backward - t.optimizerStep - t.metrics - t.scopeOverhead
+  const scopeExit =
+    netTrain - t.advNorm - t.forward - t.loss - t.backward - t.optimizerStep - t.metrics - t.scopeOverhead
 
   console.log('='.repeat(64))
   console.log('PPO Training Time Breakdown')
@@ -292,7 +294,7 @@ async function main() {
   console.log(`Wall time:     ${wallMs.toFixed(0)}ms (${stepsPerSec.toFixed(0)} steps/s)`)
   console.log(`Iterations:    ${nIter}`)
   console.log(`Minibatches:   ${nBatch}  (${(nBatch / nIter).toFixed(0)}/iter)`)
-  console.log(`Per-minibatch: ${(netTrain / nBatch * 1000).toFixed(0)}μs`)
+  console.log(`Per-minibatch: ${((netTrain / nBatch) * 1000).toFixed(0)}μs`)
   console.log()
 
   console.log('Phase breakdown (% of wall time):')
@@ -317,7 +319,7 @@ async function main() {
 
   // Per-minibatch averages (microseconds)
   console.log('Per-minibatch averages (μs):')
-  const us = (ms: number) => (ms / nBatch * 1000).toFixed(0)
+  const us = (ms: number) => ((ms / nBatch) * 1000).toFixed(0)
   console.log(`  Forward:     ${us(t.forward)}`)
   console.log(`  Loss:        ${us(t.loss)}`)
   console.log(`  Backward:    ${us(t.backward)}`)

@@ -2,6 +2,7 @@
   "name": "@ts-torch-platform/loader",
   "version": "0.1.2",
   "description": "Platform-specific binary loader for ts-torch",
+  "license": "MIT",
   "files": [
     "dist"
   ],
@@ -31,7 +32,6 @@
   "optionalDependencies": {
     "@ts-torch-platform/darwin-arm64": "^0.1.0",
     "@ts-torch-platform/darwin-x64": "^0.1.0",
-    "@ts-torch-platform/linux-arm64": "^0.1.0",
     "@ts-torch-platform/linux-x64": "^0.1.0",
     "@ts-torch-platform/win32-x64": "^0.1.0"
   },

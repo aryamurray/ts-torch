@@ -17,7 +17,7 @@
   "author": "",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/ts-torch.git",
+    "url": "https://github.com/aryamurray/ts-torch.git",
     "directory": "packages/@ts-torch/core/native"
   },
   "files": [

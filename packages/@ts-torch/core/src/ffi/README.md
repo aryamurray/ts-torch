@@ -241,9 +241,7 @@ Supported platforms (detected via `process.platform` and `process.arch`):
 - macOS ARM64 → `@ts-torch/darwin-arm64`
 - macOS x64 → `@ts-torch/darwin-x64`
 - Linux x64 → `@ts-torch/linux-x64`
-- Linux ARM64 → `@ts-torch/linux-arm64`
 - Windows x64 → `@ts-torch/win32-x64`
-- Windows ARM64 → `@ts-torch/win32-arm64`
 
 ## Error Handling Best Practices
 

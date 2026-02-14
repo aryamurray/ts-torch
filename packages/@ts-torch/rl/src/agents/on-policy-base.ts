@@ -6,7 +6,6 @@
  */
 
 import type { DeviceType } from '@ts-torch/core'
-import { Logger } from '@ts-torch/core'
 import type { Optimizer } from '@ts-torch/optim'
 import { Adam } from '@ts-torch/optim'
 import { BaseAlgorithm } from './base-algorithm.js'
@@ -103,14 +102,13 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
    */
   protected _setupModel(): void {
     // Create policy
-    const policyDef = this.policyConfig === 'MlpPolicy'
-      ? actorCriticPolicy({ netArch: { pi: [64, 64], vf: [64, 64] }, activation: 'tanh' })
-      : actorCriticPolicy(this.policyConfig)
+    const policyDef =
+      this.policyConfig === 'MlpPolicy'
+        ? actorCriticPolicy({ netArch: { pi: [64, 64], vf: [64, 64] }, activation: 'tanh' })
+        : actorCriticPolicy(this.policyConfig)
 
     // Determine action space
-    const actionSpace = this.env.actionSpace.type === 'discrete'
-      ? this.env.actionSpace
-      : this.env.actionSpace
+    const actionSpace = this.env.actionSpace.type === 'discrete' ? this.env.actionSpace : this.env.actionSpace
 
     this.policy = policyDef.init(this.device_, {
       observationSize: this.env.observationSize,
@@ -177,16 +175,12 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
       // Policy reads observations from the buffer directly
       const { actions, values, logProbs } = this.policy.forward(obsRef, false)
 
-      const envActions = isDiscrete
-        ? Int32Array.from(actions, a => Math.round(a))
-        : actions
+      const envActions = isDiscrete ? Int32Array.from(actions, (a) => Math.round(a)) : actions
 
       // Determine where env should write the NEXT observations:
       // - For steps 0..nSteps-2: into the next buffer slot
       // - For the last step: into this.lastObs (used for GAE bootstrap)
-      const nextObsTarget = step < this.nSteps - 1
-        ? this.rolloutBuffer.getObsWriteTarget(step + 1)
-        : this.lastObs
+      const nextObsTarget = step < this.nSteps - 1 ? this.rolloutBuffer.getObsWriteTarget(step + 1) : this.lastObs
 
       // Env writes obs directly into the target buffer
       const stepResult = env.stepInto(envActions, nextObsTarget)
@@ -200,13 +194,7 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
       }
 
       // Store everything except observations (already in the buffer)
-      this.rolloutBuffer.addWithoutObs(
-        actions,
-        stepResult.rewards,
-        this.lastEpisodeStarts,
-        values,
-        logProbs,
-      )
+      this.rolloutBuffer.addWithoutObs(actions, stepResult.rewards, this.lastEpisodeStarts, values, logProbs)
 
       // Update episode starts
       if (this.lastEpisodeStarts.length === stepResult.dones.length) {
@@ -233,9 +221,7 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
     for (let step = 0; step < this.nSteps; step++) {
       const { actions, values, logProbs } = this.policy.forward(this.lastObs, false)
 
-      const envActions = isDiscrete
-        ? Int32Array.from(actions, a => Math.round(a))
-        : actions
+      const envActions = isDiscrete ? Int32Array.from(actions, (a) => Math.round(a)) : actions
 
       const stepResult = this.env.step(envActions)
 
@@ -248,14 +234,7 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
       }
 
       // Store in buffer (copies observations)
-      this.rolloutBuffer.add(
-        this.lastObs,
-        actions,
-        stepResult.rewards,
-        this.lastEpisodeStarts,
-        values,
-        logProbs,
-      )
+      this.rolloutBuffer.add(this.lastObs, actions, stepResult.rewards, this.lastEpisodeStarts, values, logProbs)
 
       // Update state for next step
       this.lastObs = stepResult.observations
@@ -297,7 +276,7 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
         observations: currentObs ?? this.lastObs,
         actions: envActions,
         rewards: stepResult.rewards,
-        dones: Array.from(stepResult.dones, d => d === 1),
+        dones: Array.from(stepResult.dones, (d) => d === 1),
         infos: stepResult.infos ?? [],
       }
       const continueTraining = this.callbacks.onStep(stepData)
@@ -416,8 +395,7 @@ export abstract class OnPolicyAlgorithm extends BaseAlgorithm {
   /**
    * Save algorithm state
    */
-  async save(_path: string): Promise<void> {
-    // TODO: Implement checkpointing
-    Logger.warn('save() not yet fully implemented')
+  async save(path: string): Promise<void> {
+    throw new Error(`save() is not implemented yet for ${this.constructor.name}. Requested path: ${path}`)
   }
 }

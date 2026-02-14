@@ -26,9 +26,7 @@ describe('MultiheadAttention', () => {
     })
 
     test('throws error when embedDim not divisible by numHeads', () => {
-      expect(() => new MultiheadAttention(512, 7)).toThrow(
-        'must be divisible by',
-      )
+      expect(() => new MultiheadAttention(512, 7)).toThrow('must be divisible by')
     })
 
     test('throws error for invalid embedDim', () => {
@@ -110,18 +108,14 @@ describe('MultiheadAttention', () => {
       })
     })
 
-    // TODO: Cross-attention is not fully implemented yet (requires separate projections for K, V)
-    test.skip('cross-attention with different key/value sequence', () => {
+    test('throws for unsupported cross-attention inputs', () => {
       run(() => {
         const attention = new MultiheadAttention(64, 4)
         const query = cpu.randn([5, 2, 64] as const) // [tgt_seq, batch, embed]
         const key = cpu.randn([10, 2, 64] as const) // [src_seq, batch, embed]
         const value = cpu.randn([10, 2, 64] as const)
 
-        const [output, weights] = attention.forward(query, key, value)
-
-        expect(output.shape).toEqual([5, 2, 64])
-        expect(weights!.shape).toEqual([2, 5, 10])
+        expect(() => attention.forward(query, key, value)).toThrow(/Cross-attention is not implemented yet/)
       })
     })
 

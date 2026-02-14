@@ -28,7 +28,6 @@
 // ===============================
 
 import { getLib } from './ffi/loader.js'
-import { Logger } from './logger.js'
 
 // ===============================
 // Type Exports
@@ -78,14 +77,7 @@ export { run, runAsync, inScope, scopeDepth, using, usingAsync, withResources } 
 // Optimized Batched Operations
 // ===============================
 
-export {
-  batch,
-  isBatchRecording,
-  chainMatmul,
-  mlpForward,
-  setNumThreads,
-  getNumThreads,
-} from './ops/index.js'
+export { batch, isBatchRecording, chainMatmul, mlpForward, setNumThreads, getNumThreads } from './ops/index.js'
 
 // ===============================
 // Debug Mode
@@ -167,8 +159,7 @@ export const cuda = {
    * @param deviceIndex - Device index (default: 0)
    */
   synchronize(_deviceIndex = 0): void {
-    // TODO: Implement when FFI symbol is available
-    Logger.warn('cuda.synchronize() not yet implemented')
+    throw new Error('cuda.synchronize() is not implemented yet')
   },
 }
 
@@ -211,4 +202,3 @@ export {
 
 export { getLib, closeLib } from './ffi/loader.js'
 export { withErrorFast, withError, createError, checkError, type Pointer, type ErrorBuffer } from './ffi/error.js'
-

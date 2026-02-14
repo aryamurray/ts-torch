@@ -11,13 +11,7 @@ import { join } from 'node:path'
 /**
  * Supported platform identifiers
  */
-export type PlatformIdentifier =
-  | 'win32-x64'
-  | 'win32-arm64'
-  | 'darwin-x64'
-  | 'darwin-arm64'
-  | 'linux-x64'
-  | 'linux-arm64'
+export type PlatformIdentifier = 'win32-x64' | 'darwin-x64' | 'darwin-arm64' | 'linux-x64'
 
 /**
  * Platform information
@@ -39,14 +33,7 @@ export function getPlatformIdentifier(): PlatformIdentifier {
   const identifier = `${plat}-${architecture}` as PlatformIdentifier
 
   // Validate supported platforms
-  const supported: PlatformIdentifier[] = [
-    'win32-x64',
-    'win32-arm64',
-    'darwin-x64',
-    'darwin-arm64',
-    'linux-x64',
-    'linux-arm64',
-  ]
+  const supported: PlatformIdentifier[] = ['win32-x64', 'darwin-x64', 'darwin-arm64', 'linux-x64']
 
   if (!supported.includes(identifier)) {
     throw new Error(`Unsupported platform: ${identifier}. Supported platforms: ${supported.join(', ')}`)
@@ -95,7 +82,9 @@ export function loadNativeBinary(): string | null {
 
       return binaryPath
     } catch (resolveError) {
-      console.warn(`Platform package ${packageName} not found: ${resolveError}. Native operations will not be available.`)
+      console.warn(
+        `Platform package ${packageName} not found: ${resolveError}. Native operations will not be available.`,
+      )
       return null
     }
   } catch (error) {

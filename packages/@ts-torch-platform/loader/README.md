@@ -16,11 +16,9 @@ This package handles platform detection and loading of platform-specific native 
 ## Supported Platforms
 
 - Windows x64 (`win32-x64`)
-- Windows ARM64 (`win32-arm64`)
 - macOS x64 (`darwin-x64`)
 - macOS ARM64 (Apple Silicon) (`darwin-arm64`)
 - Linux x64 (`linux-x64`)
-- Linux ARM64 (`linux-arm64`)
 
 ## Installation
 
@@ -76,10 +74,8 @@ try {
 Each platform has its own package containing native binaries:
 
 - `@ts-torch-platform/win32-x64` - Windows x64
-- `@ts-torch-platform/win32-arm64` - Windows ARM64
 - `@ts-torch-platform/darwin-x64` - macOS Intel
 - `@ts-torch-platform/darwin-arm64` - macOS Apple Silicon
 - `@ts-torch-platform/linux-x64` - Linux x64
-- `@ts-torch-platform/linux-arm64` - Linux ARM64
 
 These packages are listed as optional dependencies and are automatically installed for the matching platform.
