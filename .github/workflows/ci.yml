@@ -50,9 +50,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ccache
-          key: ${{ runner.os }}-ccache-quality-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
+          key: ${{ runner.os }}-ccache-linux-x64-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
           restore-keys: |
-            ${{ runner.os }}-ccache-quality-
+            ${{ runner.os }}-ccache-linux-x64-
 
       - name: Cache LibTorch
         uses: actions/cache@v4
@@ -144,9 +144,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ccache
-          key: ${{ runner.os }}-ccache-native-${{ matrix.platform }}-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
+          key: ${{ runner.os }}-ccache-${{ matrix.platform }}-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
           restore-keys: |
-            ${{ runner.os }}-ccache-native-${{ matrix.platform }}-
+            ${{ runner.os }}-ccache-${{ matrix.platform }}-
 
       # Cache LibTorch to avoid re-downloading on every run
       - name: Cache LibTorch
