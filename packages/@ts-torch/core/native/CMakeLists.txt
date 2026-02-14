@@ -118,10 +118,15 @@ set_target_properties(ts_torch PROPERTIES
 # Define export macro for Windows DLL (still used by non-NAPI code)
 target_compile_definitions(ts_torch PRIVATE TS_TORCH_EXPORTS)
 
-# Link against LibTorch (Node-API symbol resolution handled by native addon mechanism)
+# Link against LibTorch and Node.js (Node-API symbol resolution)
 target_link_libraries(ts_torch
     ${TORCH_LIBRARIES}
 )
+
+# Link against Node.js library on Windows (required for Node-API)
+if(WIN32 AND DEFINED CMAKE_JS_LIB)
+    target_link_libraries(ts_torch ${CMAKE_JS_LIB})
+endif()
 
 # On macOS, use dynamic lookup for Node-API symbols (resolved at runtime by Node.js)
 if(APPLE)

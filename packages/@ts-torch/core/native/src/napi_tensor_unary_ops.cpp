@@ -7,19 +7,8 @@
  * Note: Only wraps functions that exist in the C API (ts_torch.h)
  */
 
-#include <napi.h>
-#include "ts_torch.h"
-#include <cstring>
+#include "napi_bindings.h"
 #include <vector>
-
-// ---------------------------------------------------------------------------
-// Shared helpers (defined in napi_bindings.cpp, declared here for linkage)
-// ---------------------------------------------------------------------------
-
-extern ts_Tensor* GetTensorHandle(const Napi::Value& val);
-extern Napi::Value WrapTensorHandle(Napi::Env env, ts_Tensor* handle);
-extern bool CheckAndThrowError(Napi::Env env, const ts_Error& err,
-                               const char* funcName);
 
 // ============================================================================
 // Macro helpers to reduce boilerplate
