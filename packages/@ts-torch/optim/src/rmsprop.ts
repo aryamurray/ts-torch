@@ -129,41 +129,63 @@ export class RMSprop extends Optimizer {
 
         // Apply weight decay to gradient if needed
         let g = grad
+        let weighted_param: Tensor | null = null
         if (weightDecay !== 0) {
-          g = (grad as any).add((param as any).mulScalar(weightDecay)) as Tensor
+          weighted_param = (param as any).mulScalar(weightDecay) as Tensor
+          g = (grad as any).add(weighted_param) as Tensor
         }
 
         // Update square_avg: v = alpha * v + (1 - alpha) * g^2
-        const old_square_avg = state.square_avg
-        const v_scaled = (old_square_avg as any).mulScalar(alpha) as Tensor
-        const g_sq = (g as any).mul(g) as Tensor
-        const g_sq_scaled = (g_sq as any).mulScalar(1 - alpha) as Tensor
-        const new_square_avg = (v_scaled as any).add(g_sq_scaled) as Tensor
-        if ('escape' in new_square_avg) (new_square_avg as any).escape()
-        if ('free' in old_square_avg) (old_square_avg as any).free()
-        state.square_avg = new_square_avg
+        // Use in-place operations if available (following Adam pattern)
+        if ('mulScalarInplace' in state.square_avg && 'addScaledInplace' in state.square_avg) {
+          ;(state.square_avg as any).mulScalarInplace(alpha)
+          const g_sq = (g as any).mul(g) as Tensor
+          ;(state.square_avg as any).addScaledInplace(g_sq, 1 - alpha)
+          if ('free' in g_sq) (g_sq as any).free()
+        } else {
+          // Fallback: create new tensor (old behavior)
+          const v_scaled = (state.square_avg as any).mulScalar(alpha) as Tensor
+          const g_sq = (g as any).mul(g) as Tensor
+          const g_sq_scaled = (g_sq as any).mulScalar(1 - alpha) as Tensor
+          const new_square_avg = (v_scaled as any).add(g_sq_scaled) as Tensor
+          if ('escape' in new_square_avg) (new_square_avg as any).escape()
+          if ('free' in state.square_avg) (state.square_avg as any).free()
+          state.square_avg = new_square_avg
+        }
 
         let avg: Tensor
 
         if (centered) {
           // Update grad_avg: g_avg = alpha * g_avg + (1 - alpha) * g
-          const old_grad_avg = state.grad_avg!
-          const gavg_scaled = (old_grad_avg as any).mulScalar(alpha) as Tensor
-          const g_scaled = (g as any).mulScalar(1 - alpha) as Tensor
-          const new_grad_avg = (gavg_scaled as any).add(g_scaled) as Tensor
-          if ('escape' in new_grad_avg) (new_grad_avg as any).escape()
-          if ('free' in old_grad_avg) (old_grad_avg as any).free()
-          state.grad_avg = new_grad_avg
+          // Use in-place operations if available
+          if ('mulScalarInplace' in state.grad_avg! && 'addScaledInplace' in state.grad_avg!) {
+            ;(state.grad_avg as any).mulScalarInplace(alpha)
+            ;(state.grad_avg as any).addScaledInplace(g, 1 - alpha)
+          } else {
+            // Fallback: create new tensor (old behavior)
+            const gavg_scaled = (state.grad_avg as any).mulScalar(alpha) as Tensor
+            const g_scaled = (g as any).mulScalar(1 - alpha) as Tensor
+            const new_grad_avg = (gavg_scaled as any).add(g_scaled) as Tensor
+            if ('escape' in new_grad_avg) (new_grad_avg as any).escape()
+            if ('free' in state.grad_avg) (state.grad_avg as any).free()
+            state.grad_avg = new_grad_avg
+          }
 
-          // avg = sqrt(v - g_avg^2) + eps
-          const grad_avg_sq = (new_grad_avg as any).mul(new_grad_avg) as Tensor
-          const v_centered = (new_square_avg as any).sub(grad_avg_sq) as Tensor
-          const v_sqrt = (v_centered as any).sqrt() as Tensor
-          avg = (v_sqrt as any).addScalar(eps) as Tensor
+          // avg = sqrt(v - g_avg^2 + eps)
+          // CRITICAL FIX: epsilon BEFORE sqrt to prevent NaN from sqrt(negative)
+          const grad_avg_sq = (state.grad_avg as any).mul(state.grad_avg) as Tensor
+          const v_centered = (state.square_avg as any).sub(grad_avg_sq) as Tensor
+          const v_centered_eps = (v_centered as any).addScalar(eps) as Tensor
+          avg = (v_centered_eps as any).sqrt() as Tensor
+          // Note: Don't free intermediate tensors as avg may reference their data
+          // Cleanup happens at end of iteration
         } else {
-          // avg = sqrt(v) + eps
-          const v_sqrt = (new_square_avg as any).sqrt() as Tensor
-          avg = (v_sqrt as any).addScalar(eps) as Tensor
+          // avg = sqrt(v + eps)
+          // CRITICAL FIX: epsilon BEFORE sqrt to prevent NaN
+          const v_eps = (state.square_avg as any).addScalar(eps) as Tensor
+          avg = (v_eps as any).sqrt() as Tensor
+          // Note: Don't free v_eps as avg may reference its data
+          // Cleanup happens at end of iteration
         }
 
         if (momentum > 0) {
@@ -176,13 +198,21 @@ export class RMSprop extends Optimizer {
             if ('escape' in buf) (buf as any).escape()
             state.momentum_buffer = buf
           } else {
-            const old_buf = state.momentum_buffer
-            const buf_scaled = (old_buf as any).mulScalar(momentum) as Tensor
-            const new_buf = (buf_scaled as any).add(g_div_avg) as Tensor
-            if ('escape' in new_buf) (new_buf as any).escape()
-            if ('free' in old_buf) (old_buf as any).free()
-            state.momentum_buffer = new_buf
+            // Use in-place operations if available
+            if ('mulScalarInplace' in state.momentum_buffer && 'addInplace' in state.momentum_buffer) {
+              ;(state.momentum_buffer as any).mulScalarInplace(momentum)
+              ;(state.momentum_buffer as any).addInplace(g_div_avg)
+            } else {
+              // Fallback: create new tensor (old behavior)
+              const buf_scaled = (state.momentum_buffer as any).mulScalar(momentum) as Tensor
+              const new_buf = (buf_scaled as any).add(g_div_avg) as Tensor
+              if ('escape' in new_buf) (new_buf as any).escape()
+              if ('free' in state.momentum_buffer) (state.momentum_buffer as any).free()
+              state.momentum_buffer = new_buf
+            }
           }
+
+          if ('free' in g_div_avg) (g_div_avg as any).free()
 
           // param -= lr * momentum_buffer
           ;(param as any).addScaledInplace(state.momentum_buffer, -lr)
@@ -190,7 +220,12 @@ export class RMSprop extends Optimizer {
           // param -= lr * g / avg
           const update = (g as any).div(avg) as Tensor
           ;(param as any).addScaledInplace(update, -lr)
+          if ('free' in update) (update as any).free()
         }
+
+        // Cleanup temporary tensors (weighted_param is safe to free)
+        if (weighted_param && 'free' in weighted_param) (weighted_param as any).free()
+        // Note: Don't free g, g_div_avg, avg - they may be referenced or needed
       }
     }
   }

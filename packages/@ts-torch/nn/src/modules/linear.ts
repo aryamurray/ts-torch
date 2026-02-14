@@ -325,3 +325,205 @@ export class Linear<
     return `Linear(in_features=${this.inFeatures}, out_features=${this.outFeatures}, bias=${this.bias !== null})`
   }
 }
+
+/**
+ * Fused Linear + Activation module
+ *
+ * Combines a linear transformation with an activation function into a single operation.
+ * This leverages native fused operations like linearRelu, linearSigmoid, etc. for improved performance.
+ *
+ * Applies: y = activation(xW^T + b)
+ *
+ * Supported activations:
+ * - 'relu': Rectified Linear Unit
+ * - 'sigmoid': Sigmoid activation
+ * - 'tanh': Hyperbolic tangent activation
+ *
+ * @template InFeatures - Number of input features
+ * @template OutFeatures - Number of output features
+ * @template D - Data type (default: float32)
+ * @template Dev - Device type (default: 'cpu')
+ *
+ * @example
+ * ```ts
+ * // Fused ReLU: faster than Linear + ReLU
+ * const layer = new FusedLinear(784, 128, { activation: 'relu' });
+ * const output = layer.forward(input); // Fused operation
+ * ```
+ */
+export class FusedLinear<
+  InFeatures extends number,
+  OutFeatures extends number,
+  D extends DType<string> = float32,
+  Dev extends DeviceType = 'cpu',
+> extends Module<readonly [number, InFeatures], readonly [number, OutFeatures], D, Dev> {
+  /**
+   * Weight matrix with shape [OutFeatures, InFeatures]
+   */
+  readonly weight: Parameter<readonly [OutFeatures, InFeatures], D, Dev>
+
+  /**
+   * Bias vector with shape [OutFeatures]
+   * Null if bias is disabled
+   */
+  readonly bias: Parameter<readonly [OutFeatures], D, Dev> | null
+
+  /**
+   * Activation function: 'relu', 'sigmoid', or 'tanh'
+   */
+  readonly activation: 'relu' | 'sigmoid' | 'tanh'
+
+  constructor(
+    public readonly inFeatures: InFeatures,
+    public readonly outFeatures: OutFeatures,
+    options: LinearOptions<D> & { activation: 'relu' | 'sigmoid' | 'tanh' } = {} as any,
+  ) {
+    super()
+    validateLinearParams(inFeatures, outFeatures)
+
+    const { bias = true, init = 'kaiming_uniform' as InitStrategy | ConstantInit | InitFn, activation = 'relu' } = options as any
+
+    // Initialize weight (same as Linear)
+    this.weight = this.initWeight(init) as Parameter<readonly [OutFeatures, InFeatures], D, Dev>
+    this.registerParameter('weight', this.weight)
+
+    // Initialize bias if enabled
+    if (bias) {
+      this.bias = this.initBias() as Parameter<readonly [OutFeatures], D, Dev>
+      this.registerParameter('bias', this.bias)
+    } else {
+      this.bias = null
+    }
+
+    this.activation = activation
+  }
+
+  /**
+   * Forward pass with fused linear + activation
+   *
+   * @param input - Input tensor with shape [Batch, InFeatures]
+   * @returns Output tensor with shape [Batch, OutFeatures]
+   */
+  forward(input: Tensor<readonly [number, InFeatures], D, Dev>): Tensor<readonly [number, OutFeatures], D, Dev> {
+    // Fused operations expect weight in [OutFeatures, InFeatures] shape (not transposed)
+    // Use fused operation based on activation type
+    let output: Tensor<readonly [number, OutFeatures], D, Dev>
+
+    if (this.activation === 'relu') {
+      // Use fused linearRelu: weight [OutFeatures, InFeatures], bias [OutFeatures]
+      output = (input as any).linearRelu(this.weight.data, this.bias?.data ?? null) as Tensor<readonly [number, OutFeatures], D, Dev>
+    } else if (this.activation === 'sigmoid') {
+      // Use fused linearSigmoid
+      output = (input as any).linearSigmoid(this.weight.data, this.bias?.data ?? null) as Tensor<readonly [number, OutFeatures], D, Dev>
+    } else if (this.activation === 'tanh') {
+      // Use fused linearTanh
+      output = (input as any).linearTanh(this.weight.data, this.bias?.data ?? null) as Tensor<readonly [number, OutFeatures], D, Dev>
+    } else {
+      // Fallback: this shouldn't happen if constructor enforces activation type
+      // Do linear + ReLU as default
+      output = (input as any).linearRelu(this.weight.data, this.bias?.data ?? null) as Tensor<readonly [number, OutFeatures], D, Dev>
+    }
+
+    return output
+  }
+
+  /**
+   * Initialize weight matrix using specified strategy (same as Linear)
+   *
+   * @param init - Initialization strategy (string, object, or custom function)
+   * @returns Initialized weight parameter (on CPU)
+   * @internal
+   */
+  private initWeight(
+    init: InitStrategy | ConstantInit | InitFn,
+  ): Parameter<readonly [OutFeatures, InFeatures], D, 'cpu'> {
+    const shape = [this.outFeatures, this.inFeatures] as const
+    const fanIn = this.inFeatures
+    const fanOut = this.outFeatures
+
+    type WeightTensor = Tensor<readonly [OutFeatures, InFeatures], D, 'cpu'>
+    let weight: WeightTensor
+
+    // Handle custom function
+    if (typeof init === 'function') {
+      weight = init(fanIn, fanOut, shape) as WeightTensor
+      weight.escape()
+      return new Parameter(weight, true)
+    }
+
+    // Handle constant initialization object
+    if (typeof init === 'object' && init.type === 'constant') {
+      const ones = cpu.ones(shape)
+      weight = (ones as any).mulScalar(init.value) as WeightTensor
+      weight.escape()
+      return new Parameter(weight, true)
+    }
+
+    // Handle string-based initialization strategies
+    switch (init) {
+      case 'kaiming_uniform':
+      case 'kaiming_normal': {
+        const std = Math.sqrt(2.0 / fanIn)
+        const randWeight = cpu.randn(shape)
+        weight = (randWeight as any).mulScalar(std) as WeightTensor
+        break
+      }
+
+      case 'xavier_uniform':
+      case 'xavier_normal': {
+        const std = Math.sqrt(2.0 / (fanIn + fanOut))
+        const randWeight = cpu.randn(shape)
+        weight = (randWeight as any).mulScalar(std) as WeightTensor
+        break
+      }
+
+      case 'orthogonal': {
+        const gain = Math.sqrt(2.0)
+        const randWeight = cpu.randn(shape)
+        weight = (randWeight as any).mulScalar(gain / Math.sqrt(fanIn)) as WeightTensor
+        break
+      }
+
+      case 'zeros': {
+        weight = cpu.zeros(shape) as unknown as WeightTensor
+        break
+      }
+
+      case 'ones': {
+        weight = cpu.ones(shape) as unknown as WeightTensor
+        break
+      }
+
+      default: {
+        const std = Math.sqrt(2.0 / fanIn)
+        const randWeight = cpu.randn(shape)
+        weight = (randWeight as any).mulScalar(std) as WeightTensor
+      }
+    }
+
+    weight.escape()
+    return new Parameter(weight, true)
+  }
+
+  /**
+   * Initialize bias vector to zeros (same as Linear)
+   *
+   * @returns Initialized bias parameter (on CPU)
+   * @internal
+   */
+  private initBias(): Parameter<readonly [OutFeatures], D, 'cpu'> {
+    const shape = [this.outFeatures] as const
+    type BiasTensor = Tensor<readonly [OutFeatures], D, 'cpu'>
+    const bias = cpu.zeros(shape) as unknown as BiasTensor
+
+    bias.escape()
+    return new Parameter(bias, true)
+  }
+
+  /**
+   * String representation
+   */
+  override toString(): string {
+    return `FusedLinear(in_features=${this.inFeatures}, out_features=${this.outFeatures}, activation=${this.activation}, bias=${this.bias !== null})`
+  }
+}

@@ -23,7 +23,7 @@
  */
 
 import { Sequential } from './modules/container.js'
-import { Linear } from './modules/linear.js'
+import { Linear, FusedLinear } from './modules/linear.js'
 import { ReLU, Sigmoid, Tanh, Softmax, LeakyReLU, GELU } from './modules/activation.js'
 import { Dropout } from './modules/dropout.js'
 import { BatchNorm1d } from './modules/normalization.js'
@@ -226,23 +226,40 @@ class SequenceDefImpl implements SequenceDef {
     let prevSize = this.inputDef.shape.reduce((a, b) => a * b, 1)
 
     for (const block of this.blocks) {
-      // Linear layer
-      layers.push(new Linear(prevSize, block.outFeatures, {
-        bias: block.bias,
-        init: block.initStrategy,
-      }))
+      // Check if we can use fused linear+activation
+      // Fusion is possible when:
+      // 1. Activation is fusible (relu, sigmoid, tanh)
+      // 2. No batch normalization is enabled
+      const canFuse =
+        !block.useBatchNorm &&
+        (block.activation === 'relu' || block.activation === 'sigmoid' || block.activation === 'tanh')
 
-      // BatchNorm (if enabled) - applied before activation
-      if (block.useBatchNorm) {
-        layers.push(new BatchNorm1d(block.outFeatures) as Module<any, any, float32, 'cpu'>)
+      if (canFuse) {
+        // Use fused linear+activation module
+        layers.push(new FusedLinear(prevSize, block.outFeatures, {
+          bias: block.bias,
+          init: block.initStrategy,
+          activation: block.activation as 'relu' | 'sigmoid' | 'tanh',
+        }) as Module<any, any, float32, 'cpu'>)
+      } else {
+        // Use separate linear layer
+        layers.push(new Linear(prevSize, block.outFeatures, {
+          bias: block.bias,
+          init: block.initStrategy,
+        }))
+
+        // BatchNorm (if enabled) - applied before activation
+        if (block.useBatchNorm) {
+          layers.push(new BatchNorm1d(block.outFeatures) as Module<any, any, float32, 'cpu'>)
+        }
+
+        // Activation (if specified) - only if not already fused
+        if (block.activation) {
+          layers.push(createActivation(block.activation, block.activationOptions) as Module<any, any, float32, 'cpu'>)
+        }
       }
 
-      // Activation (if specified)
-      if (block.activation) {
-        layers.push(createActivation(block.activation, block.activationOptions) as Module<any, any, float32, 'cpu'>)
-      }
-
-      // Dropout (if specified)
+      // Dropout (if specified) - always applied after linear/activation
       if (block.dropoutP !== undefined && block.dropoutP > 0) {
         layers.push(new Dropout(block.dropoutP) as Module<any, any, float32, 'cpu'>)
       }

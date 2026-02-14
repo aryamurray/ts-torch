@@ -73,10 +73,11 @@ export class SGD extends Optimizer {
 
         // Apply weight decay (L2 regularization)
         // gradient = gradient + weight_decay * param
+        let weighted_param: any = null
         if (weightDecay !== 0) {
           if ('mulScalar' in param && 'add' in d_p) {
-            const weighted = (param as any).mulScalar(weightDecay)
-            d_p = d_p.add(weighted)
+            weighted_param = (param as any).mulScalar(weightDecay)
+            d_p = d_p.add(weighted_param)
           }
         }
 
@@ -97,7 +98,15 @@ export class SGD extends Optimizer {
             }
           } else {
             // velocity = momentum * velocity + gradient
-            if ('mulScalar' in buf && 'add' in buf) {
+            // Use in-place operations if available to eliminate temp tensor allocations
+            if ('mulScalarInplace' in buf && 'addInplace' in buf) {
+              // velocity *= momentum
+              ;(buf as any).mulScalarInplace(momentum)
+              // velocity += gradient
+              ;(buf as any).addInplace(d_p)
+              // buf is already updated in-place, no need to reassign
+            } else {
+              // Fallback: create new tensor (old behavior)
               const momentumTerm = (buf as any).mulScalar(momentum) as Tensor
               const newBuf = momentumTerm.add(d_p) as Tensor
               if (newBuf) {
@@ -128,6 +137,14 @@ export class SGD extends Optimizer {
             // This fallback won't work correctly - parameters won't update
             // The in-place method should always be available
           }
+        }
+
+        // Cleanup temporary tensors
+        if (weighted_param && 'free' in weighted_param) {
+          (weighted_param as any).free()
+        }
+        if (d_p !== grad && 'free' in d_p) {
+          (d_p as any).free()
         }
       }
     }
