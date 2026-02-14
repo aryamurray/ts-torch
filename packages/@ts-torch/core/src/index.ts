@@ -39,6 +39,13 @@ export type { DType as DTypeType, DTypeName, DTypeToTypedArray, DTypeElement } f
 export type { TensorType, MatMulShape, TransposeShape, DeviceType, SameDevice } from './types/tensor.js'
 
 // ===============================
+// Global Configuration
+// ===============================
+
+export { torch } from './config.js'
+export type { TorchConfig } from './config.js'
+
+// ===============================
 // Runtime DType Values
 // ===============================
 

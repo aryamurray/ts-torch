@@ -20,6 +20,7 @@ import { createRequire } from 'module'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve, join, dirname } from 'node:path'
 import { Logger } from '../logger.js'
+import { applyConfig } from '../config.js'
 
 /**
  * TypedArray type for shape buffers
@@ -43,6 +44,7 @@ export type NativeModule = {
   ts_cuda_device_count: () => number
   ts_set_num_threads: (numThreads: number) => void
   ts_get_num_threads: () => number
+  ts_manual_seed: (seed: number) => void
 
   // Tensor property queries
   ts_tensor_ndim: (tensor: unknown) => number
@@ -249,6 +251,29 @@ export type NativeModule = {
 
   // Fused add operations
   ts_tensor_add_relu: (a: unknown, b: unknown) => unknown
+
+  // Policy fused operations
+  ts_policy_forward: (
+    observations: Float32Array,
+    actions: Float32Array,
+    batchSize: number,
+    obsSize: number,
+    nActions: number,
+    piParams: unknown[],
+    vfParams: unknown[],
+    activationType: number,
+  ) => { actionLogProbs: unknown; entropy: unknown; values: unknown }
+  ts_backward_and_clip: (loss: unknown, parameters: unknown[], maxGradNorm: number) => number
+
+  // RL fused operations
+  ts_compute_gae: (
+    rewards: Float32Array, values: Float32Array, episodeStarts: Uint8Array,
+    lastValues: Float32Array, lastDones: Uint8Array,
+    bufferSize: number, nEnvs: number, gamma: number, gaeLambda: number,
+    advantagesOut: Float32Array, returnsOut: Float32Array,
+  ) => void
+  ts_clip_grad_norm_: (parameters: unknown[], maxNorm: number) => number
+  ts_normalize_inplace: (data: Float32Array) => void
 
   // Other operations not explicitly typed - use flexible signature
   [key: string]: (...args: any[]) => any
@@ -735,6 +760,7 @@ export function getLib(): NativeModule {
   try {
     const require_ = createRequire(import.meta.url)
     libInstance = require_(modulePath) as NativeModule
+    applyConfig(libInstance)
     return libInstance
   } catch (err) {
     const libtorchPath = findLibtorchPath()

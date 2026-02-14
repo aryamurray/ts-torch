@@ -25,6 +25,7 @@ compile_commands.json
 # IDE and editor files
 .vscode/
 .idea/
+.cache/
 *.swp
 *.swo
 *~

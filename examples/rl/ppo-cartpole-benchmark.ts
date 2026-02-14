@@ -25,15 +25,15 @@ const CONFIG = {
   // Training
   totalTimesteps: 200_000,  // Increased for harder unnormalized env
   nEnvs: 8,                 // More parallel envs for better sample efficiency
-  
+
   // Evaluation
   evalEpisodes: 100,
   evalIntervalTimesteps: 20_000,  // Evaluate every N timesteps
-  
+
   // Success criteria (OpenAI Gym standard)
   solvedThreshold: 475,  // Mean reward over 100 episodes
   maxEpisodeSteps: 500,
-  
+
   // Reference baselines
   randomBaseline: 22,     // Expected random policy performance
   sb3Reference: 500,      // SB3 PPO achieves ~500 when solved
@@ -235,9 +235,13 @@ async function main() {
     console.log(`  [${currentTimesteps.toLocaleString()}] ${evalStats.mean.toFixed(1)} ± ${evalStats.std.toFixed(1)} (${elapsed}s)`)
   }
   
-  const totalTime = ((Date.now() - t0) / 1000).toFixed(1)
+  const totalTime = (Date.now() - t0) / 1000
+  const stepsPerSec = CONFIG.totalTimesteps / totalTime
+  const rss = process.memoryUsage().rss / (1024 * 1024)
   console.log()
-  console.log(`Training completed in ${totalTime}s`)
+  console.log(`Training completed in ${totalTime.toFixed(1)}s`)
+  console.log(`Throughput: ${(stepsPerSec / 1000).toFixed(1)}k steps/s`)
+  console.log(`RSS: ${rss.toFixed(1)} MB`)
   console.log()
   
   // ==================== Final Evaluation ====================

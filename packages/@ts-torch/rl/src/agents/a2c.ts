@@ -23,7 +23,7 @@
  * ```
  */
 
-import { run, device as deviceModule, Logger } from '@ts-torch/core'
+import { run, device as deviceModule, Logger, int64 } from '@ts-torch/core'
 import type { DeviceType } from '@ts-torch/core'
 import type { DeviceContext } from '@ts-torch/core'
 import { OnPolicyAlgorithm } from './on-policy-base.js'
@@ -100,6 +100,10 @@ export class A2C extends OnPolicyAlgorithm {
    * Uses tensor operations for proper autograd.
    */
   protected _train(): void {
+    // Hoist invariants
+    const obsSize = this.policy.getObservationSize()
+    const isDiscrete = this.policy.isDiscreteAction()
+
     // Get all data as single batch (batchSize = null)
     for (const batch of this.rolloutBuffer.get(null)) {
       const {
@@ -109,20 +113,21 @@ export class A2C extends OnPolicyAlgorithm {
         returns,
       } = batch
 
-      // Optionally normalize advantages (on CPU)
-      let normalizedAdvantages = advantages
+      // In-place advantage normalization (mutates the reusable buffer directly)
       if (this.normalizeAdvantage && advantages.length > 1) {
-        const mean = advantages.reduce((a, b) => a + b, 0) / advantages.length
+        let mean = 0
+        for (let i = 0; i < advantages.length; i++) {
+          mean += advantages[i]!
+        }
+        mean /= advantages.length
         let variance = 0
         for (let i = 0; i < advantages.length; i++) {
-          variance += (advantages[i]! - mean) ** 2
+          const d = advantages[i]! - mean
+          variance += d * d
         }
-        variance /= advantages.length
-        const std = Math.sqrt(variance + 1e-8)
-
-        normalizedAdvantages = new Float32Array(advantages.length)
+        const invStd = 1 / Math.sqrt(variance / advantages.length + 1e-8)
         for (let i = 0; i < advantages.length; i++) {
-          normalizedAdvantages[i] = (advantages[i]! - mean) / std
+          advantages[i] = (advantages[i]! - mean) * invStd
         }
       }
 
@@ -134,8 +139,6 @@ export class A2C extends OnPolicyAlgorithm {
       // All tensor operations in single run() block
       run(() => {
         this.optimizer.zeroGrad()
-
-        const obsSize = this.policy.getObservationSize()
 
         // Create observation tensor [batch, obsSize]
         const obsTensor = cpu.tensor(observations, [batch.batchSize, obsSize] as const)
@@ -151,25 +154,20 @@ export class A2C extends OnPolicyAlgorithm {
         const logProbsAllTensor = dist.logProbsTensor()
 
         // Create tensors for advantages, returns
-        const advantagesTensor = cpu.tensor(normalizedAdvantages, [batch.batchSize] as const)
+        const advantagesTensor = cpu.tensor(advantages, [batch.batchSize] as const)
         const returnsTensor = cpu.tensor(returns, [batch.batchSize, 1] as const)
 
-        // Compute log_probs for taken actions
+        // Select log_probs for taken actions
         let logProbsTensor: any
 
-        if (this.policy.isDiscreteAction()) {
-          // Create one-hot encoding [batch, nActions]
-          const nActions = (dist as any).numActions
-          const oneHot = new Float32Array(batch.batchSize * nActions)
+        if (isDiscrete) {
+          // Use gather to select log-probs for taken actions: 1 FFI call vs one-hot → mul → sumDim (3 calls)
+          const actionIndices = new BigInt64Array(batch.batchSize)
           for (let b = 0; b < batch.batchSize; b++) {
-            const action = Math.round(actions[b]!)
-            oneHot[b * nActions + action] = 1.0
+            actionIndices[b] = BigInt(Math.round(actions[b]!))
           }
-          const oneHotTensor = cpu.tensor(oneHot, [batch.batchSize, nActions] as const)
-
-          // selected_log_probs = (log_probs_all * one_hot).sumDim(1)
-          const maskedLogProbs = (logProbsAllTensor as any).mul(oneHotTensor)
-          logProbsTensor = (maskedLogProbs as any).sumDim(1)
+          const indexTensor = cpu.tensor(actionIndices, [batch.batchSize, 1] as const, int64)
+          logProbsTensor = (logProbsAllTensor as any).gather(1, indexTensor).squeeze(1)
         } else {
           // For continuous: use logProbTensor
           logProbsTensor = (dist as any).logProbTensor(actions)
@@ -195,20 +193,7 @@ export class A2C extends OnPolicyAlgorithm {
 
         // Gradient clipping
         if (this.maxGradNorm > 0) {
-          // Simplified gradient clipping (log only for now)
-          const params = this.policy.parameters()
-          let totalNormSq = 0
-          for (const param of params) {
-            const grad = (param as any).grad
-            if (grad) {
-              const gradNormSq = ((grad as any).mul(grad) as any).sum().item?.() ?? 0
-              totalNormSq += gradNormSq
-            }
-          }
-          const totalNorm = Math.sqrt(totalNormSq)
-          if (totalNorm > this.maxGradNorm) {
-            Logger.debug(`Gradient norm ${totalNorm.toFixed(4)} exceeds max ${this.maxGradNorm}`)
-          }
+          this.clipGradients(this.maxGradNorm)
         }
 
         // Optimizer step
@@ -227,6 +212,34 @@ export class A2C extends OnPolicyAlgorithm {
         `Value Loss: ${valueLossValue.toFixed(4)}, ` +
         `Entropy: ${entropyValue.toFixed(4)}`,
       )
+    }
+  }
+
+  /**
+   * Clip gradients by global norm
+   */
+  private clipGradients(maxNorm: number): void {
+    const params = this.policy.parameters()
+    const grads: any[] = []
+    let totalNormSq = 0
+
+    for (const param of params) {
+      const grad = (param as any).grad
+      if (grad) {
+        grads.push(grad)
+        const gradNormSq = ((grad as any).mul(grad) as any).sum().item?.() ?? 0
+        totalNormSq += gradNormSq
+      }
+    }
+
+    const totalNorm = Math.sqrt(totalNormSq)
+
+    if (totalNorm > maxNorm) {
+      const clipCoef = maxNorm / (totalNorm + 1e-6)
+      for (const grad of grads) {
+        ;(grad as any).mulScalarInplace(clipCoef)
+      }
+      Logger.debug(`Gradient norm ${totalNorm.toFixed(4)} clipped to ${maxNorm}`)
     }
   }
 }

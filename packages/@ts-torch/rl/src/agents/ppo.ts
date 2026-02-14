@@ -25,7 +25,7 @@
  * ```
  */
 
-import { run, device as deviceModule, Logger } from '@ts-torch/core'
+import { run, device as deviceModule, Logger, int64, float32, getLib, Tensor } from '@ts-torch/core'
 import type { DeviceType } from '@ts-torch/core'
 import type { DeviceContext } from '@ts-torch/core'
 import { OnPolicyAlgorithm } from './on-policy-base.js'
@@ -36,6 +36,32 @@ import type { ActorCriticPolicyConfig } from '../policies/index.js'
 
 // CPU device for tensor creation
 const cpu = deviceModule.cpu()
+
+// ==================== Lazy Native Function Resolution ====================
+
+let _nativePolicyForward: Function | null | undefined
+function getNativePolicyForward(): Function | null {
+  if (_nativePolicyForward !== undefined) return _nativePolicyForward
+  try {
+    const fn = getLib().ts_policy_forward
+    _nativePolicyForward = typeof fn === 'function' ? fn : null
+  } catch {
+    _nativePolicyForward = null
+  }
+  return _nativePolicyForward
+}
+
+let _nativeBackwardAndClip: Function | null | undefined
+function getNativeBackwardAndClip(): Function | null {
+  if (_nativeBackwardAndClip !== undefined) return _nativeBackwardAndClip
+  try {
+    const fn = getLib().ts_backward_and_clip
+    _nativeBackwardAndClip = typeof fn === 'function' ? fn : null
+  } catch {
+    _nativeBackwardAndClip = null
+  }
+  return _nativeBackwardAndClip
+}
 
 // ==================== Types ====================
 
@@ -111,172 +137,307 @@ export class PPO extends OnPolicyAlgorithm {
   }
 
   /**
-   * Perform PPO update
-   *
-   * For each epoch:
-   * - Iterate over minibatches from rollout buffer
-   * - Compute clipped surrogate loss using tensor operations
-   * - Compute value loss using tensor MSE
-   * - Compute entropy bonus
-   * - Backprop and update
+   * Perform PPO update - dispatches to native or JS path
    */
   protected _train(): void {
     const clipRange = this.getCurrentClipRange()
+    const obsSize = this.policy.getObservationSize()
+    const isDiscrete = this.policy.isDiscreteAction()
+    const needsKl = this.targetKl !== null
+    const clipLow = 1 - clipRange
+    const clipHigh = 1 + clipRange
 
-    // Track metrics
+    const useNative = isDiscrete
+      && getNativePolicyForward() !== null
+      && getNativeBackwardAndClip() !== null
+
+    if (useNative) {
+      this._trainNative(obsSize, needsKl, clipLow, clipHigh)
+    } else {
+      this._trainJS(obsSize, isDiscrete, needsKl, clipLow, clipHigh)
+    }
+  }
+
+  /**
+   * Native PPO training path — uses fused C++ ops to reduce FFI overhead.
+   *
+   * ts_policy_forward: fuses piNet forward + vfNet forward + categorical dist (saves ~19 FFI calls)
+   * ts_backward_and_clip: fuses zero_grad + backward + grad clip (saves ~61 FFI calls)
+   */
+  private _trainNative(
+    obsSize: number,
+    needsKl: boolean,
+    clipLow: number,
+    clipHigh: number,
+  ): void {
+    const nativePolicyForward = getNativePolicyForward()!
+    const nativeBackwardAndClip = getNativeBackwardAndClip()!
+
+    // Extract parameter handles once before epoch loop
+    const piParams = this.policy.policyNetParameters()
+    const vfParams = this.policy.valueNetParameters()
+    const piHandles = piParams.map((p: any) => p.data._handle)
+    const vfHandles = vfParams.map((p: any) => p.data._handle)
+    const allHandles = [...piHandles, ...vfHandles]
+    const activationType = this.policy.getActivationType()
+    const nActions = this.policy.getNumActions()
+
     let totalPolicyLoss = 0
     let totalValueLoss = 0
     let totalEntropyLoss = 0
     let totalApproxKl = 0
     let nUpdates = 0
 
-    // Multiple epochs over the data
     for (let epoch = 0; epoch < this.nEpochs; epoch++) {
-      // Iterate over minibatches
       for (const batch of this.rolloutBuffer.get(this.batchSize)) {
-        const {
-          observations,
-          actions,
-          oldLogProbs,
-          advantages,
-          returns,
-        } = batch
+        const { observations, actions, oldLogProbs, advantages, returns } = batch
 
-        // Normalize advantages (done on CPU, creates normalized array)
-        let normalizedAdvantages = advantages
+        // In-place advantage normalization
         if (this.normalizeAdvantage && advantages.length > 1) {
-          const mean = advantages.reduce((a, b) => a + b, 0) / advantages.length
+          let mean = 0
+          for (let i = 0; i < advantages.length; i++) {
+            mean += advantages[i]!
+          }
+          mean /= advantages.length
           let variance = 0
           for (let i = 0; i < advantages.length; i++) {
-            variance += (advantages[i]! - mean) ** 2
+            const d = advantages[i]! - mean
+            variance += d * d
           }
-          variance /= advantages.length
-          const std = Math.sqrt(variance + 1e-8)
-
-          normalizedAdvantages = new Float32Array(advantages.length)
+          const invStd = 1 / Math.sqrt(variance / advantages.length + 1e-8)
           for (let i = 0; i < advantages.length; i++) {
-            normalizedAdvantages[i] = (advantages[i]! - mean) / std
+            advantages[i] = (advantages[i]! - mean) * invStd
           }
         }
 
-        // For tracking (computed after tensor ops)
         let policyLossValue = 0
         let valueLossValue = 0
         let entropyValue = 0
         let approxKlValue = 0
 
-        // All tensor operations in single run() block for autograd
         run(() => {
-          this.optimizer.zeroGrad()
+          // 1. Fused forward pass: piNet + vfNet + categorical distribution → 1 FFI call
+          const fwdResult = nativePolicyForward(
+            observations,
+            actions,
+            batch.batchSize,
+            obsSize,
+            nActions,
+            piHandles,
+            vfHandles,
+            activationType,
+          )
 
-          const obsSize = this.policy.getObservationSize()
+          // Wrap returned handles as Tensor objects for PPO loss computation
+          // Tensor constructor is @internal — use `as any` to bypass .d.ts restriction
+          const TensorCtor = Tensor as any
+          const actionLogProbs = new TensorCtor(fwdResult.actionLogProbs, [batch.batchSize] as const, float32)
+          const entropy = new TensorCtor(fwdResult.entropy, [] as const, float32)
+          const values = new TensorCtor(fwdResult.values, [batch.batchSize] as const, float32)
 
-          // Create observation tensor [batch, obsSize]
-          const obsTensor = cpu.tensor(observations, [batch.batchSize, obsSize] as const)
-
-          // Forward pass through policy networks
-          const policyOutput = this.policy.getPolicyOutput(obsTensor)
-          const valueTensor = this.policy.getValueOutput(obsTensor)
-
-          // Create distribution from policy output
-          const dist = this.policy.getDistribution(policyOutput, batch.batchSize)
-
-          // Get log probs tensor for actions [batch, nActions] or [batch, actionDim]
-          const logProbsAllTensor = dist.logProbsTensor()
-
-          // Create tensors for old log probs, advantages, returns
+          // 2. PPO loss computation in TS (~12 FFI calls — cheap)
           const oldLogProbsTensor = cpu.tensor(oldLogProbs, [batch.batchSize] as const)
-          const advantagesTensor = cpu.tensor(normalizedAdvantages, [batch.batchSize] as const)
+          const advantagesTensor = cpu.tensor(advantages, [batch.batchSize] as const)
           const returnsTensor = cpu.tensor(returns, [batch.batchSize, 1] as const)
 
-          // For discrete actions: select log_probs for taken actions using one-hot
-          // For continuous: compute log_prob directly
-          let logProbsTensor: any
-
-          if (this.policy.isDiscreteAction()) {
-            // Create one-hot encoding [batch, nActions]
-            const nActions = (dist as any).numActions
-            const oneHot = new Float32Array(batch.batchSize * nActions)
-            for (let b = 0; b < batch.batchSize; b++) {
-              const action = Math.round(actions[b]!)
-              oneHot[b * nActions + action] = 1.0
-            }
-            const oneHotTensor = cpu.tensor(oneHot, [batch.batchSize, nActions] as const)
-
-            // selected_log_probs = (log_probs_all * one_hot).sumDim(1)
-            const maskedLogProbs = (logProbsAllTensor as any).mul(oneHotTensor)
-            logProbsTensor = (maskedLogProbs as any).sumDim(1)
-          } else {
-            // For continuous: use logProbTensor which computes proper Gaussian log prob
-            logProbsTensor = (dist as any).logProbTensor(actions)
-          }
-
-          // Compute ratio = exp(log_prob_new - log_prob_old)
-          const logDiff = (logProbsTensor as any).sub(oldLogProbsTensor)
+          const logDiff = (actionLogProbs as any).sub(oldLogProbsTensor)
           const ratio = (logDiff as any).exp()
 
-          // Compute surrogate losses
-          // surr1 = ratio * advantage
           const surr1 = (ratio as any).mul(advantagesTensor)
-
-          // surr2 = clamp(ratio, 1-eps, 1+eps) * advantage
-          const clippedRatio = (ratio as any).clamp(1 - clipRange, 1 + clipRange)
+          const clippedRatio = (ratio as any).clamp(clipLow, clipHigh)
           const surr2 = (clippedRatio as any).mul(advantagesTensor)
 
-          // Policy loss = -min(surr1, surr2).mean()
           const minSurr = (surr1 as any).minimum(surr2)
           const policyLoss = (minSurr as any).mean().neg()
 
-          // Value loss = MSE(values, returns)
-          const valueLoss = (valueTensor as any).mseLoss(returnsTensor)
+          const valueLoss = (values as any).unsqueeze(1).mseLoss(returnsTensor)
 
-          // Entropy bonus (use distribution's mean entropy)
-          const entropyLoss = dist.meanEntropyTensor().neg()
+          const entropyLoss = (entropy as any).neg()
 
-          // Total loss = policy_loss + vf_coef * value_loss + ent_coef * entropy_loss
           const scaledValueLoss = (valueLoss as any).mulScalar(this.vfCoef)
           const scaledEntropyLoss = (entropyLoss as any).mulScalar(this.entCoef)
           const totalLoss = (policyLoss as any).add(scaledValueLoss).add(scaledEntropyLoss)
 
-          // Backward pass - gradients flow through the computational graph
-          ;(totalLoss as any).backward()
+          // 3. Fused backward + grad clip → 1 FFI call
+          nativeBackwardAndClip(
+            (totalLoss as any)._handle,
+            allHandles,
+            this.maxGradNorm,
+          )
 
-          // Gradient clipping
-          if (this.maxGradNorm > 0) {
-            this.clipGradients(this.maxGradNorm)
+          // 4. Invalidate JS gradient caches — ts_backward_and_clip populated gradients
+          //    in C++ without going through the JS .grad getter. The optimizer's step()
+          //    will call .grad which would return stale cached handles from a previous scope.
+          //    FRAGILE: reaches into Tensor._gradCache (private). If that field is renamed,
+          //    this will silently stop working and cause a use-after-free segfault.
+          for (const p of piParams) {
+            ;(p as any).data._gradCache = undefined
+          }
+          for (const p of vfParams) {
+            ;(p as any).data._gradCache = undefined
           }
 
-          // Optimizer step
+          // 5. Optimizer step (stays in TS)
           this.optimizer.step()
 
-          // Extract scalar values for logging
+          // Extract metrics
           policyLossValue = (policyLoss as any).item?.() ?? 0
           valueLossValue = (valueLoss as any).item?.() ?? 0
-          entropyValue = -((entropyLoss as any).item?.() ?? 0)
+          entropyValue = (entropy as any).item?.() ?? 0
 
-          // Compute approx KL for early stopping
-          // KL ≈ 0.5 * mean((log_prob_old - log_prob_new)^2)
-          const klDiff = (oldLogProbsTensor as any).sub(logProbsTensor)
-          const klSquared = (klDiff as any).mul(klDiff)
-          approxKlValue = ((klSquared as any).mean().item?.() ?? 0) * 0.5
+          if (needsKl) {
+            const klDiff = (oldLogProbsTensor as any).sub(actionLogProbs)
+            const klSquared = (klDiff as any).mul(klDiff)
+            approxKlValue = ((klSquared as any).mean().item?.() ?? 0) * 0.5
+          }
         })
 
-        // Track metrics
         totalPolicyLoss += policyLossValue
         totalValueLoss += valueLossValue
         totalEntropyLoss += entropyValue
         totalApproxKl += approxKlValue
         nUpdates++
 
-        // KL early stopping
-        if (this.targetKl !== null && approxKlValue > 1.5 * this.targetKl) {
+        if (needsKl && approxKlValue > 1.5 * this.targetKl!) {
           Logger.info(`Early stopping at epoch ${epoch} due to KL divergence: ${approxKlValue.toFixed(4)}`)
           return
         }
       }
     }
 
-    // Log metrics
+    if (nUpdates > 0) {
+      Logger.debug(
+        `PPO Update (native) - ` +
+        `Policy Loss: ${(totalPolicyLoss / nUpdates).toFixed(4)}, ` +
+        `Value Loss: ${(totalValueLoss / nUpdates).toFixed(4)}, ` +
+        `Entropy: ${(totalEntropyLoss / nUpdates).toFixed(4)}, ` +
+        `Approx KL: ${(totalApproxKl / nUpdates).toFixed(6)}`,
+      )
+    }
+  }
+
+  /**
+   * JS PPO training path — fallback when native ops unavailable (continuous actions, etc.)
+   */
+  private _trainJS(
+    obsSize: number,
+    isDiscrete: boolean,
+    needsKl: boolean,
+    clipLow: number,
+    clipHigh: number,
+  ): void {
+    let totalPolicyLoss = 0
+    let totalValueLoss = 0
+    let totalEntropyLoss = 0
+    let totalApproxKl = 0
+    let nUpdates = 0
+
+    for (let epoch = 0; epoch < this.nEpochs; epoch++) {
+      for (const batch of this.rolloutBuffer.get(this.batchSize)) {
+        const { observations, actions, oldLogProbs, advantages, returns } = batch
+
+        // In-place advantage normalization
+        if (this.normalizeAdvantage && advantages.length > 1) {
+          let mean = 0
+          for (let i = 0; i < advantages.length; i++) {
+            mean += advantages[i]!
+          }
+          mean /= advantages.length
+          let variance = 0
+          for (let i = 0; i < advantages.length; i++) {
+            const d = advantages[i]! - mean
+            variance += d * d
+          }
+          const invStd = 1 / Math.sqrt(variance / advantages.length + 1e-8)
+          for (let i = 0; i < advantages.length; i++) {
+            advantages[i] = (advantages[i]! - mean) * invStd
+          }
+        }
+
+        let policyLossValue = 0
+        let valueLossValue = 0
+        let entropyValue = 0
+        let approxKlValue = 0
+
+        run(() => {
+          this.optimizer.zeroGrad()
+
+          const obsTensor = cpu.tensor(observations, [batch.batchSize, obsSize] as const)
+
+          const policyOutput = this.policy.getPolicyOutput(obsTensor)
+          const valueTensor = this.policy.getValueOutput(obsTensor)
+
+          const dist = this.policy.getDistribution(policyOutput, batch.batchSize)
+
+          const logProbsAllTensor = dist.logProbsTensor()
+
+          const oldLogProbsTensor = cpu.tensor(oldLogProbs, [batch.batchSize] as const)
+          const advantagesTensor = cpu.tensor(advantages, [batch.batchSize] as const)
+          const returnsTensor = cpu.tensor(returns, [batch.batchSize, 1] as const)
+
+          let logProbsTensor: any
+
+          if (isDiscrete) {
+            const actionIndices = new BigInt64Array(batch.batchSize)
+            for (let b = 0; b < batch.batchSize; b++) {
+              actionIndices[b] = BigInt(Math.round(actions[b]!))
+            }
+            const indexTensor = cpu.tensor(actionIndices, [batch.batchSize, 1] as const, int64)
+            logProbsTensor = (logProbsAllTensor as any).gather(1, indexTensor).squeeze(1)
+          } else {
+            logProbsTensor = (dist as any).logProbTensor(actions)
+          }
+
+          const logDiff = (logProbsTensor as any).sub(oldLogProbsTensor)
+          const ratio = (logDiff as any).exp()
+
+          const surr1 = (ratio as any).mul(advantagesTensor)
+          const clippedRatio = (ratio as any).clamp(clipLow, clipHigh)
+          const surr2 = (clippedRatio as any).mul(advantagesTensor)
+
+          const minSurr = (surr1 as any).minimum(surr2)
+          const policyLoss = (minSurr as any).mean().neg()
+
+          const valueLoss = (valueTensor as any).mseLoss(returnsTensor)
+
+          const entropyLoss = dist.meanEntropyTensor().neg()
+
+          const scaledValueLoss = (valueLoss as any).mulScalar(this.vfCoef)
+          const scaledEntropyLoss = (entropyLoss as any).mulScalar(this.entCoef)
+          const totalLoss = (policyLoss as any).add(scaledValueLoss).add(scaledEntropyLoss)
+
+          ;(totalLoss as any).backward()
+
+          if (this.maxGradNorm > 0) {
+            this.clipGradients(this.maxGradNorm)
+          }
+
+          this.optimizer.step()
+
+          policyLossValue = (policyLoss as any).item?.() ?? 0
+          valueLossValue = (valueLoss as any).item?.() ?? 0
+          entropyValue = -((entropyLoss as any).item?.() ?? 0)
+
+          if (needsKl) {
+            const klDiff = (oldLogProbsTensor as any).sub(logProbsTensor)
+            const klSquared = (klDiff as any).mul(klDiff)
+            approxKlValue = ((klSquared as any).mean().item?.() ?? 0) * 0.5
+          }
+        })
+
+        totalPolicyLoss += policyLossValue
+        totalValueLoss += valueLossValue
+        totalEntropyLoss += entropyValue
+        totalApproxKl += approxKlValue
+        nUpdates++
+
+        if (needsKl && approxKlValue > 1.5 * this.targetKl!) {
+          Logger.info(`Early stopping at epoch ${epoch} due to KL divergence: ${approxKlValue.toFixed(4)}`)
+          return
+        }
+      }
+    }
+
     if (nUpdates > 0) {
       Logger.debug(
         `PPO Update - ` +
@@ -290,16 +451,14 @@ export class PPO extends OnPolicyAlgorithm {
 
   /**
    * Clip gradients by global norm
-   * 
+   *
    * Scales all parameter gradients so that the global norm <= maxNorm.
-   * Uses the formula: grad = grad * (maxNorm / totalNorm) when totalNorm > maxNorm
    */
   private clipGradients(maxNorm: number): void {
     const params = this.policy.parameters()
     const grads: any[] = []
     let totalNormSq = 0
 
-    // Compute total gradient norm and collect gradients
     for (const param of params) {
       const grad = (param as any).grad
       if (grad) {
@@ -311,16 +470,11 @@ export class PPO extends OnPolicyAlgorithm {
 
     const totalNorm = Math.sqrt(totalNormSq)
 
-    // Clip gradients if norm exceeds threshold
     if (totalNorm > maxNorm) {
       const clipCoef = maxNorm / (totalNorm + 1e-6)
-      
-      // Scale each gradient: grad = grad * clipCoef
-      // Using addScaledInplace: grad += (clipCoef - 1) * grad = clipCoef * grad
       for (const grad of grads) {
-        ;(grad as any).addScaledInplace(grad, clipCoef - 1)
+        ;(grad as any).mulScalarInplace(clipCoef)
       }
-      
       Logger.debug(`Gradient norm ${totalNorm.toFixed(4)} clipped to ${maxNorm}`)
     }
   }

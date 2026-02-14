@@ -36,7 +36,22 @@
 // ==================== Types ====================
 
 /**
+ * Result of a single environment step (scalar reward)
+ */
+export interface EnvStepResult {
+  /** Reward for this step (always scalar for single envs) */
+  reward: number
+  /** Whether the episode has ended */
+  done: boolean
+  /** Optional truncation flag (time limit reached, not terminal state) */
+  truncated?: boolean
+  /** Optional additional info for debugging/logging */
+  info?: Record<string, unknown>
+}
+
+/**
  * Result of a single environment step
+ * @deprecated Use EnvStepResult for single-env steps (scalar reward)
  */
 export interface StepResult {
   /**

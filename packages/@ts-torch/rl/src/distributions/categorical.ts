@@ -33,6 +33,8 @@ export class CategoricalDistribution implements Distribution<readonly [number]> 
   private readonly nActions: number
   private probs_: Float32Array | null = null
   private logProbs_: Float32Array | null = null
+  private logProbsTensor_: Tensor<readonly [number, number]> | null = null
+  private probsTensor_: Tensor<readonly [number, number]> | null = null
 
   /**
    * Create a categorical distribution from logits
@@ -185,21 +187,29 @@ export class CategoricalDistribution implements Distribution<readonly [number]> 
   // ==================== Tensor Methods (for training with autograd) ====================
 
   /**
-   * Get log probabilities tensor - maintains computational graph
-   * 
+   * Get log probabilities tensor - maintains computational graph.
+   * Result is cached: repeated calls return the same tensor (single softmax).
+   *
    * @returns Log softmax tensor [batch, nActions] connected to logits
    */
   logProbsTensor(): Tensor<readonly [number, number]> {
-    return this.logits_.logSoftmax(1)
+    if (this.logProbsTensor_ === null) {
+      this.logProbsTensor_ = this.logits_.logSoftmax(1)
+    }
+    return this.logProbsTensor_
   }
 
   /**
-   * Get probabilities tensor - maintains computational graph
-   * 
+   * Get probabilities tensor - maintains computational graph.
+   * Result is cached: repeated calls return the same tensor (single softmax).
+   *
    * @returns Softmax tensor [batch, nActions] connected to logits
    */
   probsTensor(): Tensor<readonly [number, number]> {
-    return this.logits_.softmax(1)
+    if (this.probsTensor_ === null) {
+      this.probsTensor_ = this.logits_.softmax(1)
+    }
+    return this.probsTensor_
   }
 
   /**

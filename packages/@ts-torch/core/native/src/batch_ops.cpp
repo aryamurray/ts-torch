@@ -13,6 +13,13 @@
  */
 
 #include "ts_torch/internal.h"
+
+// For dlsym (Unix) / GetProcAddress (Windows) to resolve BLAS thread APIs at runtime
+#if defined(_WIN32)
+#  include <windows.h>
+#else
+#  include <dlfcn.h>
+#endif
 #include <vector>
 #include <memory>
 
@@ -364,9 +371,40 @@ void ts_set_num_threads(int num_threads) {
     if (num_threads <= 0) {
         // Auto mode - let LibTorch decide
         at::set_num_threads(at::get_num_threads());
-    } else {
-        at::set_num_threads(num_threads);
+        return;
     }
+
+    // ATen parallel_for + OpenMP (at::set_num_threads calls omp_set_num_threads internally)
+    at::set_num_threads(num_threads);
+
+    // MKL and OpenBLAS have their own thread pools separate from OpenMP.
+    // Resolve their runtime APIs via dlsym to avoid hard link dependencies.
+#if !defined(_WIN32)
+    // mkl_set_num_threads(int) — Intel MKL
+    using MklSetThreads = void(*)(int);
+    static auto mkl_set = reinterpret_cast<MklSetThreads>(dlsym(RTLD_DEFAULT, "MKL_Set_Num_Threads"));
+    if (mkl_set) mkl_set(num_threads);
+
+    // openblas_set_num_threads(int) — OpenBLAS
+    using BlasSetThreads = void(*)(int);
+    static auto blas_set = reinterpret_cast<BlasSetThreads>(dlsym(RTLD_DEFAULT, "openblas_set_num_threads"));
+    if (blas_set) blas_set(num_threads);
+#else
+    // Windows: GetProcAddress against loaded modules
+    HMODULE mkl_mod = GetModuleHandleA("mkl_rt.dll");
+    if (!mkl_mod) mkl_mod = GetModuleHandleA("mkl_rt.2.dll");
+    if (mkl_mod) {
+        using MklSetThreads = void(*)(int);
+        auto mkl_set = reinterpret_cast<MklSetThreads>(GetProcAddress(mkl_mod, "MKL_Set_Num_Threads"));
+        if (mkl_set) mkl_set(num_threads);
+    }
+    HMODULE blas_mod = GetModuleHandleA("libopenblas.dll");
+    if (blas_mod) {
+        using BlasSetThreads = void(*)(int);
+        auto blas_set = reinterpret_cast<BlasSetThreads>(GetProcAddress(blas_mod, "openblas_set_num_threads"));
+        if (blas_set) blas_set(num_threads);
+    }
+#endif
 }
 
 int ts_get_num_threads(void) {
