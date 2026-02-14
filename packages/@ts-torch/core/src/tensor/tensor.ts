@@ -301,7 +301,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_clone(this._handle, err))
+    const handle = lib.ts_tensor_clone(this._handle)
 
     checkNull(handle, 'Failed to clone tensor')
 
@@ -2122,7 +2122,6 @@ mean(): Tensor<readonly [], D> {
       lib.ts_tensor_layer_norm(
         this._handle,
         shapeArray,
-        normalizedShape.length,
         weight?._handle ?? null,
         bias?._handle ?? null,
         eps,
@@ -2326,9 +2325,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_narrow(this._handle, BigInt(dim), BigInt(start), BigInt(length), err),
-    )
+    const handle = lib.ts_tensor_narrow(this._handle, dim, start, length)
 
     checkNull(handle, 'Failed to narrow tensor')
 
@@ -2364,9 +2361,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_triu(this._handle, BigInt(diagonal), err),
-    )
+    const handle = lib.ts_tensor_triu(this._handle, diagonal)
 
     checkNull(handle, 'Failed to compute triu')
 

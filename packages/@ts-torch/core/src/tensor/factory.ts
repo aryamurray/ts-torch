@@ -10,7 +10,7 @@ import type { Shape } from '../types/shape.js'
 import type { DType } from '../types/dtype.js'
 import { DType as DTypeConstants } from '../types/dtype.js'
 import type { DeviceType } from '../types/tensor.js'
-import { getLib, koffi } from '../ffi/index.js'
+import { getLib } from '../ffi/index.js'
 import { withError, checkNull } from '../ffi/error.js'
 import { shapeCache } from '../ffi/buffer-pool.js'
 import {
@@ -596,19 +596,11 @@ export function cat<D extends DType<string> = DType<'float32'>, Dev extends Devi
 
   const lib = getLib()
 
-  // Get raw pointer addresses from tensor handles using koffi.address()
-  // Pack them into a BigUint64Array buffer for passing to FFI
-  const handleAddresses = new BigUint64Array(tensors.length)
-  for (let i = 0; i < tensors.length; i++) {
-    const handle = tensors[i]!.handle
-    // koffi.address() returns the raw address of an opaque pointer as BigInt
-    handleAddresses[i] = koffi.address(handle)
-  }
+  // Pass tensor handles as a JS array — Napi wrapper extracts pointers
+  const handles = tensors.map((t) => t.handle)
 
-  // Call native ts_tensor_cat
-  const handle = withError((err) =>
-    lib.ts_tensor_cat(handleAddresses.buffer, tensors.length, dim, err),
-  )
+  // Call native ts_tensor_cat(handles[], dim)
+  const handle = lib.ts_tensor_cat(handles, dim)
 
   checkNull(handle, 'Failed to concatenate tensors')
 

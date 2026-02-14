@@ -2,19 +2,17 @@
  * Napi native library loader for ts-torch
  * Loads pre-compiled Node.js addon (.node module)
  *
- * This replaced the Koffi loader with a much simpler architecture:
- * - No dynamic symbol binding (all symbols bound at compile time)
- * - No FFI overhead per operation
- * - Automatic memory management via Napi finalizers
+ * Architecture:
+ * - All symbols bound at compile time (no dynamic FFI)
+ * - No per-operation FFI overhead
+ * - Memory managed by scope system (run() / escape()), not GC finalizers
  *
- * The .node module is built by cmake-js and contains all 131 C functions
+ * The .node module is built by cmake-js and contains all C functions
  * directly callable from JavaScript with minimal overhead.
  *
  * IMPORTANT - Napi TypedArray vs ArrayBuffer convention:
- * - Koffi accepted raw ArrayBuffer objects (.buffer property)
  * - Napi expects TypedArray objects directly (Float32Array, BigInt64Array, etc.)
  * - The underlying ArrayBuffer and ByteOffset are extracted automatically by Napi
- * - When creating Napi wrappers, always accept TypedArray, NOT ArrayBuffer.buffer
  * - This convention applies to all buffer parameters (shape, data, weights, etc.)
  */
 
@@ -31,62 +29,29 @@ type ShapeBuffer = any
 
 /**
  * Type definition for the loaded Napi module
- * Maps to C function names - all exported from napi_bindings.cpp
+ * Maps to C function names exported from napi_bindings.cpp
  *
- * Note: We pass TypedArrays directly to Napi functions.
- * Napi extracts the underlying ArrayBuffer and ByteOffset automatically.
+ * Napi convention:
+ * - Shape buffers are TypedArrays (ndim extracted automatically via ElementLength)
+ * - Errors are thrown as JS exceptions (no errBuffer parameter)
+ * - Tensor handles are opaque Napi::External<void> objects
  */
-export type KoffiLibrary = {
+export type NativeModule = {
   // Utility functions
   ts_version: () => string
 
-  // Tensor factories - take (shapeBuffer, shapeLength, dtype, device, deviceIndex, errBuffer)
-  ts_tensor_zeros: (
-    shapeBuffer: ShapeBuffer,
-    shapeLength: number,
-    dtype: number,
-    device: number,
-    deviceIndex: number,
-    errBuffer: ArrayBufferLike
-  ) => unknown
-  ts_tensor_ones: (
-    shapeBuffer: ShapeBuffer,
-    shapeLength: number,
-    dtype: number,
-    device: number,
-    deviceIndex: number,
-    errBuffer: ArrayBufferLike
-  ) => unknown
-  ts_tensor_randn: (
-    shapeBuffer: ShapeBuffer,
-    shapeLength: number,
-    dtype: number,
-    device: number,
-    deviceIndex: number,
-    errBuffer: ArrayBufferLike
-  ) => unknown
-  ts_tensor_rand: (
-    shapeBuffer: ShapeBuffer,
-    shapeLength: number,
-    dtype: number,
-    device: number,
-    deviceIndex: number,
-    errBuffer: ArrayBufferLike
-  ) => unknown
-  ts_tensor_empty: (
-    shapeBuffer: ShapeBuffer,
-    shapeLength: number,
-    dtype: number,
-    device: number,
-    deviceIndex: number,
-    errBuffer: ArrayBufferLike
-  ) => unknown
+  // Tensor factories - take (shapeBuffer, dtype, device, deviceIndex)
+  ts_tensor_zeros: (shapeBuffer: ShapeBuffer, dtype: number, device: number, deviceIndex: number) => unknown
+  ts_tensor_ones: (shapeBuffer: ShapeBuffer, dtype: number, device: number, deviceIndex: number) => unknown
+  ts_tensor_randn: (shapeBuffer: ShapeBuffer, dtype: number, device: number, deviceIndex: number) => unknown
+  ts_tensor_rand: (shapeBuffer: ShapeBuffer, dtype: number, device: number, deviceIndex: number) => unknown
+  ts_tensor_empty: (shapeBuffer: ShapeBuffer, dtype: number, device: number, deviceIndex: number) => unknown
   ts_tensor_from_buffer: (
-    dataBuffer: TypedArray,
+    dataBuffer: Float32Array | Float64Array | Int32Array | BigInt64Array | Uint8Array,
     shapeBuffer: ShapeBuffer,
     dtype: number,
     device: number,
-    deviceIndex: number
+    deviceIndex: number,
   ) => unknown
 
   // Tensor properties and manipulation
@@ -99,54 +64,52 @@ export type KoffiLibrary = {
   ts_tensor_zero_grad: (tensor: unknown) => void
   ts_tensor_delete: (tensor: unknown) => void
 
-  // Binary operations
-  ts_tensor_add: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_sub: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_mul: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_div: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_matmul: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_minimum: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_maximum: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
+  // Binary operations (Napi throws on error, no errBuffer)
+  ts_tensor_add: (a: unknown, b: unknown) => unknown
+  ts_tensor_sub: (a: unknown, b: unknown) => unknown
+  ts_tensor_mul: (a: unknown, b: unknown) => unknown
+  ts_tensor_div: (a: unknown, b: unknown) => unknown
+  ts_tensor_matmul: (a: unknown, b: unknown) => unknown
+  ts_tensor_minimum: (a: unknown, b: unknown) => unknown
+  ts_tensor_maximum: (a: unknown, b: unknown) => unknown
 
   // Unary operations
-  ts_tensor_relu: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_sigmoid: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_tanh: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_exp: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_log: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_sqrt: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_neg: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_softmax: (tensor: unknown, dim: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_log_softmax: (tensor: unknown, dim: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_transpose: (tensor: unknown, dim0: number, dim1: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_reshape: (tensor: unknown, shapeBuffer: ArrayBufferLike, shapeLength: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_clamp: (tensor: unknown, min: number, max: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_clamp_min: (tensor: unknown, min: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_clamp_max: (tensor: unknown, max: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_relu: (tensor: unknown) => unknown
+  ts_tensor_sigmoid: (tensor: unknown) => unknown
+  ts_tensor_tanh: (tensor: unknown) => unknown
+  ts_tensor_exp: (tensor: unknown) => unknown
+  ts_tensor_log: (tensor: unknown) => unknown
+  ts_tensor_sqrt: (tensor: unknown) => unknown
+  ts_tensor_neg: (tensor: unknown) => unknown
+  ts_tensor_softmax: (tensor: unknown, dim: number) => unknown
+  ts_tensor_log_softmax: (tensor: unknown, dim: number) => unknown
+  ts_tensor_transpose: (tensor: unknown, dim0: number, dim1: number) => unknown
+  ts_tensor_reshape: (tensor: unknown, shapeBuffer: ShapeBuffer) => unknown
+  ts_tensor_clamp: (tensor: unknown, min: number, max: number) => unknown
 
   // Reduction operations
-  ts_tensor_sum: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_mean: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_sum_dim: (tensor: unknown, dim: bigint, keepdim: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_mean_dim: (tensor: unknown, dim: bigint, keepdim: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_sum: (tensor: unknown) => unknown
+  ts_tensor_mean: (tensor: unknown) => unknown
+  ts_tensor_sum_dim: (tensor: unknown, dim: number, keepdim: boolean) => unknown
+  ts_tensor_mean_dim: (tensor: unknown, dim: number, keepdim: boolean) => unknown
 
   // Scalar operations
-  ts_tensor_add_scalar: (tensor: unknown, scalar: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_sub_scalar: (tensor: unknown, scalar: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_mul_scalar: (tensor: unknown, scalar: number, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_div_scalar: (tensor: unknown, scalar: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_add_scalar: (tensor: unknown, scalar: number) => unknown
+  ts_tensor_sub_scalar: (tensor: unknown, scalar: number) => unknown
+  ts_tensor_mul_scalar: (tensor: unknown, scalar: number) => unknown
+  ts_tensor_div_scalar: (tensor: unknown, scalar: number) => unknown
 
   // Out variants (write result to existing tensor)
-  ts_tensor_add_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
-  ts_tensor_sub_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
-  ts_tensor_mul_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
-  ts_tensor_div_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
-  ts_tensor_matmul_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
+  ts_tensor_add_out: (a: unknown, b: unknown, out: unknown) => void
+  ts_tensor_sub_out: (a: unknown, b: unknown, out: unknown) => void
+  ts_tensor_mul_out: (a: unknown, b: unknown, out: unknown) => void
+  ts_tensor_div_out: (a: unknown, b: unknown, out: unknown) => void
+  ts_tensor_matmul_out: (a: unknown, b: unknown, out: unknown) => void
 
-  // Buffer operations (Napi wrapper extracts buffer size automatically)
+  // Buffer operations
   ts_tensor_copy_to_buffer: (tensor: unknown, buffer: ArrayBufferLike) => void
 
-  // Autograd operations (Napi wrapper handles errors internally)
+  // Autograd operations
   ts_tensor_backward: (tensor: unknown) => void
 
   // Other operations not explicitly typed - use flexible signature
@@ -166,7 +129,7 @@ interface BuildMeta {
 /**
  * Cached module instance
  */
-let libInstance: KoffiLibrary | null = null
+let libInstance: NativeModule | null = null
 
 /**
  * Platform-specific library information
@@ -621,7 +584,7 @@ function setupDllSearchPath(): void {
  * @returns Module instance with typed bindings
  * @throws Error if module cannot be loaded
  */
-export function getLib(): KoffiLibrary {
+export function getLib(): NativeModule {
   if (libInstance !== null) {
     return libInstance
   }
@@ -633,7 +596,7 @@ export function getLib(): KoffiLibrary {
 
   try {
     const require_ = createRequire(import.meta.url)
-    libInstance = require_(modulePath) as KoffiLibrary
+    libInstance = require_(modulePath) as NativeModule
     return libInstance
   } catch (err) {
     const libtorchPath = findLibtorchPath()

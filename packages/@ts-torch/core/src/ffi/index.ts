@@ -1,29 +1,22 @@
 /**
  * FFI module for ts-torch
- * Provides low-level bindings to the native C library
+ * Provides low-level bindings to the native C library via Node-API
  *
  * @module @ts-torch/core/ffi
  *
  * @example
  * ```ts
- * import { getLib, createError, checkError, TensorHandle } from '@ts-torch/core/ffi';
+ * import { getLib } from '@ts-torch/core/ffi';
  *
  * const lib = getLib();
  * const shape = new BigInt64Array([2, 3]);
  *
- * const handle = withError(err => lib.ts_tensor_zeros(
- *   shape.buffer,
- *   2, // ndim
- *   0, // dtype (f32)
- *   0, // device
- *   0, // device_index
- *   err
- * ));
+ * const handle = lib.ts_tensor_zeros(shape, 0, 0, 0); // (shape, dtype, device, deviceIndex)
  * ```
  */
 
 // Re-export library loader
-export { getLib, closeLib, getLibraryPath, getPlatformPackage, type KoffiLibrary } from './loader.js'
+export { getLib, closeLib, getLibraryPath, getPlatformPackage, type NativeModule } from './loader.js'
 
 // Re-export error handling
 export {

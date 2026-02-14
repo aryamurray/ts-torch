@@ -47,18 +47,17 @@ static ts_Scope* GetScopeHandle(const Napi::Value& val) {
 }
 
 /**
- * Wrap tensor handle in Napi::External with automatic cleanup finalizer
+ * Wrap tensor handle in Napi::External
+ *
+ * No GC finalizer — tensor lifetime is managed by the scope system
+ * (ts_scope_begin / ts_scope_end) and explicit ts_tensor_delete calls.
+ * Adding a GC finalizer would cause double-free with scope cleanup.
  */
 Napi::Value WrapTensorHandle(Napi::Env env, ts_Tensor* handle) {
   if (!handle) {
     return env.Null();
   }
-  return Napi::External<void>::New(env, handle,
-    [](Napi::Env, void* ptr) {
-      if (ptr) {
-        ts_tensor_delete(static_cast<ts_Tensor*>(ptr));
-      }
-    });
+  return Napi::External<void>::New(env, handle);
 }
 
 /**
@@ -81,7 +80,6 @@ bool CheckAndThrowError(Napi::Env env, const ts_Error& err,
     msg += ": ";
     msg += err.message;
     throw Napi::Error::New(env, msg);
-    return true;
   }
   return false;
 }
@@ -173,6 +171,30 @@ Napi::Value NapiTensorRandn(const Napi::CallbackInfo& info) {
   ts_Tensor* result = ts_tensor_randn(shape, ndim, dtype, device, device_index, &err);
 
   if (CheckAndThrowError(env, err, "ts_tensor_randn")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorRand(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 4) {
+    throw Napi::Error::New(env, "ts_tensor_rand requires 4 arguments");
+  }
+
+  Napi::TypedArray shape_arr = info[0].As<Napi::TypedArray>();
+  int64_t* shape = static_cast<int64_t*>(shape_arr.ArrayBuffer().Data()) + shape_arr.ByteOffset() / sizeof(int64_t);
+  size_t ndim = shape_arr.ElementLength();
+
+  ts_DType dtype = static_cast<ts_DType>(info[1].As<Napi::Number>().Int32Value());
+  ts_DeviceType device = static_cast<ts_DeviceType>(info[2].As<Napi::Number>().Int32Value());
+  int device_index = info[3].As<Napi::Number>().Int32Value();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_rand(shape, ndim, dtype, device, device_index, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_rand")) {
     return env.Null();
   }
 
@@ -319,12 +341,11 @@ Napi::Value NapiTensorBackward(const Napi::CallbackInfo& info) {
     throw Napi::Error::New(env, "Invalid tensor handle");
   }
 
-  ts_Error error;
-  error.code = 0;
+  ts_Error error = {0, ""};
   ts_tensor_backward(tensor, &error);
 
-  if (error.code != 0) {
-    throw Napi::Error::New(env, error.message);
+  if (CheckAndThrowError(env, error, "ts_tensor_backward")) {
+    return env.Undefined();
   }
 
   return env.Undefined();
@@ -341,12 +362,11 @@ Napi::Value NapiTensorGrad(const Napi::CallbackInfo& info) {
     throw Napi::Error::New(env, "Invalid tensor handle");
   }
 
-  ts_Error error;
-  error.code = 0;
+  ts_Error error = {0, ""};
   ts_Tensor* grad = ts_tensor_grad(tensor, &error);
 
-  if (error.code != 0) {
-    throw Napi::Error::New(env, error.message);
+  if (CheckAndThrowError(env, error, "ts_tensor_grad")) {
+    return env.Null();
   }
 
   return WrapTensorHandle(env, grad);
@@ -457,6 +477,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     Napi::Function::New(env, NapiTensorOnes));
   exports.Set(Napi::String::New(env, "ts_tensor_randn"),
     Napi::Function::New(env, NapiTensorRandn));
+  exports.Set(Napi::String::New(env, "ts_tensor_rand"),
+    Napi::Function::New(env, NapiTensorRand));
   exports.Set(Napi::String::New(env, "ts_tensor_empty"),
     Napi::Function::New(env, NapiTensorEmpty));
   exports.Set(Napi::String::New(env, "ts_tensor_from_buffer"),

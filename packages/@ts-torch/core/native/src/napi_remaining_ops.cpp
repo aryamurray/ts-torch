@@ -574,15 +574,17 @@ Napi::Value NapiTensorCopyFromBuffer(const Napi::CallbackInfo& info) {
   size_t src_size = buf.ByteLength();
 
   try {
-    // Ensure tensor is contiguous and on CPU for memcpy
-    auto cpu_tensor = tensor->tensor.contiguous();
-    size_t tensor_bytes = cpu_tensor.numel() * cpu_tensor.element_size();
+    size_t tensor_bytes = tensor->tensor.numel() * tensor->tensor.element_size();
 
     if (src_size < tensor_bytes) {
       throw Napi::Error::New(env, "Source buffer too small for tensor");
     }
 
-    std::memcpy(cpu_tensor.data_ptr(), src, tensor_bytes);
+    if (!tensor->tensor.is_contiguous()) {
+      throw Napi::Error::New(env, "copy_from_buffer: tensor must be contiguous");
+    }
+
+    std::memcpy(tensor->tensor.data_ptr(), src, tensor_bytes);
   } catch (const Napi::Error&) {
     throw;  // re-throw Napi errors as-is
   } catch (const std::exception& e) {
@@ -590,6 +592,116 @@ Napi::Value NapiTensorCopyFromBuffer(const Napi::CallbackInfo& info) {
   }
 
   return env.Undefined();
+}
+
+// ============================================================================
+// Tensor Clone / Cat / Narrow / Triu
+// ============================================================================
+
+Napi::Value NapiTensorClone(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1) {
+    throw Napi::Error::New(env, "clone requires 1 argument");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_clone(tensor, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_clone")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorCat(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 2) {
+    throw Napi::Error::New(env, "cat requires 2 arguments (tensors array, dim)");
+  }
+
+  // First arg is a JS array of tensor handles (External<void>)
+  if (!info[0].IsArray()) {
+    throw Napi::Error::New(env, "cat: first argument must be an array of tensor handles");
+  }
+  Napi::Array arr = info[0].As<Napi::Array>();
+  size_t num_tensors = arr.Length();
+  if (num_tensors == 0) {
+    throw Napi::Error::New(env, "cat: tensor array must not be empty");
+  }
+
+  std::vector<ts_Tensor*> handles(num_tensors);
+  for (size_t i = 0; i < num_tensors; i++) {
+    ts_Tensor* t = GetTensorHandle(arr.Get(static_cast<uint32_t>(i)));
+    if (!t) {
+      throw Napi::Error::New(env, "cat: invalid tensor handle at index " + std::to_string(i));
+    }
+    handles[i] = t;
+  }
+
+  int64_t dim = info[1].As<Napi::Number>().Int64Value();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_cat(handles.data(), num_tensors, dim, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_cat")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorNarrow(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 4) {
+    throw Napi::Error::New(env, "narrow requires 4 arguments (tensor, dim, start, length)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  int64_t dim = info[1].As<Napi::Number>().Int64Value();
+  int64_t start = info[2].As<Napi::Number>().Int64Value();
+  int64_t length = info[3].As<Napi::Number>().Int64Value();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_narrow(tensor, dim, start, length, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_narrow")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorTriu(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 2) {
+    throw Napi::Error::New(env, "triu requires 2 arguments (tensor, diagonal)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  int64_t diagonal = info[1].As<Napi::Number>().Int64Value();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_triu(tensor, diagonal, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_triu")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
 }
 
 // ============================================================================
@@ -676,4 +788,14 @@ void InitRemainingOps(Napi::Env env, Napi::Object exports) {
     Napi::Function::New(env, NapiTensorCopyToBuffer));
   exports.Set("ts_tensor_copy_from_buffer",
     Napi::Function::New(env, NapiTensorCopyFromBuffer));
+
+  // Clone / Cat / Narrow / Triu
+  exports.Set("ts_tensor_clone",
+    Napi::Function::New(env, NapiTensorClone));
+  exports.Set("ts_tensor_cat",
+    Napi::Function::New(env, NapiTensorCat));
+  exports.Set("ts_tensor_narrow",
+    Napi::Function::New(env, NapiTensorNarrow));
+  exports.Set("ts_tensor_triu",
+    Napi::Function::New(env, NapiTensorTriu));
 }

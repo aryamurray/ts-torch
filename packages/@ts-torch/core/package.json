@@ -42,11 +42,9 @@
   "dependencies": {
     "@ts-torch-platform/loader": "^0.1.0"
   },
-  "optionalDependencies": {
-    "node-addon-api": "^8.0.0",
-    "cmake-js": "^7.3.0"
-  },
   "devDependencies": {
+    "cmake-js": "^7.3.0",
+    "node-addon-api": "^8.0.0",
     "typescript": "5.9.2",
     "vitest": "^4.0.16"
   },

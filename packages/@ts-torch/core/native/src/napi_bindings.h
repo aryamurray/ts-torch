@@ -30,18 +30,17 @@ static inline ts_Scope* GetScopeHandle(const Napi::Value& val) {
 }
 
 /**
- * Wrap tensor handle in Napi::External with automatic cleanup finalizer
+ * Wrap tensor handle in Napi::External
+ *
+ * No GC finalizer — tensor lifetime is managed by the scope system
+ * (ts_scope_begin / ts_scope_end) and explicit ts_tensor_delete calls.
+ * Adding a GC finalizer would cause double-free with scope cleanup.
  */
 static inline Napi::Value WrapTensorHandle(Napi::Env env, ts_Tensor* handle) {
   if (!handle) {
     return env.Null();
   }
-  return Napi::External<void>::New(env, handle,
-    [](Napi::Env, void* ptr) {
-      if (ptr) {
-        ts_tensor_delete(static_cast<ts_Tensor*>(ptr));
-      }
-    });
+  return Napi::External<void>::New(env, handle);
 }
 
 /**
@@ -64,7 +63,6 @@ static inline bool CheckAndThrowError(Napi::Env env, const ts_Error& err,
     msg += ": ";
     msg += err.message;
     throw Napi::Error::New(env, msg);
-    return true;
   }
   return false;
 }
