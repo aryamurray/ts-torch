@@ -158,7 +158,6 @@ describe('Realistic ML Workloads', () => {
   })
 
   // Conv-like workload (flattened)
-  const _convInput = randn([16, 3, 32, 32] as const)  // batch=16, 3 channels, 32x32
   bench('4D tensor creation [16, 3, 32, 32]', () => {
     randn([16, 3, 32, 32] as const)
   })

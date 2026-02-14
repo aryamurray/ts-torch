@@ -105,7 +105,7 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
 
     try {
       const handle = withError((err) =>
-        lib.ts_tensor_zeros(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+        lib.ts_tensor_zeros(shapeBuffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
       )
 
       checkNull(handle, `Failed to create zeros tensor on ${this}`)
@@ -137,7 +137,7 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
 
     try {
       const handle = withError((err) =>
-        lib.ts_tensor_ones(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+        lib.ts_tensor_ones(shapeBuffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
       )
 
       checkNull(handle, `Failed to create ones tensor on ${this}`)
@@ -169,7 +169,7 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
 
     try {
       const handle = withError((err) =>
-        lib.ts_tensor_randn(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+        lib.ts_tensor_randn(shapeBuffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
       )
 
       checkNull(handle, `Failed to create randn tensor on ${this}`)
@@ -201,7 +201,7 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
 
     try {
       const handle = withError((err) =>
-        lib.ts_tensor_rand(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+        lib.ts_tensor_rand(shapeBuffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
       )
 
       checkNull(handle, `Failed to create rand tensor on ${this}`)
@@ -233,7 +233,7 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
 
     try {
       const handle = withError((err) =>
-        lib.ts_tensor_empty(shapeBuffer.buffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
+        lib.ts_tensor_empty(shapeBuffer, shape.length, dtype.value, this.deviceTypeValue, this.index, err),
       )
 
       checkNull(handle, `Failed to create empty tensor on ${this}`)
@@ -316,7 +316,7 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
       const handle = withError((err) =>
         lib.ts_tensor_from_buffer(
           typedData.buffer,
-          shapeBuffer.buffer,
+          shapeBuffer,
           shape.length,
           dtype.value,
           this.deviceTypeValue,

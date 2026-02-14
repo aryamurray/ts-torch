@@ -690,10 +690,10 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     validateReshape(this.shape, shape)
     const lib = getLib()
 
-    // Convert shape to BigInt64Array for FFI (koffi accepts ArrayBuffer directly)
+    // Convert shape to BigInt64Array for FFI
     const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
 
-    const handle = withError((err) => lib.ts_tensor_reshape(this._handle, shapeArray.buffer, shape.length, err))
+    const handle = withError((err) => lib.ts_tensor_reshape(this._handle, shapeArray, shape.length, err))
 
     checkNull(handle, 'Failed to reshape tensor')
 
@@ -2121,7 +2121,7 @@ mean(): Tensor<readonly [], D> {
     const handle = withError((err) =>
       lib.ts_tensor_layer_norm(
         this._handle,
-        shapeArray.buffer,
+        shapeArray,
         normalizedShape.length,
         weight?._handle ?? null,
         bias?._handle ?? null,

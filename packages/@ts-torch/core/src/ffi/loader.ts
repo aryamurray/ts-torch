@@ -17,30 +17,134 @@ import { resolve, join, dirname } from 'node:path'
 import { Logger } from '../logger.js'
 
 /**
+ * TypedArray type for shape buffers
+ * Accept any typed array or buffer-like type
+ */
+type ShapeBuffer = any
+
+/**
  * Type definition for the loaded Napi module
  * Maps to C function names - all exported from napi_bindings.cpp
+ *
+ * Note: We pass TypedArrays directly to Napi functions.
+ * Napi extracts the underlying ArrayBuffer and ByteOffset automatically.
  */
 export type KoffiLibrary = {
+  // Utility functions
   ts_version: () => string
+
+  // Tensor factories - take (shapeBuffer, shapeLength, dtype, device, deviceIndex, errBuffer)
   ts_tensor_zeros: (
-    shape: Int32Array,
+    shapeBuffer: ShapeBuffer,
+    shapeLength: number,
     dtype: number,
     device: number,
-    deviceIndex: number
+    deviceIndex: number,
+    errBuffer: ArrayBufferLike
   ) => unknown
   ts_tensor_ones: (
-    shape: Int32Array,
+    shapeBuffer: ShapeBuffer,
+    shapeLength: number,
     dtype: number,
     device: number,
-    deviceIndex: number
+    deviceIndex: number,
+    errBuffer: ArrayBufferLike
   ) => unknown
-  ts_tensor_add: (a: unknown, b: unknown) => unknown
-  ts_tensor_matmul: (a: unknown, b: unknown) => unknown
-  ts_tensor_relu: (tensor: unknown) => unknown
+  ts_tensor_randn: (
+    shapeBuffer: ShapeBuffer,
+    shapeLength: number,
+    dtype: number,
+    device: number,
+    deviceIndex: number,
+    errBuffer: ArrayBufferLike
+  ) => unknown
+  ts_tensor_rand: (
+    shapeBuffer: ShapeBuffer,
+    shapeLength: number,
+    dtype: number,
+    device: number,
+    deviceIndex: number,
+    errBuffer: ArrayBufferLike
+  ) => unknown
+  ts_tensor_empty: (
+    shapeBuffer: ShapeBuffer,
+    shapeLength: number,
+    dtype: number,
+    device: number,
+    deviceIndex: number,
+    errBuffer: ArrayBufferLike
+  ) => unknown
+  ts_tensor_from_buffer: (
+    dataBuffer: ArrayBufferLike,
+    shapeBuffer: ShapeBuffer,
+    shapeLength: number,
+    dtype: number,
+    device: number,
+    deviceIndex: number,
+    errBuffer: ArrayBufferLike
+  ) => unknown
+
+  // Tensor properties and manipulation
   ts_tensor_shape: (tensor: unknown, outShape: Int32Array) => number
-  ts_tensor_requires_grad: (tensor: unknown) => boolean
-  ts_tensor_backward: (tensor: unknown, retainGraph: boolean) => void
-  [key: string]: (...args: unknown[]) => unknown
+  ts_tensor_requires_grad: (tensor: unknown, errBuffer: ArrayBufferLike) => boolean
+  ts_tensor_set_requires_grad: (tensor: unknown, value: boolean, errBuffer: ArrayBufferLike) => void
+  ts_tensor_dtype: (tensor: unknown, errBuffer: ArrayBufferLike) => number
+  ts_tensor_clone: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_detach: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_delete: (tensor: unknown) => void
+
+  // Binary operations
+  ts_tensor_add: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_sub: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_mul: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_div: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_matmul: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_minimum: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_maximum: (a: unknown, b: unknown, errBuffer: ArrayBufferLike) => unknown
+
+  // Unary operations
+  ts_tensor_relu: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_sigmoid: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_tanh: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_exp: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_log: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_sqrt: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_neg: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_softmax: (tensor: unknown, dim: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_log_softmax: (tensor: unknown, dim: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_transpose: (tensor: unknown, dim0: number, dim1: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_reshape: (tensor: unknown, shapeBuffer: ArrayBufferLike, shapeLength: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_clamp: (tensor: unknown, min: number, max: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_clamp_min: (tensor: unknown, min: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_clamp_max: (tensor: unknown, max: number, errBuffer: ArrayBufferLike) => unknown
+
+  // Reduction operations
+  ts_tensor_sum: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_mean: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_sum_dim: (tensor: unknown, dim: bigint, keepdim: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_mean_dim: (tensor: unknown, dim: bigint, keepdim: number, errBuffer: ArrayBufferLike) => unknown
+
+  // Scalar operations
+  ts_tensor_add_scalar: (tensor: unknown, scalar: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_sub_scalar: (tensor: unknown, scalar: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_mul_scalar: (tensor: unknown, scalar: number, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_div_scalar: (tensor: unknown, scalar: number, errBuffer: ArrayBufferLike) => unknown
+
+  // Out variants (write result to existing tensor)
+  ts_tensor_add_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
+  ts_tensor_sub_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
+  ts_tensor_mul_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
+  ts_tensor_div_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
+  ts_tensor_matmul_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
+
+  // Buffer operations
+  ts_tensor_copy_to_buffer: (tensor: unknown, buffer: ArrayBufferLike, byteSize: bigint, errBuffer: ArrayBufferLike) => void
+
+  // Autograd operations
+  ts_tensor_backward: (tensor: unknown, retainGraph: boolean, errBuffer: ArrayBufferLike) => void
+
+  // Other operations not explicitly typed - use flexible signature
+  [key: string]: (...args: any[]) => any
 }
 
 /**

@@ -61,7 +61,7 @@ export function zeros<S extends Shape, D extends DType<string> = DType<'float32'
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_zeros(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    const handle = withError((err) => lib.ts_tensor_zeros(shapeBuffer, shape.length, dtype.value, 0, 0, err))
 
     checkNull(handle, 'Failed to create zeros tensor')
 
@@ -106,7 +106,7 @@ export function ones<S extends Shape, D extends DType<string> = DType<'float32'>
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_ones(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    const handle = withError((err) => lib.ts_tensor_ones(shapeBuffer, shape.length, dtype.value, 0, 0, err))
 
     checkNull(handle, 'Failed to create ones tensor')
 
@@ -153,7 +153,7 @@ export function empty<S extends Shape, D extends DType<string> = DType<'float32'
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_empty(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    const handle = withError((err) => lib.ts_tensor_empty(shapeBuffer, shape.length, dtype.value, 0, 0, err))
 
     checkNull(handle, 'Failed to create empty tensor')
 
@@ -197,7 +197,7 @@ export function randn<S extends Shape, D extends DType<string> = DType<'float32'
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_randn(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    const handle = withError((err) => lib.ts_tensor_randn(shapeBuffer, shape.length, dtype.value, 0, 0, err))
 
     checkNull(handle, 'Failed to create randn tensor')
 
@@ -241,7 +241,7 @@ export function rand<S extends Shape, D extends DType<string> = DType<'float32'>
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_rand(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    const handle = withError((err) => lib.ts_tensor_rand(shapeBuffer, shape.length, dtype.value, 0, 0, err))
 
     checkNull(handle, 'Failed to create rand tensor')
 
@@ -323,9 +323,9 @@ export function fromArray<S extends Shape, D extends DType<string> = DType<'floa
   // Use pooled shape buffer to reduce allocation overhead
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
-    // Device: CPU (0), device_index: 0 (koffi accepts ArrayBuffer directly)
+    // Device: CPU (0), device_index: 0
     const handle = withError((err) =>
-      lib.ts_tensor_from_buffer(typedData.buffer, shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err),
+      lib.ts_tensor_from_buffer(typedData.buffer, shapeBuffer, shape.length, dtype.value, 0, 0, err),
     )
 
     checkNull(handle, 'Failed to create tensor from array')
@@ -382,7 +382,7 @@ export function fromBuffer<S extends Shape, D extends DType<string> = DType<'flo
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     const handle = withError((err) =>
-      lib.ts_tensor_from_buffer(aligned, shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err),
+      lib.ts_tensor_from_buffer(aligned, shapeBuffer, shape.length, dtype.value, 0, 0, err),
     )
 
     checkNull(handle, 'Failed to create tensor from buffer')
