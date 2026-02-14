@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect } from 'vitest'
-import { device, run } from '@ts-torch/core'
+import { run } from '@ts-torch/core'
 import { Linear } from '../modules/linear.js'
 import { Sequential } from '../modules/container.js'
 import { ReLU } from '../modules/activation.js'
@@ -15,9 +15,7 @@ import {
   DTypeMismatchError,
   DataLengthMismatchError,
 } from '../validation.js'
-import type { StateDict, TensorData } from '../safetensors.js'
-
-const cpu = device.cpu()
+import type { StateDict } from '../safetensors.js'
 
 describe('validateStateDict', () => {
   test('passes for matching state dict', () => {
@@ -32,11 +30,7 @@ describe('validateStateDict', () => {
 
   test('passes for multi-layer model', () => {
     run(() => {
-      const model = new Sequential(
-        new Linear(8, 4),
-        new ReLU(),
-        new Linear(4, 2),
-      )
+      const model = new Sequential(new Linear(8, 4), new ReLU(), new Linear(4, 2))
       const state = model.stateDict()
 
       expect(() => validateStateDict(model, state)).not.toThrow()
@@ -76,7 +70,7 @@ describe('validateStateDict', () => {
       const state = model.stateDict()
 
       // Corrupt the shape of the weight tensor
-      const weightKey = Object.keys(state).find(k => k.includes('weight'))!
+      const weightKey = Object.keys(state).find((k) => k.includes('weight'))!
       state[weightKey] = {
         data: new Float32Array(6 * 4),
         shape: [6, 4], // Wrong shape — model expects [3, 4]
@@ -94,7 +88,7 @@ describe('validateStateDict', () => {
       const state = model.stateDict()
 
       // Change dtype of weight tensor
-      const weightKey = Object.keys(state).find(k => k.includes('weight'))!
+      const weightKey = Object.keys(state).find((k) => k.includes('weight'))!
       const original = state[weightKey]!
       state[weightKey] = {
         data: new Float64Array(Array.from(original.data as Float32Array)),
@@ -110,15 +104,11 @@ describe('validateStateDict', () => {
   describe('strict: false', () => {
     test('allows missing keys when strict is false', () => {
       run(() => {
-        const model = new Sequential(
-          new Linear(4, 3),
-          new ReLU(),
-          new Linear(3, 2),
-        )
+        const model = new Sequential(new Linear(4, 3), new ReLU(), new Linear(3, 2))
         const state = model.stateDict()
 
         // Remove the second layer's keys
-        const keysToRemove = Object.keys(state).filter(k => k.startsWith('2.'))
+        const keysToRemove = Object.keys(state).filter((k) => k.startsWith('2.'))
         for (const key of keysToRemove) {
           delete state[key]
         }
@@ -147,7 +137,7 @@ describe('validateStateDict', () => {
         const model = new Sequential(new Linear(4, 3))
         const state = model.stateDict()
 
-        const weightKey = Object.keys(state).find(k => k.includes('weight'))!
+        const weightKey = Object.keys(state).find((k) => k.includes('weight'))!
         state[weightKey] = {
           data: new Float32Array(6 * 4),
           shape: [6, 4],
@@ -163,7 +153,7 @@ describe('validateStateDict', () => {
         const model = new Sequential(new Linear(4, 3))
         const state = model.stateDict()
 
-        const weightKey = Object.keys(state).find(k => k.includes('weight'))!
+        const weightKey = Object.keys(state).find((k) => k.includes('weight'))!
         const original = state[weightKey]!
         state[weightKey] = {
           data: new Float64Array(Array.from(original.data as Float32Array)),
@@ -181,7 +171,7 @@ describe('validateStateDict', () => {
       const model = new Sequential(new Linear(4, 3))
       const state = model.stateDict()
 
-      const weightKey = Object.keys(state).find(k => k.includes('weight'))!
+      const weightKey = Object.keys(state).find((k) => k.includes('weight'))!
       state[weightKey] = {
         data: new Float32Array(3), // 3 elements, but shape [3, 4] expects 12
         shape: [3, 4],

@@ -153,11 +153,7 @@ export class MultiheadAttention<
    * @param numHeads - Number of parallel attention heads
    * @param options - Configuration options
    */
-  constructor(
-    embedDim: EmbedDim,
-    numHeads: NumHeads,
-    options: MultiheadAttentionOptions<D> = {},
-  ) {
+  constructor(embedDim: EmbedDim, numHeads: NumHeads, options: MultiheadAttentionOptions<D> = {}) {
     super()
 
     if (embedDim <= 0) {
@@ -184,21 +180,11 @@ export class MultiheadAttention<
     // In-projection: projects query, key, value all at once
     // For self-attention where kdim = vdim = embedDim, we use a combined projection
     // Input: embedDim, Output: 3 * embedDim (for Q, K, V)
-    this.inProj = new Linear(embedDim, embedDim * 3, { bias }) as unknown as Linear<
-      number,
-      number,
-      D,
-      Dev
-    >
+    this.inProj = new Linear(embedDim, embedDim * 3, { bias }) as unknown as Linear<number, number, D, Dev>
     this.registerModule('in_proj', this.inProj as any)
 
     // Output projection: embedDim -> embedDim
-    this.outProj = new Linear(embedDim, embedDim, { bias }) as unknown as Linear<
-      number,
-      number,
-      D,
-      Dev
-    >
+    this.outProj = new Linear(embedDim, embedDim, { bias }) as unknown as Linear<number, number, D, Dev>
     this.registerModule('out_proj', this.outProj as any)
 
     // Dropout for attention weights
@@ -225,7 +211,7 @@ export class MultiheadAttention<
   forward(
     query: Tensor<Shape, D, Dev>,
     key: Tensor<Shape, D, Dev>,
-    _value: Tensor<Shape, D, Dev>,
+    value: Tensor<Shape, D, Dev>,
     options: {
       /**
        * Mask to prevent attention to certain positions [L, S]
@@ -253,6 +239,13 @@ export class MultiheadAttention<
   ): [Tensor<Shape, D, Dev>, Tensor<Shape, D, Dev> | null] {
     const needWeights = options.needWeights ?? true
     const averageAttnWeights = options.averageAttnWeights ?? true
+
+    const queryHandle = (query as any)._handle
+    const keyHandle = (key as any)._handle
+    const valueHandle = (value as any)._handle
+    if (queryHandle !== keyHandle || queryHandle !== valueHandle) {
+      throw new Error('Cross-attention is not implemented yet: query, key, and value must reference the same tensor')
+    }
 
     // Get dimensions
     const queryShape = query.shape as readonly number[]
@@ -380,12 +373,7 @@ export class MultiheadAttention<
     let attnWeightsOut: Tensor<Shape, D, Dev> | null = null
     if (needWeights) {
       // Reshape weights: [B*H, L, S] -> [N, H, L, S]
-      attnWeightsOut = attnWeights.reshape([
-        batchSize,
-        this.numHeads,
-        tgtLen,
-        srcLen,
-      ]) as Tensor<Shape, D, Dev>
+      attnWeightsOut = attnWeights.reshape([batchSize, this.numHeads, tgtLen, srcLen]) as Tensor<Shape, D, Dev>
 
       if (averageAttnWeights) {
         // Average over heads: [N, H, L, S] -> [N, L, S]
@@ -412,11 +400,7 @@ export class MultiheadAttention<
  * @param options - Attention options
  * @returns Tuple of [output, attention_weights]
  */
-export function scaledDotProductAttention<
-  S extends Shape,
-  D extends DType<string>,
-  Dev extends DeviceType,
->(
+export function scaledDotProductAttention<S extends Shape, D extends DType<string>, Dev extends DeviceType>(
   query: Tensor<S, D, Dev>,
   key: Tensor<S, D, Dev>,
   value: Tensor<S, D, Dev>,
@@ -444,21 +428,13 @@ export function scaledDotProductAttention<
   if (options.isCausal) {
     const seqLen = queryShape[queryShape.length - 2]
     // Create causal mask: upper triangle (excluding diagonal) = True
-    const causalMask = (query as any).ones([seqLen, seqLen]).triu(1) as Tensor<
-      Shape,
-      DType<'bool'>,
-      Dev
-    >
+    const causalMask = (query as any).ones([seqLen, seqLen]).triu(1) as Tensor<Shape, DType<'bool'>, Dev>
     attnWeights = attnWeights.maskedFill(causalMask as any, -Infinity) as Tensor<Shape, D, Dev>
   }
 
   // Apply provided mask
   if (options.attnMask) {
-    attnWeights = attnWeights.maskedFill(options.attnMask as any, -Infinity) as Tensor<
-      Shape,
-      D,
-      Dev
-    >
+    attnWeights = attnWeights.maskedFill(options.attnMask as any, -Infinity) as Tensor<Shape, D, Dev>
   }
 
   // Softmax
