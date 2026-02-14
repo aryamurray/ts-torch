@@ -264,16 +264,16 @@ export function embeddingFromPretrained<
   const freeze = options.freeze ?? true
 
   // Create embedding with same dimensions
-  const embedding = new Embedding<NumEmbeddings, EmbeddingDim, D, Dev>(
-    numEmbeddings,
-    embeddingDim,
-    {
-      paddingIdx: options.paddingIdx,
-      maxNorm: options.maxNorm,
-      normType: options.normType,
-      scaleGradByFreq: options.scaleGradByFreq,
-    },
-  )
+    const embedding = new Embedding<NumEmbeddings, EmbeddingDim, D, Dev>(
+      numEmbeddings,
+      embeddingDim,
+      {
+      ...(options.paddingIdx !== undefined ? { paddingIdx: options.paddingIdx } : {}),
+      ...(options.maxNorm !== undefined ? { maxNorm: options.maxNorm } : {}),
+      ...(options.normType !== undefined ? { normType: options.normType } : {}),
+      ...(options.scaleGradByFreq !== undefined ? { scaleGradByFreq: options.scaleGradByFreq } : {}),
+      },
+    )
 
   // Copy pretrained weights
   const cloned = embeddings.clone()
@@ -282,7 +282,7 @@ export function embeddingFromPretrained<
   // Replace weight with pretrained
   const newWeight = new Parameter(cloned, !freeze)
   ;(embedding as any).weight = newWeight
-  embedding.registerParameter('weight', newWeight as any)
+  ;(embedding as any).registerParameter('weight', newWeight as any)
 
   return embedding
 }

@@ -42,7 +42,7 @@ export class Sequential<
   D extends DType<string> = float32,
   Dev extends DeviceType = DeviceType,
 > extends Module<In, Out, D, Dev> {
-  private readonly modules: Module<any, any, D, Dev>[]
+  private readonly _layers: Module<any, any, D, Dev>[]
 
   /** Serialized config from SequenceDef.toJSON(), set during init()/load() */
   _config?: object
@@ -64,7 +64,7 @@ export class Sequential<
       throw new Error('Sequential requires at least one module')
     }
 
-    this.modules = modules
+    this._layers = modules
 
     // Register all modules with numeric keys
     modules.forEach((module, index) => {
@@ -81,8 +81,8 @@ export class Sequential<
   forward(input: Tensor<In, D, Dev>): Tensor<Out, D, Dev> {
     let output: any = input
 
-    for (const module of this.modules) {
-      output = module.forward(output)
+    for (const module of this._layers) {
+      output = module.forward(output) as Tensor<Shape, D, Dev>
     }
 
     return output as Tensor<Out, D, Dev>
@@ -95,7 +95,7 @@ export class Sequential<
    * @returns New Sequential with appended module
    */
   append<NextOut extends Shape>(module: Module<Out, NextOut, D, Dev>): Sequential<In, NextOut, D, Dev> {
-    return new Sequential<In, NextOut, D, Dev>(...this.modules, module)
+    return new Sequential<In, NextOut, D, Dev>(...this._layers, module)
   }
 
   /**
@@ -105,25 +105,25 @@ export class Sequential<
    * @returns Module at index
    */
   at(index: number): Module<any, any, D, Dev> | undefined {
-    return this.modules[index]
+    return this._layers[index]
   }
 
   /**
    * Get number of modules in sequential
    */
   get length(): number {
-    return this.modules.length
+    return this._layers.length
   }
 
   /**
    * Iterate over modules
    */
   *[Symbol.iterator](): Iterator<Module<any, any, D, Dev>> {
-    yield* this.modules
+    yield* this._layers
   }
 
   override toString(): string {
-    const moduleStrs = this.modules.map((m, i) => `  (${i}): ${m.toString()}`)
+    const moduleStrs = this._layers.map((m, i) => `  (${i}): ${m.toString()}`)
     return `Sequential(\n${moduleStrs.join('\n')}\n)`
   }
 }

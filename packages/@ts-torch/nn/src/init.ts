@@ -17,8 +17,8 @@ const cpu = device.cpu()
  * @param tensor - Weight tensor
  * @returns Tuple of [fan_in, fan_out]
  */
-export function calculateFanInAndFanOut<S extends Shape, D extends DType<string>>(
-  tensor: Tensor<S, D>,
+export function calculateFanInAndFanOut<S extends Shape, D extends DType<string>, Dev extends DeviceType>(
+  tensor: Tensor<S, D, Dev>,
 ): [number, number] {
   const shape = tensor.shape as readonly number[]
   const dimensions = shape.length
@@ -33,12 +33,12 @@ export function calculateFanInAndFanOut<S extends Shape, D extends DType<string>
   let receptiveFieldSize = 1
   if (dimensions > 2) {
     for (let i = 2; i < dimensions; i++) {
-      receptiveFieldSize *= shape[i]
+      receptiveFieldSize *= shape[i] ?? 1
     }
   }
 
-  const fanIn = numInputFmaps * receptiveFieldSize
-  const fanOut = numOutputFmaps * receptiveFieldSize
+  const fanIn = (numInputFmaps ?? 1) * receptiveFieldSize
+  const fanOut = (numOutputFmaps ?? 1) * receptiveFieldSize
 
   return [fanIn, fanOut]
 }
@@ -87,7 +87,7 @@ export function constant_<S extends Shape, D extends DType<string>, Dev extends 
   val: number,
 ): Tensor<S, D, Dev> {
   // Create ones and multiply by value, then copy back
-  const ones = cpu.ones(tensor.shape as number[]) as Tensor<Shape, D, 'cpu'>
+  const ones = cpu.ones(tensor.shape as readonly number[]) as Tensor<Shape, D, 'cpu'>
   const scaled = ones.mulScalar(val) as Tensor<Shape, D, 'cpu'>
   // For in-place, we would need a copy operation
   // Return the scaled tensor for now
@@ -103,7 +103,7 @@ export function constant_<S extends Shape, D extends DType<string>, Dev extends 
 export function zeros_<S extends Shape, D extends DType<string>, Dev extends DeviceType>(
   tensor: Tensor<S, D, Dev>,
 ): Tensor<S, D, Dev> {
-  return cpu.zeros(tensor.shape as number[]) as unknown as Tensor<S, D, Dev>
+  return cpu.zeros(tensor.shape as readonly number[]) as unknown as Tensor<S, D, Dev>
 }
 
 /**
@@ -115,7 +115,7 @@ export function zeros_<S extends Shape, D extends DType<string>, Dev extends Dev
 export function ones_<S extends Shape, D extends DType<string>, Dev extends DeviceType>(
   tensor: Tensor<S, D, Dev>,
 ): Tensor<S, D, Dev> {
-  return cpu.ones(tensor.shape as number[]) as unknown as Tensor<S, D, Dev>
+  return cpu.ones(tensor.shape as readonly number[]) as unknown as Tensor<S, D, Dev>
 }
 
 /**
@@ -137,7 +137,7 @@ export function normal_<S extends Shape, D extends DType<string>, Dev extends De
   mean: number = 0.0,
   std: number = 1.0,
 ): Tensor<S, D, Dev> {
-  const randn = cpu.randn(tensor.shape as number[]) as Tensor<Shape, D, 'cpu'>
+  const randn = cpu.randn(tensor.shape as readonly number[]) as Tensor<Shape, D, 'cpu'>
   const scaled = randn.mulScalar(std) as Tensor<Shape, D, 'cpu'>
   const shifted = scaled.addScalar(mean) as Tensor<Shape, D, 'cpu'>
   return shifted as unknown as Tensor<S, D, Dev>
@@ -163,7 +163,7 @@ export function uniform_<S extends Shape, D extends DType<string>, Dev extends D
   b: number = 1.0,
 ): Tensor<S, D, Dev> {
   // Generate uniform [0, 1) and scale to [a, b)
-  const rand = cpu.rand(tensor.shape as number[]) as Tensor<Shape, D, 'cpu'>
+  const rand = cpu.rand(tensor.shape as readonly number[]) as Tensor<Shape, D, 'cpu'>
   const range = b - a
   const scaled = rand.mulScalar(range) as Tensor<Shape, D, 'cpu'>
   const shifted = scaled.addScalar(a) as Tensor<Shape, D, 'cpu'>
@@ -319,7 +319,7 @@ export function orthogonal_<S extends Shape, D extends DType<string>, Dev extend
     throw new Error('Only tensors with 2 or more dimensions are supported')
   }
 
-  const rows = shape[0]
+  const rows = shape[0] ?? 1
   const cols = shape.slice(1).reduce((a, b) => a * b, 1)
 
   // Generate random matrix
@@ -338,7 +338,7 @@ export function orthogonal_<S extends Shape, D extends DType<string>, Dev extend
   }
 
   // Reshape back to original shape
-  const result = q.reshape(shape as number[]) as Tensor<Shape, D, 'cpu'>
+  const result = q.reshape(shape as readonly number[]) as Tensor<Shape, D, 'cpu'>
 
   return result as unknown as Tensor<S, D, Dev>
 }
@@ -374,12 +374,8 @@ export function sparse_<S extends Shape, D extends DType<string>, Dev extends De
     throw new Error('Sparsity should be between 0 and 1')
   }
 
-  const rows = shape[0]
-  const _cols = shape[1]
-  const _numZeros = Math.round(rows * sparsity)
-
   // Generate normal distribution
-  let result = cpu.randn(shape as number[]).mulScalar(std) as Tensor<Shape, D, 'cpu'>
+  let result = cpu.randn(shape as readonly number[]).mulScalar(std) as Tensor<Shape, D, 'cpu'>
 
   // Note: Full sparse initialization would require setting random rows to zero
   // This simplified version applies uniform scaling based on sparsity

@@ -225,7 +225,7 @@ export class MultiheadAttention<
   forward(
     query: Tensor<Shape, D, Dev>,
     key: Tensor<Shape, D, Dev>,
-    value: Tensor<Shape, D, Dev>,
+    _value: Tensor<Shape, D, Dev>,
     options: {
       /**
        * Mask to prevent attention to certain positions [L, S]
@@ -262,14 +262,14 @@ export class MultiheadAttention<
 
     if (this.batchFirst) {
       // [N, L, E] format
-      batchSize = queryShape[0]
-      tgtLen = queryShape[1]
-      srcLen = (key.shape as readonly number[])[1]
+      batchSize = queryShape[0] ?? 1
+      tgtLen = queryShape[1] ?? 1
+      srcLen = (key.shape as readonly number[])[1] ?? 1
     } else {
       // [L, N, E] format
-      tgtLen = queryShape[0]
-      batchSize = queryShape[1]
-      srcLen = (key.shape as readonly number[])[0]
+      tgtLen = queryShape[0] ?? 1
+      batchSize = queryShape[1] ?? 1
+      srcLen = (key.shape as readonly number[])[0] ?? 1
     }
 
     // Project query, key, value using in_proj
@@ -286,7 +286,7 @@ export class MultiheadAttention<
     // Split into Q, K, V - each of shape [L*N, E]
     // qkv shape: [L*N, 3*E]
     const qkvShape = qkv.shape as readonly number[]
-    const qkvFlat = qkv.reshape([qkvShape[0], 3, this.embedDim]) as Tensor<Shape, D, Dev>
+    const qkvFlat = qkv.reshape([qkvShape[0] ?? flatSize, 3, this.embedDim]) as Tensor<Shape, D, Dev>
 
     // For self-attention, we use the same projected tensor for Q, K, V
     // Each has shape [batchSize * numHeads, seqLen, headDim]
@@ -429,7 +429,7 @@ export function scaledDotProductAttention<
 ): Tensor<S, D, Dev> {
   const queryShape = query.shape as readonly number[]
   const keyShape = key.shape as readonly number[]
-  const d = queryShape[queryShape.length - 1]
+  const d = queryShape[queryShape.length - 1] ?? 1
   const scale = options.scale ?? Math.sqrt(d)
 
   // Q @ K^T - convert negative indices to positive

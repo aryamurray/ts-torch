@@ -477,7 +477,7 @@ export class PReLU<S extends Shape = Shape, D extends DType<string> = float32, D
     const cpu = device.cpu()
 
     // Initialize weight parameter
-    const weightTensor = cpu.ones([numParameters]).mulScalar(init)
+    const weightTensor = cpu.ones([numParameters]).mulScalar(init) as unknown as Tensor<readonly [number], D, Dev>
     weightTensor.escape()
     this.weight = new Parameter(weightTensor, true)
     this.registerParameter('weight', this.weight as any)

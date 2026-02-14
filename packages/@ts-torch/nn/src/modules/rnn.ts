@@ -241,7 +241,7 @@ export class RNN<
 
       // Concatenate outputs along sequence dimension
       // Concatenate layer outputs along sequence dimension
-      output = cat(layerOutputs, 0) as Tensor<Shape, D, Dev>
+      output = (cat as any)(layerOutputs, 0) as Tensor<Shape, D, Dev>
 
       // Apply dropout between layers (except last)
       if (this.dropout > 0 && layer < this.numLayers - 1 && this._training) {
@@ -250,7 +250,7 @@ export class RNN<
     }
 
     // Stack hidden states
-    const newHidden = cat(newHiddenStates, 0) as Tensor<Shape, D, Dev>
+    const newHidden = (cat as any)(newHiddenStates, 0) as Tensor<Shape, D, Dev>
 
     // Convert back to batchFirst if needed
     if (this.batchFirst) {
@@ -475,7 +475,7 @@ export class LSTM<
       newCells.push(cLayer.reshape([1, batchSize, this.hiddenSize]) as Tensor<Shape, D, Dev>)
 
       // Concatenate outputs
-      output = cat(layerOutputs, 0) as Tensor<Shape, D, Dev>
+      output = (cat as any)(layerOutputs, 0) as Tensor<Shape, D, Dev>
 
       // Dropout between layers
       if (this.dropout > 0 && layer < this.numLayers - 1 && this._training) {
@@ -484,8 +484,8 @@ export class LSTM<
     }
 
     // Stack hidden states
-    const hn = cat(newHiddens, 0) as Tensor<Shape, D, Dev>
-    const cn = cat(newCells, 0) as Tensor<Shape, D, Dev>
+    const hn = (cat as any)(newHiddens, 0) as Tensor<Shape, D, Dev>
+    const cn = (cat as any)(newCells, 0) as Tensor<Shape, D, Dev>
 
     if (this.batchFirst) {
       output = output.transpose(0, 1) as Tensor<Shape, D, Dev>
@@ -515,7 +515,7 @@ export class LSTM<
 
     // Split into i, f, g, o gates
     const gatesShape = gates.shape as readonly number[]
-    const chunkSize = gatesShape[1] / 4
+    const chunkSize = (gatesShape[1] ?? 1) / 4
 
     const i = (gates as any).narrow(1, 0, chunkSize).sigmoid() as Tensor<Shape, D, Dev> // input gate
     const f = (gates as any).narrow(1, chunkSize, chunkSize).sigmoid() as Tensor<Shape, D, Dev> // forget gate

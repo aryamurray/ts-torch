@@ -59,8 +59,27 @@ export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType
   clamp(min: number, max: number): Tensor<S, D, Dev>
   clampMin(min: number): Tensor<S, D, Dev>
   clampMax(max: number): Tensor<S, D, Dev>
+  reshape<NS extends Shape>(shape: NS): Tensor<NS, D, Dev>
+  squeeze(dim?: number): Tensor<Shape, D, Dev>
+  unsqueeze(dim: number): Tensor<Shape, D, Dev>
   dropout(p?: number, training?: boolean): Tensor<S, D, Dev>
+  batchNorm(
+    weight: Tensor<Shape, D, Dev> | null,
+    bias: Tensor<Shape, D, Dev> | null,
+    runningMean: Tensor<Shape, D, Dev> | null,
+    runningVar: Tensor<Shape, D, Dev> | null,
+    training?: boolean,
+    momentum?: number,
+    eps?: number,
+  ): Tensor<S, D, Dev>
+  layerNorm(
+    normalizedShape: readonly number[],
+    weight: Tensor<Shape, D, Dev> | null,
+    bias: Tensor<Shape, D, Dev> | null,
+    eps?: number,
+  ): Tensor<S, D, Dev>
   sumDim(dim: number, keepdim?: boolean): Tensor<any, D, Dev>
+  mean(): Tensor<readonly [], D, Dev>
   matmul<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
   add<S2 extends Shape>(other: Tensor<S2, D, Dev> | number): Tensor<any, D, Dev>
   addScalar(scalar: number): Tensor<S, D, Dev>
@@ -68,8 +87,28 @@ export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType
   mul<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
   mulScalar(scalar: number): Tensor<S, D, Dev>
   div<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
+  divScalar(scalar: number): Tensor<S, D, Dev>
+  minimum<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
   maximum<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
+  narrow(dim: number, start: number, length: number): Tensor<Shape, D, Dev>
+  indexSelect(dim: number, indices: Tensor<Shape, DType<'int64'>, Dev>): Tensor<Shape, D, Dev>
+  bmm<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
+  maskedFill(mask: Tensor<Shape, DType<'bool'>, Dev>, value: number): Tensor<S, D, Dev>
+  meanDim(dim: number, keepdim?: boolean): Tensor<Shape, D, Dev>
+  expand(sizes: readonly number[]): Tensor<Shape, D, Dev>
+  triu(diagonal?: number): Tensor<S, D, Dev>
+  tril(diagonal?: number): Tensor<S, D, Dev>
+  abs(): Tensor<S, D, Dev>
   transpose(dim0: number, dim1: number): Tensor<any, D, Dev>
+  clone(): Tensor<S, D, Dev>
+  toArray():
+    | Float32Array
+    | Float64Array
+    | Int32Array
+    | BigInt64Array
+    | Uint8Array
+    | Uint16Array
+    | number[]
 
   // In-place operations (for optimizers)
   addScaledInplace(other: Tensor<S, D, Dev>, scalar: number): void
@@ -254,7 +293,7 @@ export class Module<
    * Note: This is not abstract to allow subclasses (like Transformers) to
    * override with different signatures (e.g., multiple input tensors).
    */
-  forward(_input: Tensor<InShape, D, Dev>): Tensor<OutShape, D, Dev> {
+  forward(..._args: unknown[]): unknown {
     throw new Error(`forward() must be implemented by ${this.constructor.name}`)
   }
 
@@ -266,7 +305,7 @@ export class Module<
    * @returns Output tensor
    */
   __call__(input: Tensor<InShape, D, Dev>): Tensor<OutShape, D, Dev> {
-    return this.forward(input)
+    return this.forward(input) as Tensor<OutShape, D, Dev>
   }
 
   /**
@@ -660,7 +699,7 @@ export class Module<
 
       // Create new tensor from state dict data
       const newTensor = fromArray(
-        tensorData.data,
+        tensorData.data as any,
         tensorData.shape as readonly number[],
         dtypeObj,
       )
@@ -841,8 +880,8 @@ export class PipedModule<
    * @returns Output tensor after both transformations
    */
   forward(input: Tensor<In, D, Dev>): Tensor<Out, D, Dev> {
-    const intermediate = this.first.forward(input)
-    return this.second.forward(intermediate)
+    const intermediate = this.first.forward(input) as Tensor<Mid, D, Dev>
+    return this.second.forward(intermediate) as Tensor<Out, D, Dev>
   }
 
   /**
