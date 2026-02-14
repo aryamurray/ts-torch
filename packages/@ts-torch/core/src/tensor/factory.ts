@@ -10,8 +10,8 @@ import type { Shape } from '../types/shape.js'
 import type { DType } from '../types/dtype.js'
 import { DType as DTypeConstants } from '../types/dtype.js'
 import type { DeviceType } from '../types/tensor.js'
-import { getLib, koffi } from '../ffi/index.js'
-import { withError, checkNull } from '../ffi/error.js'
+import { getLib } from '../ffi/index.js'
+import { checkNull } from '../ffi/error.js'
 import { shapeCache } from '../ffi/buffer-pool.js'
 import {
   ValidationError,
@@ -61,7 +61,8 @@ export function zeros<S extends Shape, D extends DType<string> = DType<'float32'
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_zeros(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    // Napi wrapper extracts ndim from TypedArray.ElementLength
+    const handle = lib.ts_tensor_zeros(shapeBuffer, dtype.value, 0, 0)
 
     checkNull(handle, 'Failed to create zeros tensor')
 
@@ -106,7 +107,8 @@ export function ones<S extends Shape, D extends DType<string> = DType<'float32'>
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_ones(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    // Napi wrapper extracts ndim from TypedArray.ElementLength
+    const handle = lib.ts_tensor_ones(shapeBuffer, dtype.value, 0, 0)
 
     checkNull(handle, 'Failed to create ones tensor')
 
@@ -153,7 +155,8 @@ export function empty<S extends Shape, D extends DType<string> = DType<'float32'
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_empty(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    // Napi wrapper extracts ndim from TypedArray.ElementLength
+    const handle = lib.ts_tensor_empty(shapeBuffer, dtype.value, 0, 0)
 
     checkNull(handle, 'Failed to create empty tensor')
 
@@ -197,7 +200,8 @@ export function randn<S extends Shape, D extends DType<string> = DType<'float32'
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_randn(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    // Napi wrapper extracts ndim from TypedArray.ElementLength
+    const handle = lib.ts_tensor_randn(shapeBuffer, dtype.value, 0, 0)
 
     checkNull(handle, 'Failed to create randn tensor')
 
@@ -241,7 +245,8 @@ export function rand<S extends Shape, D extends DType<string> = DType<'float32'>
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
     // Device: CPU (0), device_index: 0
-    const handle = withError((err) => lib.ts_tensor_rand(shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err))
+    // Napi wrapper extracts ndim from TypedArray.ElementLength
+    const handle = lib.ts_tensor_rand(shapeBuffer, dtype.value, 0, 0)
 
     checkNull(handle, 'Failed to create rand tensor')
 
@@ -323,10 +328,9 @@ export function fromArray<S extends Shape, D extends DType<string> = DType<'floa
   // Use pooled shape buffer to reduce allocation overhead
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
-    // Device: CPU (0), device_index: 0 (koffi accepts ArrayBuffer directly)
-    const handle = withError((err) =>
-      lib.ts_tensor_from_buffer(typedData.buffer, shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err),
-    )
+    // Device: CPU (0), device_index: 0
+    // Napi wrapper extracts ndim from TypedArray.ElementLength
+    const handle = lib.ts_tensor_from_buffer(typedData, shapeBuffer, dtype.value, 0, 0)
 
     checkNull(handle, 'Failed to create tensor from array')
 
@@ -381,9 +385,9 @@ export function fromBuffer<S extends Shape, D extends DType<string> = DType<'flo
 
   const shapeBuffer = shapeCache.fillShape(shape)
   try {
-    const handle = withError((err) =>
-      lib.ts_tensor_from_buffer(aligned, shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err),
-    )
+    // Convert to TypedArray for Napi (extracts byteLength automatically)
+    const typedData = new Uint8Array(aligned)
+    const handle = lib.ts_tensor_from_buffer(typedData, shapeBuffer, dtype.value, 0, 0)
 
     checkNull(handle, 'Failed to create tensor from buffer')
 
@@ -592,19 +596,11 @@ export function cat<D extends DType<string> = DType<'float32'>, Dev extends Devi
 
   const lib = getLib()
 
-  // Get raw pointer addresses from tensor handles using koffi.address()
-  // Pack them into a BigUint64Array buffer for passing to FFI
-  const handleAddresses = new BigUint64Array(tensors.length)
-  for (let i = 0; i < tensors.length; i++) {
-    const handle = tensors[i]!.handle
-    // koffi.address() returns the raw address of an opaque pointer as BigInt
-    handleAddresses[i] = koffi.address(handle)
-  }
+  // Pass tensor handles as a JS array — Napi wrapper extracts pointers
+  const handles = tensors.map((t) => t.handle)
 
-  // Call native ts_tensor_cat
-  const handle = withError((err) =>
-    lib.ts_tensor_cat(handleAddresses.buffer, tensors.length, dim, err),
-  )
+  // Call native ts_tensor_cat(handles[], dim)
+  const handle = lib.ts_tensor_cat(handles, dim)
 
   checkNull(handle, 'Failed to concatenate tensors')
 
@@ -739,33 +735,20 @@ export function einsum<D extends DType<string> = DType<'float32'>, Dev extends D
 
   const lib = getLib()
 
-  // Encode the equation string as a null-terminated buffer
-  const encoder = new TextEncoder()
-  const equationBytes = encoder.encode(equation + '\0')
-  const equationBuffer = equationBytes.buffer
+  // Pass tensor handles as a JS array — Napi wrapper extracts pointers
+  const handles = tensors.map((t) => t.handle)
 
-  // Get raw pointer addresses from tensor handles using koffi.address()
-  // Pack them into a BigUint64Array buffer for passing to FFI
-  const handleAddresses = new BigUint64Array(tensors.length)
-  for (let i = 0; i < tensors.length; i++) {
-    const handle = tensors[i]!.handle
-    // koffi.address() returns the raw address of an opaque pointer as BigInt
-    handleAddresses[i] = koffi.address(handle)
-  }
-
-  // Call native ts_tensor_einsum
-  const handle = withError((err) =>
-    lib.ts_tensor_einsum(equationBuffer, handleAddresses.buffer, tensors.length, err),
-  )
+  // Call native ts_tensor_einsum(equation, handles[])
+  const handle = lib.ts_tensor_einsum(equation, handles)
 
   checkNull(handle, 'Failed to perform einsum operation')
 
   // Query the result tensor's shape since einsum's output shape
   // depends on the equation which is only known at runtime
-  const ndim = withError((err) => lib.ts_tensor_ndim(handle!, err)) as number
+  const ndim = lib.ts_tensor_ndim(handle!) as number
   const shapeArray: number[] = []
   for (let i = 0; i < ndim; i++) {
-    const size = withError((err) => lib.ts_tensor_size(handle!, i, err)) as number
+    const size = lib.ts_tensor_size(handle!, i) as number
     shapeArray.push(size)
   }
 

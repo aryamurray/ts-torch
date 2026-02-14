@@ -708,6 +708,100 @@ ts_TensorHandle ts_tensor_ge(
 }
 
 // ============================================================================
+// Power operations
+// ============================================================================
+
+ts_TensorHandle ts_tensor_pow(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_Error* error
+) {
+    try {
+        if (!a || !b) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::pow(a->tensor, b->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_pow_scalar(
+    ts_TensorHandle tensor,
+    double exponent,
+    ts_Error* error
+) {
+    try {
+        if (!tensor) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::pow(tensor->tensor, exponent);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// ============================================================================
+// Scatter add / Masked select
+// ============================================================================
+
+ts_TensorHandle ts_tensor_scatter_add(
+    ts_TensorHandle input,
+    int64_t dim,
+    ts_TensorHandle index,
+    ts_TensorHandle src,
+    ts_Error* error
+) {
+    try {
+        if (!input || !index || !src) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = input->tensor.scatter_add(dim, index->tensor, src->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+ts_TensorHandle ts_tensor_masked_select(
+    ts_TensorHandle tensor,
+    ts_TensorHandle mask,
+    ts_Error* error
+) {
+    try {
+        if (!tensor || !mask) {
+            set_error(error, 1, "Null tensor handle");
+            return nullptr;
+        }
+
+        auto result = torch::masked_select(tensor->tensor, mask->tensor);
+        auto* handle = new ts_Tensor(std::move(result));
+        register_in_scope(handle);
+        return handle;
+    } catch (const std::exception& e) {
+        set_error(error, 1, e.what());
+        return nullptr;
+    }
+}
+
+// ============================================================================
 // In-Place Operations (Phase 4)
 // ============================================================================
 

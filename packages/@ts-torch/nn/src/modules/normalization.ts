@@ -450,8 +450,8 @@ export class GroupNorm<D extends DType<string> = float32> extends Module<Shape, 
    */
   forward(input: Tensor<Shape, D>): Tensor<Shape, D> {
     const inputShape = input.shape as readonly number[]
-    const batchSize = inputShape[0]
-    const numChannels = inputShape[1]
+    const batchSize = inputShape[0] ?? 1
+    const numChannels = inputShape[1] ?? this.numChannels
     const spatialDims = inputShape.slice(2)
     const spatialSize = spatialDims.reduce((a, b) => a * b, 1)
 
@@ -468,11 +468,11 @@ export class GroupNorm<D extends DType<string> = float32> extends Module<Shape, 
     x = x.reshape(flatShape) as Tensor<Shape, D>
 
     // Mean over last dimension
-    const mean = x.mean(-1, true) as Tensor<Shape, D>
+    const mean = x.meanDim(-1, true) as Tensor<Shape, D>
 
     // Variance = E[x^2] - E[x]^2
     const x2 = x.mul(x as any) as Tensor<Shape, D>
-    const meanX2 = x2.mean(-1, true) as Tensor<Shape, D>
+    const meanX2 = x2.meanDim(-1, true) as Tensor<Shape, D>
     const variance = meanX2.sub(mean.mul(mean as any)) as Tensor<Shape, D>
 
     // Normalize: (x - mean) / sqrt(var + eps)
@@ -579,9 +579,9 @@ export class InstanceNorm2d<D extends DType<string> = float32> extends Module<
     const x = input.reshape(flatShape as any) as Tensor<Shape, D>
 
     // Compute mean and variance over spatial dimensions for each channel
-    const mean = x.mean(-1, true) as Tensor<Shape, D>
+    const mean = x.meanDim(-1, true) as Tensor<Shape, D>
     const x2 = x.mul(x as any) as Tensor<Shape, D>
-    const meanX2 = x2.mean(-1, true) as Tensor<Shape, D>
+    const meanX2 = x2.meanDim(-1, true) as Tensor<Shape, D>
     const variance = meanX2.sub(mean.mul(mean as any)) as Tensor<Shape, D>
 
     // Normalize

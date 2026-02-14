@@ -167,7 +167,7 @@ export class RMSprop extends Optimizer {
             const g_scaled = (g as any).mulScalar(1 - alpha) as Tensor
             const new_grad_avg = (gavg_scaled as any).add(g_scaled) as Tensor
             if ('escape' in new_grad_avg) (new_grad_avg as any).escape()
-            if ('free' in state.grad_avg) (state.grad_avg as any).free()
+            if (state.grad_avg && 'free' in state.grad_avg) (state.grad_avg as any).free()
             state.grad_avg = new_grad_avg
           }
 

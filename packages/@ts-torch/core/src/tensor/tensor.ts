@@ -17,9 +17,8 @@ import type {
   PermuteShape,
 } from '../types/tensor.js'
 import { getLib } from '../ffi/loader.js'
-import { withError, checkNull, TorchError, ErrorCode, type Pointer } from '../ffi/error.js'
-import koffi from 'koffi'
-import { BytesPerElement, getDTypeFromValue } from '../types/dtype.js'
+import { checkNull, TorchError, ErrorCode, type Pointer } from '../ffi/error.js'
+import { getDTypeFromValue } from '../types/dtype.js'
 import { escapeTensor as scopeEscapeTensor, inScope, registerTensor } from '../memory/scope.js'
 import {
   validateMatmulShapes,
@@ -173,8 +172,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const result = withError((err) => lib.ts_tensor_requires_grad(this._handle, err))
-    return result !== 0 // Convert i32 to boolean
+    // Napi wrapper throws on error, returns boolean directly
+    return lib.ts_tensor_requires_grad(this._handle)
   }
 
   /**
@@ -184,7 +183,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_set_requires_grad(this._handle, value, err))
+    // Napi wrapper throws on error
+    lib.ts_tensor_set_requires_grad(this._handle, value)
 
     // Free and clear gradient cache when requiresGrad changes
     this._clearGradCache()
@@ -300,7 +300,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_clone(this._handle, err))
+    const handle = lib.ts_tensor_clone(this._handle)
 
     checkNull(handle, 'Failed to clone tensor')
 
@@ -322,7 +322,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_detach(this._handle, err))
+    const handle = lib.ts_tensor_detach(this._handle)
 
     checkNull(handle, 'Failed to detach tensor')
 
@@ -345,9 +345,6 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
   toArray() {
     this._checkValid()
     const lib = getLib()
-
-    // Allocate buffer for data
-    const byteSize = this.numel * (BytesPerElement[this.dtype.name as keyof typeof BytesPerElement] || 4)
 
     let buffer: ArrayBuffer
     let result: Float32Array | Float64Array | Int32Array | BigInt64Array | Uint8Array
@@ -382,8 +379,9 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
         throw new Error(`Unsupported dtype: ${this.dtype.name}`)
     }
 
-    // Copy data from native memory (koffi accepts ArrayBuffer directly)
-    withError((err) => lib.ts_tensor_copy_to_buffer(this._handle, buffer, BigInt(byteSize), err))
+    // Copy data from native memory
+    // Note: Napi wrapper handles buffer size automatically via ArrayBuffer.byteLength
+    lib.ts_tensor_copy_to_buffer(this._handle, buffer)
 
     return result
   }
@@ -436,11 +434,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     if (options?.out) {
       options.out._checkValid()
-      withError((err) => lib.ts_tensor_add_out(this._handle, other._handle, options.out!._handle, err))
+      lib.ts_tensor_add_out(this._handle, other._handle, options.out!._handle)
       return options.out
     }
 
-    const handle = withError((err) => lib.ts_tensor_add(this._handle, other._handle, err))
+    const handle = lib.ts_tensor_add(this._handle, other._handle)
 
     checkNull(handle, 'Failed to add tensors')
 
@@ -468,11 +466,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     if (options?.out) {
       options.out._checkValid()
-      withError((err) => lib.ts_tensor_sub_out(this._handle, other._handle, options.out!._handle, err))
+      lib.ts_tensor_sub_out(this._handle, other._handle, options.out!._handle)
       return options.out
     }
 
-    const handle = withError((err) => lib.ts_tensor_sub(this._handle, other._handle, err))
+    const handle = lib.ts_tensor_sub(this._handle, other._handle)
 
     checkNull(handle, 'Failed to subtract tensors')
 
@@ -500,11 +498,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     if (options?.out) {
       options.out._checkValid()
-      withError((err) => lib.ts_tensor_mul_out(this._handle, other._handle, options.out!._handle, err))
+      lib.ts_tensor_mul_out(this._handle, other._handle, options.out!._handle)
       return options.out
     }
 
-    const handle = withError((err) => lib.ts_tensor_mul(this._handle, other._handle, err))
+    const handle = lib.ts_tensor_mul(this._handle, other._handle)
 
     checkNull(handle, 'Failed to multiply tensors')
 
@@ -532,11 +530,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     if (options?.out) {
       options.out._checkValid()
-      withError((err) => lib.ts_tensor_div_out(this._handle, other._handle, options.out!._handle, err))
+      lib.ts_tensor_div_out(this._handle, other._handle, options.out!._handle)
       return options.out
     }
 
-    const handle = withError((err) => lib.ts_tensor_div(this._handle, other._handle, err))
+    const handle = lib.ts_tensor_div(this._handle, other._handle)
 
     checkNull(handle, 'Failed to divide tensors')
 
@@ -572,11 +570,11 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
 
     if (options?.out) {
       options.out._checkValid()
-      withError((err) => lib.ts_tensor_matmul_out(this._handle, other._handle, options.out!._handle, err))
+      lib.ts_tensor_matmul_out(this._handle, other._handle, options.out!._handle)
       return options.out
     }
 
-    const handle = withError((err) => lib.ts_tensor_matmul(this._handle, other._handle, err))
+    const handle = lib.ts_tensor_matmul(this._handle, other._handle)
 
     checkNull(handle, 'Failed to perform matrix multiplication')
 
@@ -657,7 +655,7 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     validateDimension(dim1, this.ndim, 'dim1')
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_transpose(this._handle, dim0, dim1, err))
+    const handle = lib.ts_tensor_transpose(this._handle, dim0, dim1)
 
     checkNull(handle, 'Failed to transpose tensor')
 
@@ -690,10 +688,10 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     validateReshape(this.shape, shape)
     const lib = getLib()
 
-    // Convert shape to BigInt64Array for FFI (koffi accepts ArrayBuffer directly)
+    // Convert shape to BigInt64Array for FFI
     const shapeArray = new BigInt64Array(shape.map((dim) => BigInt(dim)))
 
-    const handle = withError((err) => lib.ts_tensor_reshape(this._handle, shapeArray.buffer, shape.length, err))
+    const handle = lib.ts_tensor_reshape(this._handle, shapeArray)
 
     checkNull(handle, 'Failed to reshape tensor')
 
@@ -882,12 +880,12 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_sum(this._handle, err))
+    const handle = lib.ts_tensor_sum(this._handle)
 
     checkNull(handle, 'Failed to compute sum')
 
     // Query actual dtype from result tensor (may differ, e.g., bool sum -> int64)
-    const dtypeValue = withError((err) => lib.ts_tensor_dtype(handle!, err)) as number
+    const dtypeValue = lib.ts_tensor_dtype(handle!) as number
     const resultDtype = getDTypeFromValue(dtypeValue)
 
     return new Tensor<readonly [], DType<string>>(handle!, [] as const, resultDtype)
@@ -908,7 +906,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_mean(this._handle, err))
+    const handle = lib.ts_tensor_mean(this._handle)
 
     checkNull(handle, 'Failed to compute mean')
 
@@ -935,9 +933,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_sum_dim(this._handle, BigInt(dim), keepdim ? 1 : 0, err),
-    )
+    const handle = lib.ts_tensor_sum_dim(this._handle, dim, keepdim)
 
     checkNull(handle, 'Failed to compute sum along dimension')
 
@@ -950,7 +946,7 @@ mean(): Tensor<readonly [], D> {
     }
 
     // Query actual dtype from result tensor
-    const dtypeValue = withError((err) => lib.ts_tensor_dtype(handle!, err)) as number
+    const dtypeValue = lib.ts_tensor_dtype(handle!) as number
     const resultDtype = getDTypeFromValue(dtypeValue)
 
     return new Tensor<Shape, DType<string>>(handle!, newShape as unknown as Shape, resultDtype)
@@ -975,9 +971,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_mean_dim(this._handle, BigInt(dim), keepdim ? 1 : 0, err),
-    )
+    const handle = lib.ts_tensor_mean_dim(this._handle, dim, keepdim)
 
     checkNull(handle, 'Failed to compute mean along dimension')
 
@@ -1009,7 +1003,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_relu(this._handle, err))
+    const handle = lib.ts_tensor_relu(this._handle)
 
     checkNull(handle, 'Failed to apply ReLU')
 
@@ -1031,7 +1025,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_sigmoid(this._handle, err))
+    const handle = lib.ts_tensor_sigmoid(this._handle)
 
     checkNull(handle, 'Failed to apply sigmoid')
 
@@ -1055,7 +1049,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_softmax(this._handle, dim, err))
+    const handle = lib.ts_tensor_softmax(this._handle, dim)
 
     checkNull(handle, 'Failed to apply softmax')
 
@@ -1079,7 +1073,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_log_softmax(this._handle, dim, err))
+    const handle = lib.ts_tensor_log_softmax(this._handle, dim)
 
     checkNull(handle, 'Failed to apply log_softmax')
 
@@ -1101,7 +1095,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_log(this._handle, err))
+    const handle = lib.ts_tensor_log(this._handle)
 
     checkNull(handle, 'Failed to apply log')
 
@@ -1123,7 +1117,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_exp(this._handle, err))
+    const handle = lib.ts_tensor_exp(this._handle)
 
     checkNull(handle, 'Failed to apply exp')
 
@@ -1145,7 +1139,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_neg(this._handle, err))
+    const handle = lib.ts_tensor_neg(this._handle)
 
     checkNull(handle, 'Failed to apply neg')
 
@@ -1167,7 +1161,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_sqrt(this._handle, err))
+    const handle = lib.ts_tensor_sqrt(this._handle)
 
     checkNull(handle, 'Failed to apply sqrt')
 
@@ -1189,7 +1183,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_tanh(this._handle, err))
+    const handle = lib.ts_tensor_tanh(this._handle)
 
     checkNull(handle, 'Failed to apply tanh')
 
@@ -1213,7 +1207,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_minimum(this._handle, other._handle, err))
+    const handle = lib.ts_tensor_minimum(this._handle, other._handle)
 
     checkNull(handle, 'Failed to compute minimum')
 
@@ -1237,7 +1231,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_maximum(this._handle, other._handle, err))
+    const handle = lib.ts_tensor_maximum(this._handle, other._handle)
 
     checkNull(handle, 'Failed to compute maximum')
 
@@ -1261,7 +1255,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_clamp(this._handle, min, max, err))
+    const handle = lib.ts_tensor_clamp(this._handle, min, max)
 
     checkNull(handle, 'Failed to clamp tensor')
 
@@ -1284,7 +1278,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_clamp_min(this._handle, min, err))
+    const handle = lib.ts_tensor_clamp_min(this._handle, min)
 
     checkNull(handle, 'Failed to clamp tensor to minimum')
 
@@ -1307,7 +1301,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_clamp_max(this._handle, max, err))
+    const handle = lib.ts_tensor_clamp_max(this._handle, max)
 
     checkNull(handle, 'Failed to clamp tensor to maximum')
 
@@ -1333,7 +1327,7 @@ mean(): Tensor<readonly [], D> {
     validateScalar(scalar, 'scalar')
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_add_scalar(this._handle, scalar, err))
+    const handle = lib.ts_tensor_add_scalar(this._handle, scalar)
 
     checkNull(handle, 'Failed to add scalar')
 
@@ -1357,7 +1351,7 @@ mean(): Tensor<readonly [], D> {
     validateScalar(scalar, 'scalar')
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_sub_scalar(this._handle, scalar, err))
+    const handle = lib.ts_tensor_sub_scalar(this._handle, scalar)
 
     checkNull(handle, 'Failed to subtract scalar')
 
@@ -1381,7 +1375,7 @@ mean(): Tensor<readonly [], D> {
     validateScalar(scalar, 'scalar')
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_mul_scalar(this._handle, scalar, err))
+    const handle = lib.ts_tensor_mul_scalar(this._handle, scalar)
 
     checkNull(handle, 'Failed to multiply by scalar')
 
@@ -1405,7 +1399,7 @@ mean(): Tensor<readonly [], D> {
     validateNonZero(scalar, 'scalar')
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_div_scalar(this._handle, scalar, err))
+    const handle = lib.ts_tensor_div_scalar(this._handle, scalar)
 
     checkNull(handle, 'Failed to divide by scalar')
 
@@ -1433,7 +1427,8 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_backward(this._handle, err))
+    // Napi wrapper handles errors internally
+    lib.ts_tensor_backward(this._handle)
   }
 
   /**
@@ -1454,7 +1449,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_zero_grad(this._handle, err))
+    lib.ts_tensor_zero_grad(this._handle)
 
     // Invalidate gradient cache since native gradient was zeroed
     this._clearGradCache()
@@ -1484,7 +1479,7 @@ mean(): Tensor<readonly [], D> {
 
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_grad(this._handle, err))
+    const handle = lib.ts_tensor_grad(this._handle)
     // console.log('grad getter: native returned handle', handle)
 
     // Null handle means no gradient
@@ -1534,7 +1529,7 @@ mean(): Tensor<readonly [], D> {
         throw new Error(`Unknown device: ${targetDevice}`)
     }
 
-    const handle = withError((err) => lib.ts_tensor_to_device(this._handle, deviceType, deviceId, err))
+    const handle = lib.ts_tensor_to_device(this._handle, deviceType, deviceId)
 
     checkNull(handle, 'Failed to move tensor to device')
 
@@ -1573,7 +1568,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_to_device(this._handle, 1, deviceIndex, err))
+    const handle = lib.ts_tensor_to_device(this._handle, 1, deviceIndex)
 
     checkNull(handle, 'Failed to move tensor to CUDA')
 
@@ -1691,9 +1686,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_cross_entropy_loss(this._handle, targets._handle, err),
-    )
+    const handle = lib.ts_tensor_cross_entropy_loss(this._handle, targets._handle)
 
     checkNull(handle, 'Failed to compute cross entropy loss')
 
@@ -1717,7 +1710,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_nll_loss(this._handle, targets._handle, err))
+    const handle = lib.ts_tensor_nll_loss(this._handle, targets._handle)
 
     checkNull(handle, 'Failed to compute NLL loss')
 
@@ -1742,7 +1735,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_mse_loss(this._handle, target._handle, err))
+    const handle = lib.ts_tensor_mse_loss(this._handle, target._handle)
 
     checkNull(handle, 'Failed to compute MSE loss')
 
@@ -1769,7 +1762,7 @@ mean(): Tensor<readonly [], D> {
     other._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_sub_inplace(this._handle, other._handle, err))
+    lib.ts_tensor_sub_inplace(this._handle, other._handle)
   }
 
   /**
@@ -1791,7 +1784,7 @@ mean(): Tensor<readonly [], D> {
     other._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_add_scaled_inplace(this._handle, other._handle, scalar, err))
+    lib.ts_tensor_add_scaled_inplace(this._handle, other._handle, scalar)
   }
 
   /**
@@ -1806,7 +1799,7 @@ mean(): Tensor<readonly [], D> {
     other._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_add_(this._handle, other._handle, err))
+    lib.ts_tensor_add_(this._handle, other._handle)
   }
 
   /**
@@ -1819,7 +1812,7 @@ mean(): Tensor<readonly [], D> {
     other._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_mul_(this._handle, other._handle, err))
+    lib.ts_tensor_mul_(this._handle, other._handle)
   }
 
   /**
@@ -1831,7 +1824,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_mul_scalar_(this._handle, scalar, err))
+    lib.ts_tensor_mul_scalar_(this._handle, scalar)
   }
 
   /**
@@ -1844,7 +1837,7 @@ mean(): Tensor<readonly [], D> {
     other._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_div_(this._handle, other._handle, err))
+    lib.ts_tensor_div_(this._handle, other._handle)
   }
 
   /**
@@ -1856,7 +1849,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_div_scalar_(this._handle, scalar, err))
+    lib.ts_tensor_div_scalar_(this._handle, scalar)
   }
 
   // ==================== Convolution Operations ====================
@@ -1884,20 +1877,17 @@ mean(): Tensor<readonly [], D> {
     weight._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_conv2d(
-        this._handle,
-        weight._handle,
-        bias?._handle ?? null,
-        BigInt(stride[0]),
-        BigInt(stride[1]),
-        BigInt(padding[0]),
-        BigInt(padding[1]),
-        BigInt(dilation[0]),
-        BigInt(dilation[1]),
-        BigInt(groups),
-        err,
-      ),
+    const handle = lib.ts_tensor_conv2d(
+      this._handle,
+      weight._handle,
+      bias?._handle ?? null,
+      stride[0],
+      stride[1],
+      padding[0],
+      padding[1],
+      dilation[0],
+      dilation[1],
+      groups,
     )
 
     checkNull(handle, 'Failed to apply conv2d')
@@ -1942,17 +1932,14 @@ mean(): Tensor<readonly [], D> {
     })
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_max_pool2d(
-        this._handle,
-        BigInt(kernelSize[0]),
-        BigInt(kernelSize[1]),
-        BigInt(actualStride[0]),
-        BigInt(actualStride[1]),
-        BigInt(padding[0]),
-        BigInt(padding[1]),
-        err,
-      ),
+    const handle = lib.ts_tensor_max_pool2d(
+      this._handle,
+      kernelSize[0],
+      kernelSize[1],
+      actualStride[0],
+      actualStride[1],
+      padding[0],
+      padding[1],
     )
 
     checkNull(handle, 'Failed to apply max_pool2d')
@@ -1993,17 +1980,14 @@ mean(): Tensor<readonly [], D> {
     })
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_avg_pool2d(
-        this._handle,
-        BigInt(kernelSize[0]),
-        BigInt(kernelSize[1]),
-        BigInt(actualStride[0]),
-        BigInt(actualStride[1]),
-        BigInt(padding[0]),
-        BigInt(padding[1]),
-        err,
-      ),
+    const handle = lib.ts_tensor_avg_pool2d(
+      this._handle,
+      kernelSize[0],
+      kernelSize[1],
+      actualStride[0],
+      actualStride[1],
+      padding[0],
+      padding[1],
     )
 
     checkNull(handle, 'Failed to apply avg_pool2d')
@@ -2039,7 +2023,7 @@ mean(): Tensor<readonly [], D> {
     validateProbability(p, 'p (dropout probability)')
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_dropout(this._handle, p, training ? 1 : 0, err))
+    const handle = lib.ts_tensor_dropout(this._handle, p, training ? 1 : 0)
 
     checkNull(handle, 'Failed to apply dropout')
 
@@ -2074,18 +2058,15 @@ mean(): Tensor<readonly [], D> {
     validatePositive(eps, 'eps')
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_batch_norm(
-        this._handle,
-        weight?._handle ?? null,
-        bias?._handle ?? null,
-        runningMean?._handle ?? null,
-        runningVar?._handle ?? null,
-        training ? 1 : 0,
-        momentum,
-        eps,
-        err,
-      ),
+    const handle = lib.ts_tensor_batch_norm(
+      this._handle,
+      weight?._handle ?? null,
+      bias?._handle ?? null,
+      runningMean?._handle ?? null,
+      runningVar?._handle ?? null,
+      training ? 1 : 0,
+      momentum,
+      eps,
     )
 
     checkNull(handle, 'Failed to apply batch_norm')
@@ -2118,16 +2099,12 @@ mean(): Tensor<readonly [], D> {
     // Convert normalized shape to BigInt64Array for FFI
     const shapeArray = new BigInt64Array(normalizedShape.map((dim) => BigInt(dim)))
 
-    const handle = withError((err) =>
-      lib.ts_tensor_layer_norm(
-        this._handle,
-        shapeArray.buffer,
-        normalizedShape.length,
-        weight?._handle ?? null,
-        bias?._handle ?? null,
-        eps,
-        err,
-      ),
+    const handle = lib.ts_tensor_layer_norm(
+      this._handle,
+      shapeArray,
+      weight?._handle ?? null,
+      bias?._handle ?? null,
+      eps,
     )
 
     checkNull(handle, 'Failed to apply layer_norm')
@@ -2213,7 +2190,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_eq(this._handle, other._handle, err))
+    const handle = lib.ts_tensor_eq(this._handle, other._handle)
 
     checkNull(handle, 'Failed to compute eq')
 
@@ -2251,9 +2228,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_index_select(this._handle, BigInt(dim), index._handle, err),
-    )
+    const handle =       lib.ts_tensor_index_select(this._handle, dim, index._handle)
 
     checkNull(handle, 'Failed to apply index_select')
 
@@ -2284,9 +2259,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_argmax(this._handle, BigInt(dim), keepdim ? 1 : 0, err),
-    )
+    const handle = lib.ts_tensor_argmax(this._handle, dim, keepdim)
 
     checkNull(handle, 'Failed to apply argmax')
 
@@ -2326,9 +2299,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_narrow(this._handle, BigInt(dim), BigInt(start), BigInt(length), err),
-    )
+    const handle = lib.ts_tensor_narrow(this._handle, dim, start, length)
 
     checkNull(handle, 'Failed to narrow tensor')
 
@@ -2364,9 +2335,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_triu(this._handle, BigInt(diagonal), err),
-    )
+    const handle = lib.ts_tensor_triu(this._handle, diagonal)
 
     checkNull(handle, 'Failed to compute triu')
 
@@ -2391,9 +2360,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_tril(this._handle, BigInt(diagonal), err),
-    )
+    const handle = lib.ts_tensor_tril(this._handle, diagonal)
 
     checkNull(handle, 'Failed to compute tril')
 
@@ -2420,9 +2387,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_masked_fill(this._handle, mask._handle, value, err),
-    )
+    const handle =       lib.ts_tensor_masked_fill(this._handle, mask._handle, value)
 
     checkNull(handle, 'Failed to apply masked_fill')
 
@@ -2452,9 +2417,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_bmm(this._handle, other._handle, err),
-    )
+    const handle =       lib.ts_tensor_bmm(this._handle, other._handle)
 
     checkNull(handle, 'Failed to apply bmm')
 
@@ -2493,9 +2456,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_gather(this._handle, BigInt(dim), index._handle, err),
-    )
+    const handle =       lib.ts_tensor_gather(this._handle, dim, index._handle)
 
     checkNull(handle, 'Failed to apply gather')
 
@@ -2528,9 +2489,7 @@ mean(): Tensor<readonly [], D> {
     validateDimension(dim, this.ndim, 'dim')
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_scatter(this._handle, BigInt(dim), index._handle, src._handle, err),
-    )
+    const handle =       lib.ts_tensor_scatter(this._handle, dim, index._handle, src._handle)
 
     checkNull(handle, 'Failed to apply scatter')
 
@@ -2566,26 +2525,10 @@ mean(): Tensor<readonly [], D> {
     validateDimension(normalizedDim, this.ndim, 'dim')
     const lib = getLib()
 
-    // Allocate buffer to receive the indices pointer (8 bytes for 64-bit pointer)
-    // C code will write: *indices_out = indices_tensor_handle
-    const indicesPtrBuffer = new BigUint64Array(1)
+    // Napi wrapper returns [values_handle, indices_handle] as a JS array
+    const result = lib.ts_tensor_topk(this._handle, k, normalizedDim, largest, sorted) as [Pointer, Pointer]
 
-    const handle = withError((err) =>
-      lib.ts_tensor_topk(
-        this._handle,
-        BigInt(k),
-        BigInt(normalizedDim),
-        largest ? 1 : 0,
-        sorted ? 1 : 0,
-        indicesPtrBuffer.buffer,
-        err,
-      ),
-    )
-
-    checkNull(handle, 'Failed to compute topk')
-
-    // Decode the indices pointer from the buffer using koffi
-    const indicesHandle = koffi.decode(indicesPtrBuffer, 'void*')
+    checkNull(result?.[0], 'Failed to compute topk')
 
     // Compute output shape
     const newShape = [...(this.shape as readonly number[])]
@@ -2593,9 +2536,9 @@ mean(): Tensor<readonly [], D> {
 
     const int64Dtype = { name: 'int64' } as DType<'int64'>
 
-    const values = new Tensor<Shape, D>(handle!, newShape as unknown as Shape, this.dtype)
+    const values = new Tensor<Shape, D>(result[0]!, newShape as unknown as Shape, this.dtype)
     const indices = new Tensor<Shape, DType<'int64'>>(
-      indicesHandle as Pointer,
+      result[1]!,
       newShape as unknown as Shape,
       int64Dtype,
     )
@@ -2626,30 +2569,16 @@ mean(): Tensor<readonly [], D> {
     validateDimension(normalizedDim, this.ndim, 'dim')
     const lib = getLib()
 
-    // Allocate buffer to receive the indices pointer (8 bytes for 64-bit pointer)
-    // C code will write: *indices_out = indices_tensor_handle
-    const indicesPtrBuffer = new BigUint64Array(1)
+    // Napi wrapper returns [values_handle, indices_handle] as a JS array
+    const result = lib.ts_tensor_sort(this._handle, normalizedDim, descending) as [Pointer, Pointer]
 
-    const handle = withError((err) =>
-      lib.ts_tensor_sort(
-        this._handle,
-        BigInt(normalizedDim),
-        descending ? 1 : 0,
-        indicesPtrBuffer.buffer,
-        err,
-      ),
-    )
-
-    checkNull(handle, 'Failed to sort tensor')
-
-    // Decode the indices pointer from the buffer using koffi
-    const indicesHandle = koffi.decode(indicesPtrBuffer, 'void*')
+    checkNull(result?.[0], 'Failed to sort tensor')
 
     const int64Dtype = { name: 'int64' } as DType<'int64'>
 
-    const values = new Tensor<S, D>(handle!, this.shape, this.dtype)
+    const values = new Tensor<S, D>(result[0]!, this.shape, this.dtype)
     const indices = new Tensor<S, DType<'int64'>>(
-      indicesHandle as Pointer,
+      result[1]!,
       this.shape,
       int64Dtype,
     )
@@ -2684,9 +2613,7 @@ mean(): Tensor<readonly [], D> {
     condition._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_where(condition._handle, x._handle, y._handle, err),
-    )
+    const handle =       lib.ts_tensor_where(condition._handle, x._handle, y._handle)
 
     checkNull(handle, 'Failed to apply where')
 
@@ -2709,9 +2636,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_nonzero(this._handle, err),
-    )
+    const handle =       lib.ts_tensor_nonzero(this._handle)
 
     checkNull(handle, 'Failed to find nonzero elements')
 
@@ -2749,9 +2674,7 @@ mean(): Tensor<readonly [], D> {
     // Convert to BigInt array for FFI
     const repeatsPtr = new BigInt64Array(repeats.map((r) => BigInt(r)))
 
-    const handle = withError((err) =>
-      lib.ts_tensor_repeat(this._handle, repeatsPtr, repeats.length, err),
-    )
+    const handle =       lib.ts_tensor_repeat(this._handle, repeatsPtr, repeats.length)
 
     checkNull(handle, 'Failed to repeat tensor')
 
@@ -2782,9 +2705,7 @@ mean(): Tensor<readonly [], D> {
     // Convert to BigInt array for FFI
     const sizesPtr = new BigInt64Array(sizes.map((s) => BigInt(s)))
 
-    const handle = withError((err) =>
-      lib.ts_tensor_expand(this._handle, sizesPtr, sizes.length, err),
-    )
+    const handle =       lib.ts_tensor_expand(this._handle, sizesPtr, sizes.length)
 
     checkNull(handle, 'Failed to expand tensor')
 
@@ -2816,9 +2737,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_linear_relu(this._handle, weight._handle, bias?._handle ?? null, err),
-    )
+    const handle =       lib.ts_tensor_linear_relu(this._handle, weight._handle, bias?._handle ?? null)
 
     checkNull(handle, 'Failed to apply fused linearRelu')
 
@@ -2845,9 +2764,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_linear_sigmoid(this._handle, weight._handle, bias?._handle ?? null, err),
-    )
+    const handle =       lib.ts_tensor_linear_sigmoid(this._handle, weight._handle, bias?._handle ?? null)
 
     checkNull(handle, 'Failed to apply fused linearSigmoid')
 
@@ -2873,9 +2790,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) =>
-      lib.ts_tensor_linear_tanh(this._handle, weight._handle, bias?._handle ?? null, err),
-    )
+    const handle =       lib.ts_tensor_linear_tanh(this._handle, weight._handle, bias?._handle ?? null)
 
     checkNull(handle, 'Failed to apply fused linearTanh')
 
@@ -2897,7 +2812,7 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    const handle = withError((err) => lib.ts_tensor_add_relu(this._handle, other._handle, err))
+    const handle = lib.ts_tensor_add_relu(this._handle, other._handle)
 
     checkNull(handle, 'Failed to apply fused addRelu')
 

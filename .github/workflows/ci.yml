@@ -9,22 +9,8 @@ on:
       - main
 
 jobs:
-  ci:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
-        include:
-          - os: ubuntu-latest
-            platform: linux-x64
-            lib_name: libts_torch.so
-          - os: windows-latest
-            platform: win32-x64
-            lib_name: ts_torch.dll
-          - os: macos-14
-            platform: darwin-arm64
-            lib_name: libts_torch.dylib
+  quality:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -42,12 +28,125 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Cache cmake-js headers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cmake-js
+          key: ${{ runner.os }}-cmake-js-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-js-
+
+      - name: Install ccache
+        run: sudo apt-get update && sudo apt-get install -y ccache
+
+      - name: Cache ccache objects
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-ccache-linux-x64-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-linux-x64-
+
+      - name: Cache LibTorch
+        uses: actions/cache@v4
+        with:
+          path: libtorch
+          key: libtorch-linux-x64-2.5.1-cpu
+
+      - name: Setup LibTorch and build native library
+        env:
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
+          CCACHE_MAXSIZE: 500M
+          CC: 'ccache cc'
+          CXX: 'ccache c++'
+        run: bun run setup
+
+      - name: Cache Turbo build artifacts
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ hashFiles('bun.lock', 'turbo.json', '**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Run lint
+        run: bun run lint:check
+
+      - name: Run type checking
+        run: bun run check-types
+
+  native:
+    needs: quality
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+            lib_name: ts_torch.node
+          - os: windows-latest
+            platform: win32-x64
+            lib_name: ts_torch.node
+          - os: macos-14
+            platform: darwin-arm64
+            lib_name: ts_torch.node
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Cache cmake-js headers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cmake-js
+          key: ${{ runner.os }}-cmake-js-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-js-
+
+      - name: Install ccache (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y ccache
+
+      - name: Install ccache (macOS)
+        if: matrix.os == 'macos-14'
+        run: brew list ccache >/dev/null 2>&1 || brew install ccache
+
+      - name: Cache ccache objects
+        if: matrix.os != 'windows-latest'
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-ccache-${{ matrix.platform }}-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-${{ matrix.platform }}-
 
       # Cache LibTorch to avoid re-downloading on every run
       - name: Cache LibTorch
@@ -65,11 +164,21 @@ jobs:
           path: |
             packages/@ts-torch/core/native/build
             packages/@ts-torch-platform/${{ matrix.platform }}/lib
-          key: native-${{ matrix.platform }}-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
+          key: native-v2-${{ matrix.platform }}-${{ hashFiles('packages/@ts-torch/core/native/src/**', 'packages/@ts-torch/core/native/include/**', 'packages/@ts-torch/core/native/CMakeLists.txt') }}
 
       # Run setup - same script as local development for parity
       # This downloads LibTorch (if not cached) and builds native library
-      - name: Setup LibTorch and build native library
+      - name: Setup LibTorch and build native library (ccache)
+        if: matrix.os != 'windows-latest'
+        env:
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
+          CCACHE_MAXSIZE: 500M
+          CC: 'ccache cc'
+          CXX: 'ccache c++'
+        run: bun run setup
+
+      - name: Setup LibTorch and build native library (Windows)
+        if: matrix.os == 'windows-latest'
         run: bun run setup
 
       # Verify native library exists after setup or cache restore
@@ -97,15 +206,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          key: ${{ runner.os }}-turbo-${{ hashFiles('bun.lock', 'turbo.json', '**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-turbo-
-
-      - name: Run lint
-        run: bun run lint:check
-
-      - name: Run type checking
-        run: bun run check-types
 
       - name: Run build
         run: bun run build

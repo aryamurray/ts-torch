@@ -3,15 +3,13 @@
  *
  * Measures the overhead of FFI calls to isolate it from computation time.
  * Key overhead sources:
- * - Error struct allocation (260 bytes per call)
- * - withError() wrapper overhead
  * - BigInt64Array shape allocation
  * - Tensor creation/deletion
+ * - Library function calls
  */
 
 import { Bench } from 'tinybench'
 import { device, run } from '@ts-torch/core'
-import { getLib, createError, checkError, withError, ERROR_STRUCT_SIZE } from '@ts-torch/core/ffi'
 import type { BenchmarkSuite, BenchmarkConfig } from '../lib/types.js'
 
 const cpu = device.cpu()
@@ -27,11 +25,9 @@ export const suite: BenchmarkSuite = {
       warmup: config.warmup ?? true,
     })
 
-    const lib = getLib()
-
     // 1. Pure JS allocations (baseline)
     bench.add('ArrayBuffer(260) allocation', () => {
-      new ArrayBuffer(ERROR_STRUCT_SIZE)
+      new ArrayBuffer(260)
     })
 
     bench.add('BigInt64Array([2]) allocation', () => {
@@ -42,27 +38,7 @@ export const suite: BenchmarkSuite = {
       new BigInt64Array([2n, 3n, 4n, 5n])
     })
 
-    // 2. Error handling overhead
-    bench.add('createError() allocation', () => {
-      createError()
-    })
-
-    bench.add('createError() + checkError()', () => {
-      const err = createError()
-      checkError(err)
-    })
-
-    // 3. Minimal FFI call (no tensor allocation)
-    bench.add('FFI: ts_cuda_is_available()', () => {
-      lib.ts_cuda_is_available()
-    })
-
-    // 4. FFI call with error wrapper
-    bench.add('withError(ts_cuda_is_available)', () => {
-      withError((_err) => lib.ts_cuda_is_available())
-    })
-
-    // 5. Tensor creation at different sizes (to see FFI vs compute)
+    // 2. Tensor creation at different sizes (to see FFI vs compute)
     bench.add('tensor zeros [1] (minimal)', () => {
       run(() => {
         cpu.zeros([1] as const)
@@ -93,13 +69,7 @@ export const suite: BenchmarkSuite = {
       })
     })
 
-    bench.add('tensor zeros [512, 512] (262K elements)', () => {
-      run(() => {
-        cpu.zeros([512, 512] as const)
-      })
-    })
-
-    // 6. Operation overhead: add small vs large tensors
+    // 3. Operation overhead: add small vs large tensors
     bench.add('add [2, 2] (FFI-dominated)', () => {
       run(() => {
         const a = cpu.ones([2, 2] as const)
@@ -116,7 +86,7 @@ export const suite: BenchmarkSuite = {
       })
     })
 
-    // 7. Multiple FFI calls in sequence
+    // 4. Multiple FFI calls in sequence
     bench.add('10x sequential add [100, 100]', () => {
       run(() => {
         let t = cpu.ones([100, 100] as const)
@@ -127,7 +97,7 @@ export const suite: BenchmarkSuite = {
       })
     })
 
-    // 8. Tensor creation methods comparison
+    // 5. Tensor creation methods comparison
     bench.add('zeros [256, 256]', () => {
       run(() => {
         cpu.zeros([256, 256] as const)
