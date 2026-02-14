@@ -157,25 +157,41 @@ Napi::Value NapiTensorChainMatmul(const Napi::CallbackInfo& info) {
 }
 
 // pow(tensor, tensor) -> tensor
-// TODO: add ts_tensor_pow to C API (ts_torch.h)
 Napi::Value NapiTensorPow(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   if (info.Length() < 2) {
     throw Napi::Error::New(env, "ts_tensor_pow requires 2 arguments");
   }
-  // ts_tensor_pow(tensor, tensor) is not yet exposed in the C API.
-  throw Napi::Error::New(env, "ts_tensor_pow(tensor, tensor) not yet supported in C API; use pow_scalar");
+
+  ts_Tensor* a = GetTensorHandle(info[0]);
+  ts_Tensor* b = GetTensorHandle(info[1]);
+  if (!a || !b) {
+    throw Napi::Error::New(env, "Invalid tensor handles");
+  }
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_pow(a, b, &err);
+  CheckAndThrowError(env, err, "ts_tensor_pow");
+  return WrapTensorHandle(env, result);
 }
 
 // pow(tensor, scalar) -> tensor
-// TODO: add ts_tensor_pow_scalar to C API (ts_torch.h)
 Napi::Value NapiTensorPowScalar(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   if (info.Length() < 2) {
     throw Napi::Error::New(env, "ts_tensor_pow_scalar requires 2 arguments (tensor, scalar)");
   }
-  // ts_tensor_pow_scalar is not yet exposed in the C API.
-  throw Napi::Error::New(env, "ts_tensor_pow_scalar not yet exposed in C API");
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+  double exponent = info[1].As<Napi::Number>().DoubleValue();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_pow_scalar(tensor, exponent, &err);
+  CheckAndThrowError(env, err, "ts_tensor_pow_scalar");
+  return WrapTensorHandle(env, result);
 }
 
 // ============================================================================
@@ -471,18 +487,25 @@ Napi::Value NapiTensorScatter(const Napi::CallbackInfo& info) {
   return WrapTensorHandle(env, result);
 }
 
-// scatter_add - forward declared in header but uses same scatter C API
-// scatter_add is a reduce variant; delegates to scatter with add reduce.
-// Since ts_torch.h does not expose scatter_add separately, this is a
-// placeholder that returns an error for now.
+// scatter_add(input, dim, index, src) -> tensor
 Napi::Value NapiTensorScatterAdd(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   if (info.Length() < 4) {
     throw Napi::Error::New(env, "ts_tensor_scatter_add requires 4 arguments (input, dim, index, src)");
   }
 
-  // scatter_add not yet in C API - would need ts_tensor_scatter_add
-  throw Napi::Error::New(env, "ts_tensor_scatter_add not yet exposed in C API");
+  ts_Tensor* input = GetTensorHandle(info[0]);
+  int64_t dim = info[1].As<Napi::Number>().Int64Value();
+  ts_Tensor* index = GetTensorHandle(info[2]);
+  ts_Tensor* src = GetTensorHandle(info[3]);
+  if (!input || !index || !src) {
+    throw Napi::Error::New(env, "Invalid tensor handles");
+  }
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_scatter_add(input, dim, index, src, &err);
+  CheckAndThrowError(env, err, "ts_tensor_scatter_add");
+  return WrapTensorHandle(env, result);
 }
 
 // index_select(tensor, dim, index) -> tensor
@@ -526,14 +549,22 @@ Napi::Value NapiTensorMaskedFill(const Napi::CallbackInfo& info) {
 }
 
 // masked_select(tensor, mask) -> 1-D tensor
-// ts_torch.h does not expose masked_select; placeholder.
 Napi::Value NapiTensorMaskedSelect(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   if (info.Length() < 2) {
     throw Napi::Error::New(env, "ts_tensor_masked_select requires 2 arguments (tensor, mask)");
   }
 
-  throw Napi::Error::New(env, "ts_tensor_masked_select not yet exposed in C API");
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  ts_Tensor* mask = GetTensorHandle(info[1]);
+  if (!tensor || !mask) {
+    throw Napi::Error::New(env, "Invalid tensor handles");
+  }
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_masked_select(tensor, mask, &err);
+  CheckAndThrowError(env, err, "ts_tensor_masked_select");
+  return WrapTensorHandle(env, result);
 }
 
 // index(tensor, indices...) - advanced indexing

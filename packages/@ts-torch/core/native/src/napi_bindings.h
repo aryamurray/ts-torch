@@ -179,6 +179,12 @@ Napi::Value NapiTensorAbs(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorClamp(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorDropout(const Napi::CallbackInfo& info);
 
+// napi_remaining_ops.cpp -- device/property/fused
+Napi::Value NapiTensorCpu(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorCuda(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorAddRelu(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorZeroGrad_(const Napi::CallbackInfo& info);
+
 // tensor_reductions.cpp
 Napi::Value NapiTensorSum(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorMean(const Napi::CallbackInfo& info);

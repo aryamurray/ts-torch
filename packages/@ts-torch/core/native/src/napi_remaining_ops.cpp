@@ -987,6 +987,191 @@ Napi::Value NapiTensorNonzero(const Napi::CallbackInfo& info) {
 }
 
 // ============================================================================
+// Missing Wrappers: dropout, cpu, cuda, device_type, device_index, shape,
+//                   add_relu, zero_grad_
+// ============================================================================
+
+Napi::Value NapiTensorDropout(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 3) {
+    throw Napi::Error::New(env, "ts_tensor_dropout requires 3 arguments (tensor, p, training)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  double p = info[1].As<Napi::Number>().DoubleValue();
+  int training = info[2].As<Napi::Number>().Int32Value();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_dropout(tensor, p, training, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_dropout")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorCpu(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1) {
+    throw Napi::Error::New(env, "ts_tensor_cpu requires 1 argument");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_cpu(tensor, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_cpu")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorCuda(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 2) {
+    throw Napi::Error::New(env, "ts_tensor_cuda requires 2 arguments (tensor, device_index)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  int device_index = info[1].As<Napi::Number>().Int32Value();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_cuda(tensor, device_index, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_cuda")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorDeviceType(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1) {
+    throw Napi::Error::New(env, "ts_tensor_device_type requires 1 argument");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  ts_Error err = {0, ""};
+  int result = ts_tensor_device_type(tensor, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_device_type")) {
+    return env.Null();
+  }
+
+  return Napi::Number::New(env, result);
+}
+
+Napi::Value NapiTensorDeviceIndex(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1) {
+    throw Napi::Error::New(env, "ts_tensor_device_index requires 1 argument");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  ts_Error err = {0, ""};
+  int result = ts_tensor_device_index(tensor, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_device_index")) {
+    return env.Null();
+  }
+
+  return Napi::Number::New(env, result);
+}
+
+Napi::Value NapiTensorShape(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1) {
+    throw Napi::Error::New(env, "ts_tensor_shape requires 1 argument");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  int64_t shape[32];  // Max 32 dimensions
+  size_t ndim = 0;
+  ts_Error err = {0, ""};
+  ts_tensor_shape(tensor, shape, &ndim, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_shape")) {
+    return env.Null();
+  }
+
+  Napi::Array result = Napi::Array::New(env, ndim);
+  for (size_t i = 0; i < ndim; i++) {
+    result.Set(static_cast<uint32_t>(i), Napi::Number::New(env, static_cast<double>(shape[i])));
+  }
+  return result;
+}
+
+Napi::Value NapiTensorAddRelu(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 2) {
+    throw Napi::Error::New(env, "ts_tensor_add_relu requires 2 arguments");
+  }
+
+  ts_Tensor* a = GetTensorHandle(info[0]);
+  ts_Tensor* b = GetTensorHandle(info[1]);
+  if (!a || !b) {
+    throw Napi::Error::New(env, "Invalid tensor handles");
+  }
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_add_relu(a, b, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_add_relu")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorZeroGrad_(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1) {
+    throw Napi::Error::New(env, "ts_tensor_zero_grad_ requires 1 argument");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  ts_Error err = {0, ""};
+  ts_tensor_zero_grad_(tensor, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_zero_grad_")) {
+    return env.Null();
+  }
+
+  return env.Undefined();
+}
+
+// ============================================================================
 // Module Registration
 // ============================================================================
 
@@ -1100,4 +1285,22 @@ void InitRemainingOps(Napi::Env env, Napi::Object exports) {
     Napi::Function::New(env, NapiTensorExpand));
   exports.Set("ts_tensor_nonzero",
     Napi::Function::New(env, NapiTensorNonzero));
+
+  // Missing wrappers for existing C functions
+  exports.Set("ts_tensor_dropout",
+    Napi::Function::New(env, NapiTensorDropout));
+  exports.Set("ts_tensor_cpu",
+    Napi::Function::New(env, NapiTensorCpu));
+  exports.Set("ts_tensor_cuda",
+    Napi::Function::New(env, NapiTensorCuda));
+  exports.Set("ts_tensor_device_type",
+    Napi::Function::New(env, NapiTensorDeviceType));
+  exports.Set("ts_tensor_device_index",
+    Napi::Function::New(env, NapiTensorDeviceIndex));
+  exports.Set("ts_tensor_shape",
+    Napi::Function::New(env, NapiTensorShape));
+  exports.Set("ts_tensor_add_relu",
+    Napi::Function::New(env, NapiTensorAddRelu));
+  exports.Set("ts_tensor_zero_grad_",
+    Napi::Function::New(env, NapiTensorZeroGrad_));
 }

@@ -754,6 +754,35 @@ TS_TORCH_API ts_TensorHandle ts_tensor_einsum(
     ts_Error* error
 );
 
+// Power operations
+TS_TORCH_API ts_TensorHandle ts_tensor_pow(
+    ts_TensorHandle a,
+    ts_TensorHandle b,
+    ts_Error* error
+);
+
+TS_TORCH_API ts_TensorHandle ts_tensor_pow_scalar(
+    ts_TensorHandle tensor,
+    double exponent,
+    ts_Error* error
+);
+
+// Scatter add: like scatter but adds into output instead of replacing
+TS_TORCH_API ts_TensorHandle ts_tensor_scatter_add(
+    ts_TensorHandle input,
+    int64_t dim,
+    ts_TensorHandle index,
+    ts_TensorHandle src,
+    ts_Error* error
+);
+
+// Masked select: returns 1-D tensor of elements where mask is true
+TS_TORCH_API ts_TensorHandle ts_tensor_masked_select(
+    ts_TensorHandle tensor,
+    ts_TensorHandle mask,
+    ts_Error* error
+);
+
 // ============================================================================
 // In-Place Operations (Phase 4: Memory Efficient Updates)
 // ============================================================================

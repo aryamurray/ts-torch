@@ -11,7 +11,7 @@
  */
 
 import type { Tensor, Shape, DType, DeviceType } from '@ts-torch/core'
-import { getLib, withErrorFast, type Pointer } from '@ts-torch/core'
+import { getLib, type Pointer } from '@ts-torch/core'
 
 /**
  * Wrapper for safe in-place tensor operations in optimizer context.
@@ -94,9 +94,7 @@ export class OptimizerTensor<
    */
   addInplace(other: Tensor<S, D, Dev>, alpha: number = 1.0): this {
     const lib = getLib()
-    withErrorFast((err) =>
-      lib.ts_tensor_optim_add_(this._handle, (other as any)._handle, alpha, err),
-    )
+    lib.ts_tensor_optim_add_(this._handle, (other as any)._handle, alpha)
     return this
   }
 
@@ -116,7 +114,7 @@ export class OptimizerTensor<
    */
   mulScalarInplace(scalar: number): this {
     const lib = getLib()
-    withErrorFast((err) => lib.ts_tensor_mul_scalar_(this._handle, scalar, err))
+    lib.ts_tensor_mul_scalar_(this._handle, scalar)
     return this
   }
 
@@ -127,7 +125,7 @@ export class OptimizerTensor<
    */
   zeroGrad(): this {
     const lib = getLib()
-    withErrorFast((err) => lib.ts_tensor_zero_grad_(this._handle, err))
+    lib.ts_tensor_zero_grad_(this._handle)
     return this
   }
 
