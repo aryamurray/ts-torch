@@ -1,13 +1,47 @@
 /**
- * Native library loader for ts-torch
- * Handles platform detection, library resolution, and FFI initialization
+ * Napi native library loader for ts-torch
+ * Loads pre-compiled Node.js addon (.node module)
+ *
+ * This replaced the Koffi loader with a much simpler architecture:
+ * - No dynamic symbol binding (all symbols bound at compile time)
+ * - No FFI overhead per operation
+ * - Automatic memory management via Napi finalizers
+ *
+ * The .node module is built by cmake-js and contains all 131 C functions
+ * directly callable from JavaScript with minimal overhead.
  */
 
-import koffi from 'koffi'
+import { createRequire } from 'module'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve, join, dirname } from 'node:path'
-import { FFI_SYMBOLS, type FFISymbols } from './symbols.js'
 import { Logger } from '../logger.js'
+
+/**
+ * Type definition for the loaded Napi module
+ * Maps to C function names - all exported from napi_bindings.cpp
+ */
+export type KoffiLibrary = {
+  ts_version: () => string
+  ts_tensor_zeros: (
+    shape: Int32Array,
+    dtype: number,
+    device: number,
+    deviceIndex: number
+  ) => unknown
+  ts_tensor_ones: (
+    shape: Int32Array,
+    dtype: number,
+    device: number,
+    deviceIndex: number
+  ) => unknown
+  ts_tensor_add: (a: unknown, b: unknown) => unknown
+  ts_tensor_matmul: (a: unknown, b: unknown) => unknown
+  ts_tensor_relu: (tensor: unknown) => unknown
+  ts_tensor_shape: (tensor: unknown, outShape: Int32Array) => number
+  ts_tensor_requires_grad: (tensor: unknown) => boolean
+  ts_tensor_backward: (tensor: unknown, retainGraph: boolean) => void
+  [key: string]: (...args: unknown[]) => unknown
+}
 
 /**
  * Build metadata for CUDA packages
@@ -20,19 +54,7 @@ interface BuildMeta {
 }
 
 /**
- * Type for a koffi function
- */
-type KoffiFunction = (...args: unknown[]) => unknown
-
-/**
- * Library interface with all FFI functions bound
- */
-export type KoffiLibrary = {
-  [K in keyof FFISymbols]: KoffiFunction
-}
-
-/**
- * Cached library instance
+ * Cached module instance
  */
 let libInstance: KoffiLibrary | null = null
 
@@ -45,30 +67,12 @@ interface PlatformInfo {
 }
 
 /**
- * Get platform-specific library suffix
- * Replaces bun:ffi's suffix constant
- */
-function getLibrarySuffix(): string {
-  switch (process.platform) {
-    case 'win32':
-      return 'dll'
-    case 'darwin':
-      return 'dylib'
-    default:
-      return 'so'
-  }
-}
-
-/**
  * Get platform-specific package name and library name
- * Maps Node.js process.platform and process.arch to native package names
  */
 export function getPlatformPackage(): PlatformInfo {
   const platform = process.platform
   const arch = process.arch
 
-  // Map platform/arch to package names
-  // Package naming convention: @ts-torch-platform/{platform}-{arch}
   switch (platform) {
     case 'darwin':
       switch (arch) {
@@ -133,8 +137,6 @@ const CUDA_VERSIONS = ['cu124', 'cu121', 'cu118']
  */
 let cudaLibPath: string | null = null
 
-// Logger is configured via TS_TORCH_DEBUG and TS_TORCH_QUIET env vars automatically
-
 /**
  * Cached workspace root path
  */
@@ -144,22 +146,13 @@ let workspaceRootSearched = false
 /**
  * Find the workspace root directory using multiple detection strategies
  * Caches the result for performance
- *
- * Detection order:
- * 1. package.json with workspaces field (npm/bun/yarn workspaces)
- * 2. pnpm-workspace.yaml (pnpm workspaces)
- * 3. lerna.json (lerna monorepos)
- * 4. Directory with packages/ or apps/ subdirectory and package.json
- * 5. Git repository root with package.json
  */
 function findWorkspaceRoot(): string | null {
-  // Return cached result (including null if we already searched)
   if (workspaceRootSearched) {
     return workspaceRoot
   }
   workspaceRootSearched = true
 
-  // Start from loader's directory and traverse up
   const loaderDir = import.meta.dirname
   if (!loaderDir) {
     Logger.debug('Cannot determine loader directory, workspace detection skipped')
@@ -168,17 +161,14 @@ function findWorkspaceRoot(): string | null {
 
   const root = process.platform === 'win32' ? loaderDir.split(':')[0] + ':\\' : '/'
 
-  // First pass: look for explicit workspace configurations
   let dir = loaderDir
   while (dir !== root) {
     const pkgPath = join(dir, 'package.json')
 
-    // Check for npm/bun/yarn workspaces
     if (existsSync(pkgPath)) {
       try {
         const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
         if (pkg.workspaces) {
-          // Handle both array and object format (yarn uses objects)
           const hasWorkspaces = Array.isArray(pkg.workspaces) || typeof pkg.workspaces === 'object'
           if (hasWorkspaces) {
             workspaceRoot = dir
@@ -191,14 +181,12 @@ function findWorkspaceRoot(): string | null {
       }
     }
 
-    // Check for pnpm workspaces
     if (existsSync(join(dir, 'pnpm-workspace.yaml'))) {
       workspaceRoot = dir
       Logger.debug(`Found workspace root via pnpm-workspace.yaml: ${dir}`)
       return workspaceRoot
     }
 
-    // Check for lerna
     if (existsSync(join(dir, 'lerna.json'))) {
       workspaceRoot = dir
       Logger.debug(`Found workspace root via lerna.json: ${dir}`)
@@ -213,20 +201,21 @@ function findWorkspaceRoot(): string | null {
   while (dir !== root) {
     const pkgPath = join(dir, 'package.json')
     if (existsSync(pkgPath)) {
-      // Check for packages/ or apps/ directories (common monorepo patterns)
       const hasPackagesDir = existsSync(join(dir, 'packages'))
       const hasAppsDir = existsSync(join(dir, 'apps'))
 
       if (hasPackagesDir || hasAppsDir) {
         workspaceRoot = dir
-        Logger.debug(`Found workspace root via directory pattern (${hasPackagesDir ? 'packages/' : 'apps/'}): ${dir}`)
+        Logger.debug(
+          `Found workspace root via directory pattern (${hasPackagesDir ? 'packages/' : 'apps/'}): ${dir}`
+        )
         return workspaceRoot
       }
     }
     dir = dirname(dir)
   }
 
-  // Third pass: use git root as fallback (many projects have package root at git root)
+  // Third pass: use git root as fallback
   dir = loaderDir
   while (dir !== root) {
     if (existsSync(join(dir, '.git')) && existsSync(join(dir, 'package.json'))) {
@@ -244,26 +233,24 @@ function findWorkspaceRoot(): string | null {
 /**
  * Get paths relative to workspace root for development
  */
-function getDevPaths(libFileName: string, platformDir: string): string[] {
+function getDevPaths(platformDir: string): string[] {
   const paths: string[] = []
   const root = findWorkspaceRoot()
 
   if (root) {
-    // Primary development paths from workspace root
     paths.push(
-      join(root, 'packages', '@ts-torch-platform', platformDir, 'lib', libFileName),
-      join(root, 'packages', '@ts-torch', 'core', 'native', 'build', 'Release', libFileName),
-      join(root, 'packages', '@ts-torch', 'core', 'native', 'build', libFileName),
+      join(root, 'packages', '@ts-torch-platform', platformDir, 'lib', 'ts_torch.node'),
+      join(root, 'packages', '@ts-torch', 'core', 'native', 'build', 'Release', 'ts_torch.node'),
+      join(root, 'packages', '@ts-torch', 'core', 'native', 'build', 'ts_torch.node'),
     )
   }
 
-  // Fallback: check from cwd for non-workspace scenarios
   const cwd = process.cwd()
   if (cwd !== root) {
     paths.push(
-      join(cwd, 'packages', '@ts-torch-platform', platformDir, 'lib', libFileName),
-      join(cwd, 'native', 'build', 'Release', libFileName),
-      join(cwd, 'native', 'build', libFileName),
+      join(cwd, 'packages', '@ts-torch-platform', platformDir, 'lib', 'ts_torch.node'),
+      join(cwd, 'native', 'build', 'Release', 'ts_torch.node'),
+      join(cwd, 'native', 'build', 'ts_torch.node'),
     )
   }
 
@@ -281,7 +268,6 @@ function getLibtorchDevPaths(subdir: string): string[] {
     paths.push(join(root, subdir, 'lib'))
   }
 
-  // Fallback from cwd
   const cwd = process.cwd()
   if (cwd !== root) {
     paths.push(join(cwd, subdir, 'lib'))
@@ -297,12 +283,10 @@ function isValidCudaBuild(pkgDir: string, libFileName: string, expectedCuda: str
   const libPath = join(pkgDir, 'lib', libFileName)
   const metaPath = join(pkgDir, 'lib', '.build-meta.json')
 
-  // Both lib and meta must exist
   if (!existsSync(libPath) || !existsSync(metaPath)) {
     return false
   }
 
-  // Verify meta matches expected CUDA version
   try {
     const meta: BuildMeta = JSON.parse(readFileSync(metaPath, 'utf-8'))
     if (meta.cuda !== expectedCuda) {
@@ -323,28 +307,24 @@ function isValidCudaBuild(pkgDir: string, libFileName: string, expectedCuda: str
 
 /**
  * Try to find a valid CUDA library
- * @returns Path to CUDA library if found, null otherwise
  */
 function findCudaLibrary(): string | null {
-  // Only Linux and Windows support CUDA
   if (process.platform !== 'linux' && process.platform !== 'win32') {
     return null
   }
 
   const platform = process.platform === 'win32' ? 'win32' : 'linux'
-  const { libraryName } = getPlatformPackage()
-  const suffix = getLibrarySuffix()
-  const libFileName = `${libraryName}.${suffix}`
+  const libFileName = 'ts_torch.node'
 
-  // Check each CUDA version (latest first)
   for (const cudaVer of CUDA_VERSIONS) {
     const pkg = `@ts-torch-cuda/${platform}-x64-${cudaVer}`
     try {
-      const pkgPath = require.resolve(`${pkg}/package.json`)
+      const require_ = createRequire(import.meta.url)
+      const pkgPath = require_.resolve(`${pkg}/package.json`)
       const pkgDir = dirname(pkgPath)
 
       if (isValidCudaBuild(pkgDir, libFileName, cudaVer)) {
-        Logger.info(`Using CUDA ${cudaVer} library`)
+        Logger.info(`Using CUDA ${cudaVer} module`)
         cudaLibPath = join(pkgDir, 'lib', libFileName)
         return cudaLibPath
       }
@@ -353,13 +333,12 @@ function findCudaLibrary(): string | null {
     }
   }
 
-  // Check development paths using workspace root
   const root = findWorkspaceRoot()
   if (root) {
     for (const cudaVer of CUDA_VERSIONS) {
       const devPath = join(root, 'packages', '@ts-torch-cuda', `${platform}-x64-${cudaVer}`)
       if (existsSync(devPath) && isValidCudaBuild(devPath, libFileName, cudaVer)) {
-        Logger.info(`Using CUDA ${cudaVer} library (dev)`)
+        Logger.info(`Using CUDA ${cudaVer} module (dev)`)
         cudaLibPath = join(devPath, 'lib', libFileName)
         return cudaLibPath
       }
@@ -370,14 +349,15 @@ function findCudaLibrary(): string | null {
 }
 
 /**
- * Get the full path to the native library
+ * Get the full path to the native module (.node file)
+ *
  * Resolution order:
  * 1. TS_TORCH_LIB environment variable (for custom builds)
  * 2. CUDA packages (if installed and valid)
  * 3. CPU platform-specific package (production)
  * 4. Local development paths (workspace monorepo)
  *
- * @throws Error if library cannot be found
+ * @throws Error if module cannot be found
  */
 export function getLibraryPath(): string {
   // 1. Check environment variable override
@@ -395,17 +375,14 @@ export function getLibraryPath(): string {
     return cudaPath
   }
 
-  const { packageName, libraryName } = getPlatformPackage()
-  const suffix = getLibrarySuffix()
-  const libFileName = `${libraryName}.${suffix}`
+  const { packageName } = getPlatformPackage()
+  const require_ = createRequire(import.meta.url)
 
   // 3. Try to resolve from installed CPU platform package
   try {
-    // Resolve the platform package's package.json
-    const packagePath = require.resolve(`${packageName}/package.json`)
-    // Handle both forward and backward slashes (Windows uses backslashes)
+    const packagePath = require_.resolve(`${packageName}/package.json`)
     const packageDir = packagePath.replace(/[/\\]package\.json$/, '')
-    const libPath = join(packageDir, 'lib', libFileName)
+    const libPath = join(packageDir, 'lib', 'ts_torch.node')
 
     if (existsSync(libPath)) {
       return libPath
@@ -416,7 +393,7 @@ export function getLibraryPath(): string {
 
   // 4. Try local development paths (workspace monorepo structure)
   const platformDir = packageName.replace('@ts-torch-platform/', '')
-  const possiblePaths = getDevPaths(libFileName, platformDir)
+  const possiblePaths = getDevPaths(platformDir)
 
   for (const path of possiblePaths) {
     if (existsSync(path)) {
@@ -424,23 +401,22 @@ export function getLibraryPath(): string {
     }
   }
 
-  // Library not found - provide helpful setup instructions
+  // Module not found - provide helpful setup instructions
   const isCudaSupported = process.platform === 'linux' || process.platform === 'win32'
   const cudaInstructions = isCudaSupported
-    ? `\nFor GPU/CUDA support:\n` +
-      `  bun run setup:cuda\n\n`
+    ? `\nFor GPU/CUDA support:\n` + `  bun run setup:cuda\n\n`
     : ''
 
   throw new Error(
-    `Could not find ts-torch native library for ${process.platform}-${process.arch}.\n\n` +
+    `Could not find ts-torch native module for ${process.platform}-${process.arch}.\n\n` +
       `Quick Setup:\n` +
       `  bun run setup          # Download LibTorch and build (CPU)\n` +
       cudaInstructions +
       `Manual Installation:\n` +
       `  bun add ${packageName}\n\n` +
-      `Or set TS_TORCH_LIB environment variable to point to your library.\n\n` +
+      `Or set TS_TORCH_LIB environment variable to point to your .node file.\n\n` +
       `For debugging, set TS_TORCH_DEBUG=1 to see detailed resolution info.\n\n` +
-      `Searched paths:\n${possiblePaths.map((p) => `  - ${p}`).join('\n')}`,
+      `Searched paths:\n${possiblePaths.map((p) => `  - ${p}`).join('\n')}`
   )
 }
 
@@ -449,7 +425,6 @@ export function getLibraryPath(): string {
  * Used to add DLL dependencies to the search path on Windows
  */
 function findLibtorchPath(): string | null {
-  // Check environment variables first (highest priority)
   const envPaths = [
     process.env.LIBTORCH ? join(process.env.LIBTORCH, 'lib') : '',
     process.env.LIBTORCH_PATH ? join(process.env.LIBTORCH_PATH, 'lib') : '',
@@ -461,7 +436,6 @@ function findLibtorchPath(): string | null {
     }
   }
 
-  // Check development paths
   for (const p of getLibtorchDevPaths('libtorch')) {
     if (existsSync(p)) {
       return resolve(p)
@@ -473,11 +447,8 @@ function findLibtorchPath(): string | null {
 
 /**
  * Find libtorch path from CUDA package (if using CUDA)
- * CUDA packages store libtorch in their lib/libtorch directory
- * For dev, check root libtorch-cuda directory
  */
 function findCudaLibtorchPath(): string | null {
-  // Check env vars first (dev/custom builds)
   const envPaths = [
     process.env.LIBTORCH_CUDA ? join(process.env.LIBTORCH_CUDA, 'lib') : '',
     process.env.LIBTORCH_CUDA_PATH ? join(process.env.LIBTORCH_CUDA_PATH, 'lib') : '',
@@ -489,10 +460,7 @@ function findCudaLibtorchPath(): string | null {
     }
   }
 
-  // If we found a CUDA library, check its package's libtorch
   if (cudaLibPath) {
-    // CUDA lib path is like: .../lib/ts_torch.dll
-    // LibTorch is at: .../lib/libtorch/lib
     const libDir = dirname(cudaLibPath)
     const libtorchLib = join(libDir, 'libtorch', 'lib')
 
@@ -501,7 +469,6 @@ function findCudaLibtorchPath(): string | null {
     }
   }
 
-  // Check development paths
   for (const p of getLibtorchDevPaths('libtorch-cuda')) {
     if (existsSync(p)) {
       return resolve(p)
@@ -513,14 +480,12 @@ function findCudaLibtorchPath(): string | null {
 
 /**
  * Setup DLL search path for Windows
- * On Windows, DLL dependencies need to be in PATH or same directory
  */
 function setupDllSearchPath(): void {
   if (process.platform !== 'win32') {
     return
   }
 
-  // Check CUDA libtorch path first (if using CUDA)
   const cudaLibtorchLib = findCudaLibtorchPath()
   if (cudaLibtorchLib) {
     const currentPath = process.env.PATH || ''
@@ -530,10 +495,8 @@ function setupDllSearchPath(): void {
     return
   }
 
-  // Fall back to CPU libtorch path
   const libtorchLib = findLibtorchPath()
   if (libtorchLib) {
-    // Add libtorch/lib to PATH so Windows can find dependent DLLs
     const currentPath = process.env.PATH || ''
     if (!currentPath.includes(libtorchLib)) {
       process.env.PATH = `${libtorchLib};${currentPath}`
@@ -542,11 +505,11 @@ function setupDllSearchPath(): void {
 }
 
 /**
- * Load the native library and return FFI bindings
+ * Load the native module and return Napi bindings
  * Uses lazy loading and caching for performance
  *
- * @returns Library instance with typed FFI symbols
- * @throws Error if library cannot be loaded
+ * @returns Module instance with typed bindings
+ * @throws Error if module cannot be loaded
  */
 export function getLib(): KoffiLibrary {
   if (libInstance !== null) {
@@ -556,46 +519,35 @@ export function getLib(): KoffiLibrary {
   // Setup DLL search path before loading (Windows only)
   setupDllSearchPath()
 
-  const libraryPath = getLibraryPath()
+  const modulePath = getLibraryPath()
 
   try {
-    // Load the native library with koffi
-    const lib = koffi.load(libraryPath)
-
-    // Bind all functions from FFI_SYMBOLS
-    const symbols: Record<string, KoffiFunction> = {}
-
-    for (const [name, def] of Object.entries(FFI_SYMBOLS)) {
-      symbols[name] = lib.func(name, def.returns, def.args as unknown as string[])
-    }
-
-    libInstance = symbols as KoffiLibrary
+    const require_ = createRequire(import.meta.url)
+    libInstance = require_(modulePath) as KoffiLibrary
     return libInstance
   } catch (err) {
     const libtorchPath = findLibtorchPath()
     throw new Error(
-      `Failed to load ts-torch native library from: ${libraryPath}\n` +
+      `Failed to load ts-torch native module from: ${modulePath}\n` +
         `Error: ${err instanceof Error ? err.message : String(err)}\n\n` +
         `LibTorch path: ${libtorchPath || 'NOT FOUND'}\n\n` +
         `This may indicate:\n` +
-        `  - Library architecture mismatch\n` +
+        `  - Module architecture mismatch\n` +
         `  - Missing system dependencies (libtorch, CUDA, etc.)\n` +
-        `  - Corrupted library file\n\n` +
+        `  - Corrupted module file\n\n` +
         `Ensure libtorch is at project root: ts-torch/libtorch/\n` +
         `Or run "bun run setup" to download and build automatically.\n` +
-        `Or set LIBTORCH or LIBTORCH_PATH environment variable.`,
+        `Or set LIBTORCH or LIBTORCH_PATH environment variable.`
     )
   }
 }
 
 /**
- * Close the library and release resources
- * Note: koffi handles cleanup automatically, but we clear the cache
+ * Close the module and release resources
  */
 export function closeLib(): void {
   libInstance = null
   cudaLibPath = null
-  // Reset workspace detection for testing
   workspaceRoot = null
   workspaceRootSearched = false
 }

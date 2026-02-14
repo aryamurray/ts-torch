@@ -31,17 +31,21 @@
   "homepage": "https://github.com/aryamurray/ts-torch#readme",
   "scripts": {
     "build": "vite build",
-    "build:native": "bun run scripts/build-native.ts",
+    "build:native": "cd native && bun x cmake-js build --release",
     "build:native:cuda": "bun run ../../../scripts/build-native-cuda.ts",
     "dev": "tsc --watch",
     "check-types": "tsc --noEmit",
     "test": "vitest run --dangerouslyIgnoreUnhandledErrors",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "install": "cd native && bun x cmake-js rebuild"
   },
   "dependencies": {
-    "@ts-torch-platform/loader": "^0.1.0",
-    "koffi": "^2.9.0"
+    "@ts-torch-platform/loader": "^0.1.0"
+  },
+  "optionalDependencies": {
+    "node-addon-api": "^8.0.0",
+    "cmake-js": "^7.3.0"
   },
   "devDependencies": {
     "typescript": "5.9.2",

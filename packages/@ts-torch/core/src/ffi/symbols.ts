@@ -3,6 +3,11 @@
  * Defines all C function signatures with koffi-compatible types
  *
  * These MUST match the signatures in native/include/ts_torch.h
+ *
+ * @deprecated This file is deprecated after Napi migration (Phase 1).
+ * Kept for reference during Phase 2 code generation of Napi wrappers.
+ * All functions are now wrapped in native/src/napi_bindings.cpp
+ * This file will be deleted after Phase 2 is complete.
  */
 
 /**

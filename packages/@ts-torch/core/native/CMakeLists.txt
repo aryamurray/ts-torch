@@ -10,6 +10,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Export compile commands for IDE support
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Node.js addon support - cmake-js sets these
+if(DEFINED CMAKE_JS_INC)
+  include_directories(${CMAKE_JS_INC})
+else()
+  message(WARNING "CMAKE_JS_INC not set - Node.js headers may not be found")
+endif()
+
 # Platform-specific settings
 if(WIN32)
     add_compile_definitions(_WIN32_WINNT=0x0A00)
@@ -41,7 +48,32 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${TORCH_INCLUDE_DIRS}
+    ${CMAKE_JS_INC}
 )
+
+# node-addon-api headers (look in node_modules, including Bun's .bun directory)
+# Try multiple potential locations
+file(GLOB NODE_ADDON_API_PATHS
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../node_modules/node-addon-api"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../../node_modules/node-addon-api"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../node_modules/.bun/node-addon-api@*/node_modules/node-addon-api"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../../node_modules/.bun/node-addon-api@*/node_modules/node-addon-api"
+)
+
+set(NODE_ADDON_API_INCLUDE_DIR "")
+foreach(path ${NODE_ADDON_API_PATHS})
+  if(EXISTS "${path}/napi.h")
+    set(NODE_ADDON_API_INCLUDE_DIR "${path}")
+    break()
+  endif()
+endforeach()
+
+if(NODE_ADDON_API_INCLUDE_DIR)
+  include_directories(${NODE_ADDON_API_INCLUDE_DIR})
+  message(STATUS "Found node-addon-api: ${NODE_ADDON_API_INCLUDE_DIR}")
+else()
+  message(FATAL_ERROR "Could not find node-addon-api (napi.h). Please ensure node-addon-api is installed via 'bun install'. Searched: ${NODE_ADDON_API_PATHS}")
+endif()
 
 # Source files
 set(SOURCES
@@ -56,6 +88,7 @@ set(SOURCES
     src/batch_ops.cpp
     src/fused_ops.cpp
     src/advanced_ops.cpp
+    src/napi_bindings.cpp
 )
 
 # Header files
@@ -64,24 +97,33 @@ set(HEADERS
     include/ts_torch/internal.h
 )
 
-# Build shared library
-add_library(ts_torch SHARED
+# Build Node.js addon module (.node)
+add_library(ts_torch MODULE
     ${SOURCES}
     ${HEADERS}
 )
 
-# Define export macro for Windows DLL
+# Set library prefix and suffix for Node.js addon
+set_target_properties(ts_torch PROPERTIES
+    PREFIX ""
+    SUFFIX ".node"
+)
+
+# Define export macro for Windows DLL (still used by non-NAPI code)
 target_compile_definitions(ts_torch PRIVATE TS_TORCH_EXPORTS)
 
-# Link against LibTorch
+# Link against LibTorch (Node-API symbol resolution handled by native addon mechanism)
 target_link_libraries(ts_torch
     ${TORCH_LIBRARIES}
 )
 
-# Set library properties
+# On macOS/Linux, use dynamic linking for Node-API symbols (resolved at runtime by Node.js)
+if(NOT MSVC)
+    target_link_options(ts_torch PRIVATE -undefined dynamic_lookup)
+endif()
+
+# Set library properties (note: VERSION/SOVERSION not used for NODE modules)
 set_target_properties(ts_torch PROPERTIES
-    VERSION ${PROJECT_VERSION}
-    SOVERSION ${PROJECT_VERSION_MAJOR}
     PUBLIC_HEADER include/ts_torch.h
     WINDOWS_EXPORT_ALL_SYMBOLS ON
 )
