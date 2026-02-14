@@ -26,27 +26,17 @@ function getPlatformConfig(): PlatformConfig {
   const arch = process.arch
 
   // Node-API addon is always ts_torch.node on all platforms
+  // cmake-js puts release output in build/Release/ on all platforms
   const libName = 'ts_torch.node'
+  const buildSubdir = 'Release'
 
   switch (platform) {
     case 'win32':
-      return {
-        packageDir: `@ts-torch-platform/win32-${arch}`,
-        libName,
-        buildSubdir: 'Release',
-      }
+      return { packageDir: `@ts-torch-platform/win32-${arch}`, libName, buildSubdir }
     case 'darwin':
-      return {
-        packageDir: `@ts-torch-platform/darwin-${arch}`,
-        libName,
-        buildSubdir: '',
-      }
+      return { packageDir: `@ts-torch-platform/darwin-${arch}`, libName, buildSubdir }
     case 'linux':
-      return {
-        packageDir: `@ts-torch-platform/linux-${arch}`,
-        libName,
-        buildSubdir: '',
-      }
+      return { packageDir: `@ts-torch-platform/linux-${arch}`, libName, buildSubdir }
     default:
       throw new Error(`Unsupported platform: ${platform}`)
   }

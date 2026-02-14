@@ -315,9 +315,23 @@ function checkBuildDependencies(): void {
 
   // Check for a C++ compiler
   if (platform === "win32") {
+    let hasMsvc = false;
     try {
       execSync("cl /?", { stdio: "ignore" });
+      hasMsvc = true;
     } catch {
+      // cl may not be on PATH but MSVC may still be installed (e.g., GitHub Actions)
+      try {
+        execSync(
+          '"C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe" -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath',
+          { stdio: "ignore" },
+        );
+        hasMsvc = true;
+      } catch {
+        // vswhere not found or no MSVC installation
+      }
+    }
+    if (!hasMsvc) {
       missing.push({
         name: "MSVC C++ compiler (cl)",
         install: "Install Visual Studio Build Tools with the C++ workload",

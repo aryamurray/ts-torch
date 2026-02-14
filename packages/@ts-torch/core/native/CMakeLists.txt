@@ -123,8 +123,8 @@ target_link_libraries(ts_torch
     ${TORCH_LIBRARIES}
 )
 
-# On macOS/Linux, use dynamic linking for Node-API symbols (resolved at runtime by Node.js)
-if(NOT MSVC)
+# On macOS, use dynamic lookup for Node-API symbols (resolved at runtime by Node.js)
+if(APPLE)
     target_link_options(ts_torch PRIVATE -undefined dynamic_lookup)
 endif()
 
