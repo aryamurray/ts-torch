@@ -262,215 +262,10 @@ Napi::Value NapiTensorNumel(const Napi::CallbackInfo& info) {
   return Napi::Number::New(env, numel);
 }
 
-// ============================================================================
-// Binary Operations
-// ============================================================================
-
-Napi::Value NapiTensorAdd(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  if (info.Length() < 2) {
-    throw Napi::Error::New(env, "ts_tensor_add requires 2 arguments");
-  }
-
-  ts_Tensor* a = GetTensorHandle(info[0]);
-  ts_Tensor* b = GetTensorHandle(info[1]);
-
-  if (!a || !b) {
-    throw Napi::Error::New(env, "Invalid tensor handles");
-  }
-
-  ts_Error err = {0, ""};
-  ts_Tensor* result = ts_tensor_add(a, b, &err);
-
-  if (CheckAndThrowError(env, err, "ts_tensor_add")) {
-    return env.Null();
-  }
-
-  return WrapTensorHandle(env, result);
-}
-
-Napi::Value NapiTensorMul(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  if (info.Length() < 2) {
-    throw Napi::Error::New(env, "ts_tensor_mul requires 2 arguments");
-  }
-
-  ts_Tensor* a = GetTensorHandle(info[0]);
-  ts_Tensor* b = GetTensorHandle(info[1]);
-
-  if (!a || !b) {
-    throw Napi::Error::New(env, "Invalid tensor handles");
-  }
-
-  ts_Error err = {0, ""};
-  ts_Tensor* result = ts_tensor_mul(a, b, &err);
-
-  if (CheckAndThrowError(env, err, "ts_tensor_mul")) {
-    return env.Null();
-  }
-
-  return WrapTensorHandle(env, result);
-}
-
-Napi::Value NapiTensorMatmul(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  if (info.Length() < 2) {
-    throw Napi::Error::New(env, "ts_tensor_matmul requires 2 arguments");
-  }
-
-  ts_Tensor* a = GetTensorHandle(info[0]);
-  ts_Tensor* b = GetTensorHandle(info[1]);
-
-  if (!a || !b) {
-    throw Napi::Error::New(env, "Invalid tensor handles");
-  }
-
-  ts_Error err = {0, ""};
-  ts_Tensor* result = ts_tensor_matmul(a, b, &err);
-
-  if (CheckAndThrowError(env, err, "ts_tensor_matmul")) {
-    return env.Null();
-  }
-
-  return WrapTensorHandle(env, result);
-}
-
-// ============================================================================
-// Unary Operations
-// ============================================================================
-
-Napi::Value NapiTensorRelu(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  if (info.Length() < 1) {
-    throw Napi::Error::New(env, "ts_tensor_relu requires 1 argument");
-  }
-
-  ts_Tensor* tensor = GetTensorHandle(info[0]);
-  if (!tensor) {
-    throw Napi::Error::New(env, "Invalid tensor handle");
-  }
-
-  ts_Error err = {0, ""};
-  ts_Tensor* result = ts_tensor_relu(tensor, &err);
-
-  if (CheckAndThrowError(env, err, "ts_tensor_relu")) {
-    return env.Null();
-  }
-
-  return WrapTensorHandle(env, result);
-}
-
-Napi::Value NapiTensorSigmoid(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  if (info.Length() < 1) {
-    throw Napi::Error::New(env, "ts_tensor_sigmoid requires 1 argument");
-  }
-
-  ts_Tensor* tensor = GetTensorHandle(info[0]);
-  if (!tensor) {
-    throw Napi::Error::New(env, "Invalid tensor handle");
-  }
-
-  ts_Error err = {0, ""};
-  ts_Tensor* result = ts_tensor_sigmoid(tensor, &err);
-
-  if (CheckAndThrowError(env, err, "ts_tensor_sigmoid")) {
-    return env.Null();
-  }
-
-  return WrapTensorHandle(env, result);
-}
-
-Napi::Value NapiTensorTanh(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  if (info.Length() < 1) {
-    throw Napi::Error::New(env, "ts_tensor_tanh requires 1 argument");
-  }
-
-  ts_Tensor* tensor = GetTensorHandle(info[0]);
-  if (!tensor) {
-    throw Napi::Error::New(env, "Invalid tensor handle");
-  }
-
-  ts_Error err = {0, ""};
-  ts_Tensor* result = ts_tensor_tanh(tensor, &err);
-
-  if (CheckAndThrowError(env, err, "ts_tensor_tanh")) {
-    return env.Null();
-  }
-
-  return WrapTensorHandle(env, result);
-}
-
-Napi::Value NapiTensorTranspose(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  if (info.Length() < 3) {
-    throw Napi::Error::New(env, "ts_tensor_transpose requires 3 arguments");
-  }
-
-  ts_Tensor* tensor = GetTensorHandle(info[0]);
-  if (!tensor) {
-    throw Napi::Error::New(env, "Invalid tensor handle");
-  }
-
-  int64_t dim1 = info[1].As<Napi::Number>().Int64Value();
-  int64_t dim2 = info[2].As<Napi::Number>().Int64Value();
-
-  ts_Error err = {0, ""};
-  ts_Tensor* result = ts_tensor_transpose(tensor, dim1, dim2, &err);
-
-  if (CheckAndThrowError(env, err, "ts_tensor_transpose")) {
-    return env.Null();
-  }
-
-  return WrapTensorHandle(env, result);
-}
-
-// ============================================================================
-// Reductions
-// ============================================================================
-
-Napi::Value NapiTensorSum(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  if (info.Length() < 1) {
-    throw Napi::Error::New(env, "ts_tensor_sum requires 1 argument");
-  }
-
-  ts_Tensor* tensor = GetTensorHandle(info[0]);
-  if (!tensor) {
-    throw Napi::Error::New(env, "Invalid tensor handle");
-  }
-
-  ts_Error err = {0, ""};
-  ts_Tensor* result = ts_tensor_sum(tensor, &err);
-
-  if (CheckAndThrowError(env, err, "ts_tensor_sum")) {
-    return env.Null();
-  }
-
-  return WrapTensorHandle(env, result);
-}
-
-Napi::Value NapiTensorMean(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-  if (info.Length() < 1) {
-    throw Napi::Error::New(env, "ts_tensor_mean requires 1 argument");
-  }
-
-  ts_Tensor* tensor = GetTensorHandle(info[0]);
-  if (!tensor) {
-    throw Napi::Error::New(env, "Invalid tensor handle");
-  }
-
-  ts_Error err = {0, ""};
-  ts_Tensor* result = ts_tensor_mean(tensor, &err);
-
-  if (CheckAndThrowError(env, err, "ts_tensor_mean")) {
-    return env.Null();
-  }
-
-  return WrapTensorHandle(env, result);
-}
+// Note: Binary, Unary, and Reduction operations are implemented in Phase 2:
+// - Binary operations in napi_tensor_binary_ops.cpp
+// - Unary operations in napi_tensor_unary_ops.cpp
+// - Reduction operations in napi_tensor_reductions.cpp
 
 // ============================================================================
 // Autograd
@@ -602,16 +397,23 @@ Napi::Value NapiScopeEscapeTensor(const Napi::CallbackInfo& info) {
 // Module Initialization
 // ============================================================================
 
+// Forward declarations for registration helpers
+extern void RegisterTensorBinaryOps(Napi::Env env, Napi::Object exports);
+extern void RegisterTensorUnaryOps(Napi::Env env, Napi::Object exports);
+extern void RegisterTensorReductions(Napi::Env env, Napi::Object exports);
+extern void RegisterNNOps(Napi::Env env, Napi::Object exports);
+extern void InitRemainingOps(Napi::Env env, Napi::Object exports);
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
+  // Phase 1: Core functions (inlined here)
+
   // Version
   exports.Set(Napi::String::New(env, "ts_version"),
     Napi::Function::New(env, NapiVersion));
-
-  // Device info
   exports.Set(Napi::String::New(env, "ts_cuda_is_available"),
     Napi::Function::New(env, NapiCudaIsAvailable));
 
-  // Tensor factories
+  // Tensor factories (Phase 1)
   exports.Set(Napi::String::New(env, "ts_tensor_zeros"),
     Napi::Function::New(env, NapiTensorZeros));
   exports.Set(Napi::String::New(env, "ts_tensor_ones"),
@@ -621,7 +423,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set(Napi::String::New(env, "ts_tensor_empty"),
     Napi::Function::New(env, NapiTensorEmpty));
 
-  // Tensor properties
+  // Tensor properties (Phase 1)
   exports.Set(Napi::String::New(env, "ts_tensor_ndim"),
     Napi::Function::New(env, NapiTensorNdim));
   exports.Set(Napi::String::New(env, "ts_tensor_dtype"),
@@ -629,41 +431,17 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set(Napi::String::New(env, "ts_tensor_numel"),
     Napi::Function::New(env, NapiTensorNumel));
 
-  // Binary operations
-  exports.Set(Napi::String::New(env, "ts_tensor_add"),
-    Napi::Function::New(env, NapiTensorAdd));
-  exports.Set(Napi::String::New(env, "ts_tensor_mul"),
-    Napi::Function::New(env, NapiTensorMul));
-  exports.Set(Napi::String::New(env, "ts_tensor_matmul"),
-    Napi::Function::New(env, NapiTensorMatmul));
-
-  // Unary operations
-  exports.Set(Napi::String::New(env, "ts_tensor_relu"),
-    Napi::Function::New(env, NapiTensorRelu));
-  exports.Set(Napi::String::New(env, "ts_tensor_sigmoid"),
-    Napi::Function::New(env, NapiTensorSigmoid));
-  exports.Set(Napi::String::New(env, "ts_tensor_tanh"),
-    Napi::Function::New(env, NapiTensorTanh));
-  exports.Set(Napi::String::New(env, "ts_tensor_transpose"),
-    Napi::Function::New(env, NapiTensorTranspose));
-
-  // Reductions
-  exports.Set(Napi::String::New(env, "ts_tensor_sum"),
-    Napi::Function::New(env, NapiTensorSum));
-  exports.Set(Napi::String::New(env, "ts_tensor_mean"),
-    Napi::Function::New(env, NapiTensorMean));
-
-  // Autograd
+  // Autograd (Phase 1)
   exports.Set(Napi::String::New(env, "ts_tensor_backward"),
     Napi::Function::New(env, NapiTensorBackward));
   exports.Set(Napi::String::New(env, "ts_tensor_grad"),
     Napi::Function::New(env, NapiTensorGrad));
 
-  // Memory management
+  // Memory management (Phase 1)
   exports.Set(Napi::String::New(env, "ts_tensor_delete"),
     Napi::Function::New(env, NapiTensorDelete));
 
-  // Scope management
+  // Scope management (Phase 1)
   exports.Set(Napi::String::New(env, "ts_scope_begin"),
     Napi::Function::New(env, NapiScopeBegin));
   exports.Set(Napi::String::New(env, "ts_scope_end"),
@@ -672,6 +450,13 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     Napi::Function::New(env, NapiScopeRegisterTensor));
   exports.Set(Napi::String::New(env, "ts_scope_escape_tensor"),
     Napi::Function::New(env, NapiScopeEscapeTensor));
+
+  // Phase 2: Register additional function categories via helpers
+  RegisterTensorBinaryOps(env, exports);
+  RegisterTensorUnaryOps(env, exports);
+  RegisterTensorReductions(env, exports);
+  RegisterNNOps(env, exports);
+  InitRemainingOps(env, exports);
 
   return exports;
 }

@@ -88,7 +88,13 @@ set(SOURCES
     src/batch_ops.cpp
     src/fused_ops.cpp
     src/advanced_ops.cpp
+    # Napi wrapper layer (Phase 1 + Phase 2)
     src/napi_bindings.cpp
+    src/napi_tensor_binary_ops.cpp
+    src/napi_tensor_unary_ops.cpp
+    src/napi_tensor_reductions.cpp
+    src/napi_nn_ops.cpp
+    src/napi_remaining_ops.cpp
 )
 
 # Header files

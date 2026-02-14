@@ -113,35 +113,57 @@ Napi::Value NapiTensorDetach(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorDataPtr(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorCopyToBuffer(const Napi::CallbackInfo& info);
 
-// tensor_binary_ops.cpp
+// napi_tensor_binary_ops.cpp -- Arithmetic
 Napi::Value NapiTensorAdd(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorSub(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorMul(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorDiv(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorMatmul(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorBmm(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorChainMatmul(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorPow(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorPowScalar(const Napi::CallbackInfo& info);
+// napi_tensor_binary_ops.cpp -- Scalar arithmetic
 Napi::Value NapiTensorAddScalar(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorSubScalar(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorMulScalar(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorDivScalar(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorPow(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorPowScalar(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorMinimum(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorMaximum(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorWhere(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorGather(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorScatter(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorIndex(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorIndexSelect(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorMaskedFill(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorMaskedSelect(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorGather(const Napi::CallbackInfo& info);
-Napi::Value NapiTensorScatterAdd(const Napi::CallbackInfo& info);
+// napi_tensor_binary_ops.cpp -- Comparisons
 Napi::Value NapiTensorEq(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorNe(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorLt(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorLe(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorGt(const Napi::CallbackInfo& info);
 Napi::Value NapiTensorGe(const Napi::CallbackInfo& info);
+// napi_tensor_binary_ops.cpp -- Min/Max
+Napi::Value NapiTensorMinimum(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorMaximum(const Napi::CallbackInfo& info);
+// napi_tensor_binary_ops.cpp -- Advanced
+Napi::Value NapiTensorWhere(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorGather(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorScatter(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorScatterAdd(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorIndex(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorIndexSelect(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorMaskedFill(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorMaskedSelect(const Napi::CallbackInfo& info);
+// napi_tensor_binary_ops.cpp -- In-place
+Napi::Value NapiTensorAdd_(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorSub_(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorMul_(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorDiv_(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorMulScalar_(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorDivScalar_(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorAddAlpha_(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorOptimAdd_(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorSubInplace(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorAddScaledInplace(const Napi::CallbackInfo& info);
+// napi_tensor_binary_ops.cpp -- Out= variants
+Napi::Value NapiTensorAddOut(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorSubOut(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorMulOut(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorDivOut(const Napi::CallbackInfo& info);
+Napi::Value NapiTensorMatmulOut(const Napi::CallbackInfo& info);
 
 // tensor_unary_ops.cpp
 Napi::Value NapiTensorRelu(const Napi::CallbackInfo& info);
