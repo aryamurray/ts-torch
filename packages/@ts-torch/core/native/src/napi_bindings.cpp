@@ -21,7 +21,7 @@
 /**
  * Extract opaque tensor handle from Napi::External
  */
-static ts_Tensor* GetTensorHandle(const Napi::Value& val) {
+ts_Tensor* GetTensorHandle(const Napi::Value& val) {
   if (!val.IsExternal()) {
     return nullptr;
   }
@@ -41,7 +41,7 @@ static ts_Scope* GetScopeHandle(const Napi::Value& val) {
 /**
  * Wrap tensor handle in Napi::External with automatic cleanup finalizer
  */
-static Napi::Value WrapTensorHandle(Napi::Env env, ts_Tensor* handle) {
+Napi::Value WrapTensorHandle(Napi::Env env, ts_Tensor* handle) {
   if (!handle) {
     return env.Null();
   }
@@ -66,8 +66,8 @@ static Napi::Value WrapScopeHandle(Napi::Env env, ts_Scope* handle) {
 /**
  * Check error and throw JavaScript exception if needed
  */
-static bool CheckAndThrowError(Napi::Env env, const ts_Error& err,
-                                 const char* funcName) {
+bool CheckAndThrowError(Napi::Env env, const ts_Error& err,
+                        const char* funcName) {
   if (err.code != 0) {
     std::string msg = funcName;
     msg += ": ";
