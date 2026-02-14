@@ -1,7 +1,7 @@
 {
   "name": "ts-tools",
   "private": true,
-  "type": "module",
+  "license": "MIT",
   "workspaces": [
     "apps/*",
     "packages/*",
@@ -12,6 +12,7 @@
     "examples",
     "benchmark"
   ],
+  "type": "module",
   "scripts": {
     "changeset": "changeset",
     "version": "changeset version",
@@ -24,7 +25,7 @@
     "build:native:cuda": "turbo run build:native:cuda",
     "dev": "turbo run dev",
     "lint": "oxlint --fix",
-    "lint:check": "oxlint",
+    "lint:check": "oxlint --deny-warnings",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "check-types": "turbo run check-types",
@@ -59,6 +60,10 @@
     "vite": "^6.0.0",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^4.0.16"
+  },
+  "overrides": {
+    "@isaacs/brace-expansion": "^5.0.1",
+    "tar": "^7.5.7"
   },
   "engines": {
     "node": ">=18"

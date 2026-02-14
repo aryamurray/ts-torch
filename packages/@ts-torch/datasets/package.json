@@ -2,6 +2,16 @@
   "name": "@ts-torch/datasets",
   "version": "0.1.2",
   "description": "Dataset loaders for ts-torch",
+  "homepage": "https://github.com/aryamurray/ts-torch#readme",
+  "bugs": {
+    "url": "https://github.com/aryamurray/ts-torch/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aryamurray/ts-torch.git",
+    "directory": "packages/@ts-torch/datasets"
+  },
   "files": [
     "dist"
   ],
@@ -20,15 +30,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/aryamurray/ts-torch.git",
-    "directory": "packages/@ts-torch/datasets"
-  },
-  "bugs": {
-    "url": "https://github.com/aryamurray/ts-torch/issues"
-  },
-  "homepage": "https://github.com/aryamurray/ts-torch#readme",
   "scripts": {
     "build": "vite build",
     "dev": "tsc --watch",
