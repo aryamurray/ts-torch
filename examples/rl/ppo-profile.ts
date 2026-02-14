@@ -10,16 +10,8 @@
  *   bun run examples/rl/ppo-profile.ts --vec   # Use batched CartPoleVec
  */
 
-// Restrict to 1 thread before native lib loads
-process.env.OMP_NUM_THREADS = '1'
-process.env.MKL_NUM_THREADS = '1'
-process.env.OPENBLAS_NUM_THREADS = '1'
-process.env.VECLIB_MAXIMUM_THREADS = '1'
-
-import { run, device, setNumThreads, float32, getLib, Tensor } from '@ts-torch/core'
+import { run, device, float32, getLib, Tensor } from '@ts-torch/core'
 import { RL, PPO, OnPolicyAlgorithm, RolloutBuffer, CartPoleVec } from '@ts-torch/rl'
-
-setNumThreads(1)
 
 // CPU device for tensor creation in instrumented train
 const cpu = device.cpu()

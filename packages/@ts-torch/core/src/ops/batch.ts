@@ -16,6 +16,7 @@ import { getLib } from '../ffi/loader.js'
 import { type Pointer } from '../ffi/error.js'
 import { Tensor, type AnyTensor } from '../tensor/tensor.js'
 import type { DType, DTypeName } from '../types/index.js'
+import { updateConfigKey } from '../config.js'
 
 // ============================================================================
 // Recording Mode API
@@ -212,6 +213,7 @@ export function mlpForward<D extends DTypeName = 'float32'>(
  * ```
  */
 export function setNumThreads(numThreads: number = 0): void {
+  updateConfigKey('numThreads', numThreads)
   const lib = getLib()
   lib.ts_set_num_threads(numThreads)
 }

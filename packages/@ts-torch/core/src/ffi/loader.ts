@@ -20,6 +20,7 @@ import { createRequire } from 'module'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve, join, dirname } from 'node:path'
 import { Logger } from '../logger.js'
+import { applyConfig } from '../config.js'
 
 /**
  * TypedArray type for shape buffers
@@ -43,6 +44,7 @@ export type NativeModule = {
   ts_cuda_device_count: () => number
   ts_set_num_threads: (numThreads: number) => void
   ts_get_num_threads: () => number
+  ts_manual_seed: (seed: number) => void
 
   // Tensor property queries
   ts_tensor_ndim: (tensor: unknown) => number
@@ -758,6 +760,7 @@ export function getLib(): NativeModule {
   try {
     const require_ = createRequire(import.meta.url)
     libInstance = require_(modulePath) as NativeModule
+    applyConfig(libInstance)
     return libInstance
   } catch (err) {
     const libtorchPath = findLibtorchPath()

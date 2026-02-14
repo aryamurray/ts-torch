@@ -16,19 +16,8 @@
  * Run with: bun run ppo-cartpole-benchmark.ts
  */
 
-// Set thread env vars BEFORE native library loads — LibTorch, MKL, and OpenMP
-// all read these at initialization. Single-threaded RL with small tensors doesn't
-// benefit from intra-op parallelism; the thread spawn/join overhead hurts throughput.
-process.env.OMP_NUM_THREADS = '1'
-process.env.MKL_NUM_THREADS = '1'
-process.env.OPENBLAS_NUM_THREADS = '1'
-process.env.VECLIB_MAXIMUM_THREADS = '1' // macOS Accelerate framework
-
-import { device, setNumThreads } from '@ts-torch/core'
+import { device } from '@ts-torch/core'
 import { RL } from '@ts-torch/rl'
-
-// Also set via LibTorch API (belt and suspenders)
-setNumThreads(1)
 
 // ==================== Configuration ====================
 
