@@ -45,6 +45,15 @@ export class DTypeMismatchError extends Error {
   }
 }
 
+export class DataLengthMismatchError extends Error {
+  constructor(key: string, expected: number, actual: number, shape: number[]) {
+    super(
+      `Data length mismatch for "${key}": shape [${shape.join(', ')}] expects ${expected} elements but got ${actual}`,
+    )
+    this.name = 'DataLengthMismatchError'
+  }
+}
+
 /**
  * Validate that a state dict is compatible with a model's parameters.
  *
@@ -96,6 +105,12 @@ export function validateStateDict(
       !modelShape.every((dim: number, i: number) => dim === stateShape[i])
     ) {
       throw new ShapeMismatchError(name, modelShape, stateShape)
+    }
+
+    // Data length check
+    const expectedLength = stateShape.reduce((a: number, d: number) => a * d, 1)
+    if (tensorData.data.length !== expectedLength) {
+      throw new DataLengthMismatchError(name, expectedLength, tensorData.data.length, stateShape)
     }
 
     // DType check

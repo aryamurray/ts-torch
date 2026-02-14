@@ -146,4 +146,5 @@ export {
   UnexpectedKeyError,
   ShapeMismatchError,
   DTypeMismatchError,
+  DataLengthMismatchError,
 } from './validation.js'

@@ -99,7 +99,13 @@ export function decodeSafetensors(buffer: Uint8Array): { tensors: StateDict; met
   for (const [key, entry] of Object.entries(header)) {
     // Extract metadata entry
     if (key === '__metadata__') {
-      metadata = entry as Record<string, string>
+      const raw = entry as Record<string, unknown>
+      for (const [mk, mv] of Object.entries(raw)) {
+        if (typeof mv !== 'string') {
+          throw new Error(`Invalid safetensors metadata: key "${mk}" has non-string value (type ${typeof mv})`)
+        }
+      }
+      metadata = raw as Record<string, string>
       continue
     }
 
@@ -165,6 +171,13 @@ export function encodeSafetensors(
     const sfDtype = TSTORCH_TO_SF[tensor.dtype]
     if (!sfDtype) {
       throw new Error(`Cannot encode dtype "${tensor.dtype}" to safetensors`)
+    }
+
+    const expectedElements = tensor.shape.reduce((a, d) => a * d, 1)
+    if (tensor.data.length !== expectedElements) {
+      throw new Error(
+        `Data length mismatch for "${key}": shape [${tensor.shape.join(', ')}] expects ${expectedElements} elements but got ${tensor.data.length}`,
+      )
     }
 
     const rawBytes = new Uint8Array(
@@ -245,7 +258,7 @@ export function serializeMetadata(meta?: Record<string, unknown>): Record<string
 
   for (const [key, value] of Object.entries(meta)) {
     if (key === 'framework') continue // don't let user override framework tag
-    result[key] = typeof value === 'string' ? value : JSON.stringify(value)
+    result[key] = JSON.stringify(value)
   }
 
   return result
@@ -265,19 +278,11 @@ export function deserializeMetadata(meta: Record<string, string>): Record<string
   for (const [key, value] of Object.entries(meta)) {
     if (key === 'framework') continue // internal tag, don't expose
 
-    // Try to JSON-parse values that look like JSON
     try {
-      const parsed = JSON.parse(value)
-      // Only use parsed result if it's not a plain string (those go through as-is)
-      if (typeof parsed !== 'string') {
-        result[key] = parsed
-        continue
-      }
+      result[key] = JSON.parse(value)
     } catch {
-      // Not JSON, fall through
+      result[key] = value
     }
-
-    result[key] = value
   }
 
   return result

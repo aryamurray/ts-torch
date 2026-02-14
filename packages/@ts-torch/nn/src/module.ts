@@ -444,18 +444,19 @@ export class Module<
       const tensor = param.data as any
 
       // Extract data using toArray() which returns the correct TypedArray per dtype
-      let data: any
-      if (typeof tensor.toArray === 'function') {
-        data = tensor.toArray()
-      } else {
-        data = new Float32Array(0)
+      if (typeof tensor.toArray !== 'function') {
+        throw new Error(`Cannot serialize parameter "${name}": tensor has no toArray() method`)
       }
+      const data = tensor.toArray()
 
       // Extract shape
       const shape: number[] = Array.isArray(tensor.shape) ? [...tensor.shape] : [data.length]
 
       // Read dtype from tensor
-      const dtype: string = tensor.dtype?.name ?? 'float32'
+      if (!tensor.dtype?.name) {
+        throw new Error(`Cannot serialize parameter "${name}": tensor has no dtype.name`)
+      }
+      const dtype: string = tensor.dtype.name
 
       state[name] = { data, shape, dtype }
     }
@@ -535,17 +536,26 @@ export class Module<
       )
     }
 
-    const { mkdir, writeFile } = await import('node:fs/promises')
-    const { join } = await import('node:path')
+    const { mkdir, writeFile, rename, rm } = await import('node:fs/promises')
+    const { join, dirname, basename } = await import('node:path')
+    const { randomUUID } = await import('node:crypto')
     const { saveSafetensors, serializeMetadata } = await import('./safetensors.js')
 
-    await mkdir(directory, { recursive: true })
-    await writeFile(join(directory, 'config.json'), JSON.stringify(config, null, 2))
-    await saveSafetensors(
-      join(directory, 'model.safetensors'),
-      this.stateDict(),
-      serializeMetadata(metadata),
-    )
+    const tmpDir = join(dirname(directory), `.${basename(directory)}.tmp-${randomUUID().slice(0, 8)}`)
+    try {
+      await mkdir(tmpDir, { recursive: true })
+      await writeFile(join(tmpDir, 'config.json'), JSON.stringify(config, null, 2))
+      await saveSafetensors(
+        join(tmpDir, 'model.safetensors'),
+        this.stateDict(),
+        serializeMetadata(metadata),
+      )
+      await rm(directory, { recursive: true, force: true }).catch(() => {})
+      await rename(tmpDir, directory)
+    } catch (err) {
+      await rm(tmpDir, { recursive: true, force: true }).catch(() => {})
+      throw err
+    }
   }
 
   /**

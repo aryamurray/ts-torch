@@ -13,6 +13,7 @@ import {
   UnexpectedKeyError,
   ShapeMismatchError,
   DTypeMismatchError,
+  DataLengthMismatchError,
 } from '../validation.js'
 import type { StateDict, TensorData } from '../safetensors.js'
 
@@ -172,6 +173,23 @@ describe('validateStateDict', () => {
 
         expect(() => validateStateDict(model, state, false)).toThrow(DTypeMismatchError)
       })
+    })
+  })
+
+  test('throws DataLengthMismatchError when data length does not match shape', () => {
+    run(() => {
+      const model = new Sequential(new Linear(4, 3))
+      const state = model.stateDict()
+
+      const weightKey = Object.keys(state).find(k => k.includes('weight'))!
+      state[weightKey] = {
+        data: new Float32Array(3), // 3 elements, but shape [3, 4] expects 12
+        shape: [3, 4],
+        dtype: 'float32',
+      }
+
+      expect(() => validateStateDict(model, state)).toThrow(DataLengthMismatchError)
+      expect(() => validateStateDict(model, state)).toThrow(/Data length mismatch/)
     })
   })
 })

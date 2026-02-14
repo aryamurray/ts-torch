@@ -236,9 +236,9 @@ describe('Safetensors format', () => {
       expect(result).toEqual({ framework: 'ts-torch' })
     })
 
-    test('passes through string values as-is', () => {
+    test('JSON-stringifies string values', () => {
       const result = serializeMetadata({ note: 'hello' })
-      expect(result.note).toBe('hello')
+      expect(result.note).toBe('"hello"')
       expect(result.framework).toBe('ts-torch')
     })
 
@@ -289,6 +289,27 @@ describe('Safetensors format', () => {
     test('handles empty metadata', () => {
       const result = deserializeMetadata({})
       expect(result).toEqual({})
+    })
+
+    test('roundtrips string "5" without type coercion', () => {
+      const serialized = serializeMetadata({ value: '5' })
+      const deserialized = deserializeMetadata(serialized)
+      expect(deserialized.value).toBe('5')
+      expect(typeof deserialized.value).toBe('string')
+    })
+
+    test('roundtrips string "true" without type coercion', () => {
+      const serialized = serializeMetadata({ value: 'true' })
+      const deserialized = deserializeMetadata(serialized)
+      expect(deserialized.value).toBe('true')
+      expect(typeof deserialized.value).toBe('string')
+    })
+
+    test('roundtrips string "null" without type coercion', () => {
+      const serialized = serializeMetadata({ value: 'null' })
+      const deserialized = deserializeMetadata(serialized)
+      expect(deserialized.value).toBe('null')
+      expect(typeof deserialized.value).toBe('string')
     })
   })
 
@@ -355,6 +376,35 @@ describe('Safetensors format', () => {
       }
 
       expect(() => encodeSafetensors(state)).toThrow(/Cannot encode dtype/)
+    })
+
+    test('throws on data length mismatch during encoding', () => {
+      const state: StateDict = {
+        'bad': {
+          data: new Float32Array([1, 2, 3]),
+          shape: [2, 3],
+          dtype: 'float32',
+        },
+      }
+
+      expect(() => encodeSafetensors(state)).toThrow(/Data length mismatch/)
+    })
+
+    test('throws on non-string metadata values during decoding', () => {
+      // Craft a safetensors buffer with non-string metadata
+      const header = JSON.stringify({
+        __metadata__: { bad: 42 },
+        w: { dtype: 'F32', shape: [1], data_offsets: [0, 4] },
+      })
+      const headerBytes = new TextEncoder().encode(header)
+      const buf = new Uint8Array(8 + headerBytes.byteLength + 4)
+      const view = new DataView(buf.buffer)
+      view.setBigUint64(0, BigInt(headerBytes.byteLength), true)
+      buf.set(headerBytes, 8)
+      // Write one float32 zero for tensor data
+      view.setFloat32(8 + headerBytes.byteLength, 0, true)
+
+      expect(() => decodeSafetensors(buf)).toThrow(/Invalid safetensors metadata.*"bad".*non-string/)
     })
   })
 })

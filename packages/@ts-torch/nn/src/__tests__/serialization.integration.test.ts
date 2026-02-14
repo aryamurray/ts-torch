@@ -14,14 +14,15 @@
  * For sync-only tests, everything is wrapped in run() for proper cleanup.
  */
 
-import { describe, test, expect, afterEach } from 'vitest'
+import { describe, test, expect, afterEach, vi } from 'vitest'
 import { device, run } from '@ts-torch/core'
 import { nn } from '../builders.js'
 import { Linear } from '../modules/linear.js'
 import { ReLU } from '../modules/activation.js'
 import { Sequential } from '../modules/container.js'
+import { Module, Parameter } from '../module.js'
 import { encodeSafetensors, decodeSafetensors } from '../safetensors.js'
-import { mkdtemp, rm, readFile } from 'node:fs/promises'
+import { mkdtemp, rm, readFile, access } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -114,6 +115,28 @@ describe('stateDict roundtrip', () => {
       const loadedData = Array.from(state2[key]!.data as Float32Array)
       expect(loadedData).toEqual(origData)
     }
+  })
+})
+
+describe('stateDict() error handling', () => {
+  test('throws when parameter tensor has no toArray() method', () => {
+    const model = new Module()
+    const fakeTensor = { shape: [2, 3], dtype: { name: 'float32' } } as any
+    ;(model as any)._parameters.set('bad', new Parameter(fakeTensor, false))
+
+    expect(() => model.stateDict()).toThrow('Cannot serialize parameter "bad": tensor has no toArray() method')
+  })
+
+  test('throws when parameter tensor has no dtype.name', () => {
+    const model = new Module()
+    const fakeTensor = {
+      shape: [2, 3],
+      dtype: {},
+      toArray: () => new Float32Array(6),
+    } as any
+    ;(model as any)._parameters.set('bad', new Parameter(fakeTensor, false))
+
+    expect(() => model.stateDict()).toThrow('Cannot serialize parameter "bad": tensor has no dtype.name')
   })
 })
 
@@ -333,5 +356,52 @@ describe('directory roundtrip', () => {
       const finalData = Array.from(finalState[key]!.data as Float32Array)
       expect(finalData).toEqual(origData)
     }
+  })
+})
+
+describe('atomic directory writes', () => {
+  test('failed save does not leave a partial target directory', async () => {
+    const dir = await createTempDir()
+    const modelDir = join(dir, 'atomic-test')
+
+    const config = nn.sequence(
+      nn.input(4),
+      nn.fc(3),
+    )
+
+    const model = config.init(cpu)
+
+    // Sabotage stateDict to throw mid-save (after config.json is written to tmp)
+    const origStateDict = model.stateDict.bind(model)
+    vi.spyOn(model, 'stateDict').mockImplementation(() => {
+      throw new Error('sabotaged')
+    })
+
+    await expect(model.save(modelDir)).rejects.toThrow('sabotaged')
+
+    // Target directory should not exist
+    await expect(access(modelDir)).rejects.toThrow()
+
+    vi.restoreAllMocks()
+  })
+
+  test('saving twice to same directory overwrites cleanly', async () => {
+    const dir = await createTempDir()
+    const modelDir = join(dir, 'overwrite-test')
+
+    const config = nn.sequence(
+      nn.input(4),
+      nn.fc(3),
+    )
+
+    const model1 = config.init(cpu)
+    await model1.save(modelDir, { epoch: 1 })
+
+    const model2 = config.init(cpu)
+    await model2.save(modelDir, { epoch: 2 })
+
+    // Load and verify the second save's metadata
+    const { metadata } = await nn.load(cpu, modelDir)
+    expect(metadata.epoch).toBe(2)
   })
 })
