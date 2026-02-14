@@ -17,6 +17,13 @@ export default defineConfig({
     // Pool configuration for FFI compatibility (Vitest 4.0+ - top-level)
     pool: 'forks',
 
+    // Suppress false-positive worker exit errors from LibTorch native cleanup
+    onUnhandledError(error) {
+      if (error.message?.includes('[vitest-pool]')) {
+        return false
+      }
+    },
+
     // Test file patterns
     include: ['**/*.{test,spec}.{ts,tsx}'],
     exclude: [
