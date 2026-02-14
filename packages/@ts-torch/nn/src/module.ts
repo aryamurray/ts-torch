@@ -6,7 +6,9 @@
  */
 
 import type { Shape, DType, DeviceType } from '@ts-torch/core'
+import { fromArray, DType as DTypeNs } from '@ts-torch/core'
 import type { StateDict } from './checkpoint.js'
+import { validateStateDict } from './validation.js'
 
 /**
  * Tensor interface matching core implementation
@@ -50,6 +52,14 @@ export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType
   div<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
   maximum<S2 extends Shape>(other: Tensor<S2, D, Dev>): Tensor<any, D, Dev>
   transpose(dim0: number, dim1: number): Tensor<any, D, Dev>
+
+  // In-place operations (for optimizers)
+  addScaledInplace(other: Tensor<S, D, Dev>, scalar: number): void
+  addInplace(other: Tensor<S, D, Dev>): void
+  subInplace(other: Tensor<S, D, Dev>): void
+  mulInplace(other: Tensor<S, D, Dev>): void
+  mulScalarInplace(scalar: number): void
+
   escape(): this
   free(): void
 
@@ -130,6 +140,52 @@ export class Parameter<S extends Shape = Shape, D extends DType<string> = float3
   zeroGrad(): void {
     if ('zeroGrad' in this.data && typeof (this.data as any).zeroGrad === 'function') {
       ;(this.data as any).zeroGrad()
+    }
+  }
+
+  /**
+   * In-place scaled add: data += scalar * other
+   * Used by optimizers for efficient parameter updates
+   */
+  addScaledInplace(other: Tensor<S, D, Dev>, scalar: number): void {
+    if ('addScaledInplace' in this.data && typeof (this.data as any).addScaledInplace === 'function') {
+      ;(this.data as any).addScaledInplace(other, scalar)
+    }
+  }
+
+  /**
+   * In-place add: data += other
+   */
+  addInplace(other: Tensor<S, D, Dev>): void {
+    if ('addInplace' in this.data && typeof (this.data as any).addInplace === 'function') {
+      ;(this.data as any).addInplace(other)
+    }
+  }
+
+  /**
+   * In-place subtract: data -= other
+   */
+  subInplace(other: Tensor<S, D, Dev>): void {
+    if ('subInplace' in this.data && typeof (this.data as any).subInplace === 'function') {
+      ;(this.data as any).subInplace(other)
+    }
+  }
+
+  /**
+   * In-place multiply: data *= other
+   */
+  mulInplace(other: Tensor<S, D, Dev>): void {
+    if ('mulInplace' in this.data && typeof (this.data as any).mulInplace === 'function') {
+      ;(this.data as any).mulInplace(other)
+    }
+  }
+
+  /**
+   * In-place scalar multiply: data *= scalar
+   */
+  mulScalarInplace(scalar: number): void {
+    if ('mulScalarInplace' in this.data && typeof (this.data as any).mulScalarInplace === 'function') {
+      ;(this.data as any).mulScalarInplace(scalar)
     }
   }
 }
@@ -385,31 +441,23 @@ export class Module<
     const state: StateDict = {}
 
     for (const [name, param] of this.namedParameters()) {
-      const tensor = param.data
-      let data: Float32Array
-      let shape: number[]
+      const tensor = param.data as any
 
-      // Extract data from tensor
-      if (typeof (tensor as any).toArray === 'function') {
-        const arr = (tensor as any).toArray()
-        data = arr instanceof Float32Array ? arr : new Float32Array(arr)
-      } else if ((tensor as any).data) {
-        data = new Float32Array((tensor as any).data)
+      // Extract data using toArray() which returns the correct TypedArray per dtype
+      let data: any
+      if (typeof tensor.toArray === 'function') {
+        data = tensor.toArray()
       } else {
-        // Fallback: create empty array
         data = new Float32Array(0)
       }
 
-      // Extract shape from tensor
-      if (Array.isArray((tensor as any).shape)) {
-        shape = (tensor as any).shape
-      } else if (tensor.shape) {
-        shape = Array.isArray(tensor.shape) ? tensor.shape : [tensor.shape]
-      } else {
-        shape = [data.length]
-      }
+      // Extract shape
+      const shape: number[] = Array.isArray(tensor.shape) ? [...tensor.shape] : [data.length]
 
-      state[name] = { data, shape, dtype: 'float32' }
+      // Read dtype from tensor
+      const dtype: string = tensor.dtype?.name ?? 'float32'
+
+      state[name] = { data, shape, dtype }
     }
 
     return state
@@ -428,47 +476,47 @@ export class Module<
    * ```
    */
   loadStateDict(state: StateDict, strict: boolean = true): void {
+    // Validate first, mutate second
+    validateStateDict(this, state, strict)
+
     const currentParams = this.namedParameters()
-    const stateKeys = new Set(Object.keys(state))
-    const paramKeys = new Set(currentParams.keys())
 
-    if (strict) {
-      // Check for missing keys
-      for (const key of paramKeys) {
-        if (!stateKeys.has(key)) {
-          throw new Error(`Missing key in state dict: ${key}`)
-        }
-      }
-      // Check for unexpected keys
-      for (const key of stateKeys) {
-        if (!paramKeys.has(key)) {
-          throw new Error(`Unexpected key in state dict: ${key}`)
-        }
-      }
-    }
-
-    // Load parameters
+    // Load parameters by creating new tensors and replacing old ones
     for (const [name, param] of currentParams) {
       const tensorData = state[name]
       if (!tensorData) continue
 
-      const paramData = param.data as any
+      const oldTensor = param.data as any
 
-      // Try different methods to copy data
-      if (typeof paramData.copy === 'function') {
-        // Create tensor from loaded data
-        // This depends on the tensor implementation having a way to create from data
-        // For now, we copy element by element
-        if (typeof paramData.set === 'function') {
-          paramData.set(tensorData.data)
-        } else if (paramData.data && paramData.data.set) {
-          paramData.data.set(tensorData.data)
-        }
-      } else if (typeof paramData.set === 'function') {
-        paramData.set(tensorData.data)
-      } else if (paramData.data && typeof paramData.data.set === 'function') {
-        paramData.data.set(tensorData.data)
+      // Resolve dtype object from string name
+      const dtypeObj = DTypeNs[tensorData.dtype as keyof typeof DTypeNs]
+      if (!dtypeObj) {
+        throw new Error(`Unknown dtype: ${tensorData.dtype}`)
       }
+
+      // Create new tensor from state dict data
+      const newTensor = fromArray(
+        tensorData.data,
+        tensorData.shape as readonly number[],
+        dtypeObj,
+      )
+
+      // Move to same device as old tensor if needed
+      const device = oldTensor.device
+      let finalTensor = newTensor
+      if (device && device !== 'cpu') {
+        finalTensor = newTensor.to(device)
+        newTensor.free()
+      }
+
+      // Preserve requiresGrad
+      if (oldTensor.requiresGrad) {
+        finalTensor.requiresGrad = true
+      }
+
+      // Free old tensor and replace
+      oldTensor.free()
+      ;(param as any).data = finalTensor
     }
   }
 
@@ -498,6 +546,29 @@ export class Module<
     const checkpoint = await loadCheckpoint(path)
     this.loadStateDict(checkpoint.tensors, strict)
     return checkpoint.metadata ?? {}
+  }
+
+  /**
+   * Save model to a HuggingFace-style directory (config.json + model.safetensors).
+   * Requires the model to have been created via config.init() or config.load().
+   *
+   * @param directory - Output directory path
+   */
+  async saveHF(directory: string): Promise<void> {
+    const config = (this as any)._config
+    if (!config) {
+      throw new Error(
+        'Cannot saveHF: model has no _config. Model must be created via config.init() or config.load().',
+      )
+    }
+
+    const { mkdir, writeFile } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    const { saveSafetensors } = await import('./safetensors.js')
+
+    await mkdir(directory, { recursive: true })
+    await writeFile(join(directory, 'config.json'), JSON.stringify(config, null, 2))
+    await saveSafetensors(join(directory, 'model.safetensors'), this.stateDict())
   }
 
   /**
