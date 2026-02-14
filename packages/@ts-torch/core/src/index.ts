@@ -59,7 +59,7 @@ export const bfloat16 = DTypeNamespace.bfloat16
 // ===============================
 
 export { Tensor } from './tensor/tensor.js'
-export { cat, rand, stack, einsum } from './tensor/factory.js'
+export { cat, rand, stack, einsum, fromArray, fromBuffer } from './tensor/factory.js'
 
 // ===============================
 // Memory Management

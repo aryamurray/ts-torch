@@ -343,6 +343,63 @@ export function fromArray<S extends Shape, D extends DType<string> = DType<'floa
 }
 
 /**
+ * Create tensor from raw byte buffer
+ *
+ * For loading tensor data from binary formats (safetensors, checkpoints).
+ * Passes raw bytes directly to the FFI layer.
+ *
+ * @template S - Shape type as readonly tuple
+ * @template D - DType type
+ * @param buffer - Raw bytes (must be correctly sized for shape * dtype.bytes)
+ * @param shape - Tensor shape
+ * @param dtype - Data type
+ * @param requiresGrad - Enable autograd tracking (default: false)
+ * @returns New tensor with data copied from buffer
+ */
+export function fromBuffer<S extends Shape, D extends DType<string> = DType<'float32'>>(
+  buffer: Uint8Array,
+  shape: S,
+  dtype: D = DTypeConstants.float32 as D,
+  requiresGrad = false,
+): Tensor<S, D> {
+  validateShapeArray(shape)
+  const lib = getLib()
+
+  const expectedSize = shape.reduce((acc, dim) => acc * dim, 1)
+  const expectedBytes = expectedSize * dtype.bytes
+  if (buffer.byteLength !== expectedBytes) {
+    throw new ValidationError(
+      'buffer',
+      `buffer of ${buffer.byteLength} bytes`,
+      `buffer of ${expectedBytes} bytes to match shape [${shape.join(', ')}] with dtype ${dtype.name} (${dtype.bytes} bytes per element)`,
+    )
+  }
+
+  // Ensure we pass a properly aligned ArrayBuffer
+  const aligned = new ArrayBuffer(buffer.byteLength)
+  new Uint8Array(aligned).set(buffer)
+
+  const shapeBuffer = shapeCache.fillShape(shape)
+  try {
+    const handle = withError((err) =>
+      lib.ts_tensor_from_buffer(aligned, shapeBuffer.buffer, shape.length, dtype.value, 0, 0, err),
+    )
+
+    checkNull(handle, 'Failed to create tensor from buffer')
+
+    const tensor = new Tensor<S, D>(handle!, shape, dtype)
+
+    if (requiresGrad) {
+      tensor.requiresGrad = true
+    }
+
+    return tensor
+  } finally {
+    shapeCache.release(shapeBuffer)
+  }
+}
+
+/**
  * Create 1D tensor with evenly spaced values
  *
  * @template D - DType type
