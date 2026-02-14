@@ -704,6 +704,288 @@ Napi::Value NapiTensorTriu(const Napi::CallbackInfo& info) {
   return WrapTensorHandle(env, result);
 }
 
+Napi::Value NapiTensorTopk(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 5) {
+    throw Napi::Error::New(env, "topk requires 5 arguments (tensor, k, dim, largest, sorted)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  int64_t k = info[1].As<Napi::Number>().Int64Value();
+  int64_t dim = info[2].As<Napi::Number>().Int64Value();
+  int largest = info[3].As<Napi::Boolean>().Value() ? 1 : 0;
+  int sorted = info[4].As<Napi::Boolean>().Value() ? 1 : 0;
+
+  ts_Tensor* indices_out = nullptr;
+  ts_Error err = {0, ""};
+  ts_Tensor* values = ts_tensor_topk(tensor, k, dim, largest, sorted, &indices_out, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_topk")) {
+    return env.Null();
+  }
+
+  Napi::Array result = Napi::Array::New(env, 2);
+  result.Set(static_cast<uint32_t>(0), WrapTensorHandle(env, values));
+  result.Set(static_cast<uint32_t>(1), WrapTensorHandle(env, indices_out));
+  return result;
+}
+
+Napi::Value NapiTensorSort(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 3) {
+    throw Napi::Error::New(env, "sort requires 3 arguments (tensor, dim, descending)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  int64_t dim = info[1].As<Napi::Number>().Int64Value();
+  int descending = info[2].As<Napi::Boolean>().Value() ? 1 : 0;
+
+  ts_Tensor* indices_out = nullptr;
+  ts_Error err = {0, ""};
+  ts_Tensor* values = ts_tensor_sort(tensor, dim, descending, &indices_out, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_sort")) {
+    return env.Null();
+  }
+
+  Napi::Array result = Napi::Array::New(env, 2);
+  result.Set(static_cast<uint32_t>(0), WrapTensorHandle(env, values));
+  result.Set(static_cast<uint32_t>(1), WrapTensorHandle(env, indices_out));
+  return result;
+}
+
+Napi::Value NapiTensorEinsum(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 2) {
+    throw Napi::Error::New(env, "einsum requires 2 arguments (equation, tensors array)");
+  }
+
+  std::string equation = info[0].As<Napi::String>().Utf8Value();
+
+  if (!info[1].IsArray()) {
+    throw Napi::Error::New(env, "einsum: second argument must be an array of tensor handles");
+  }
+  Napi::Array arr = info[1].As<Napi::Array>();
+  size_t num_tensors = arr.Length();
+  if (num_tensors == 0) {
+    throw Napi::Error::New(env, "einsum: tensor array must not be empty");
+  }
+
+  std::vector<ts_Tensor*> handles(num_tensors);
+  for (size_t i = 0; i < num_tensors; i++) {
+    ts_Tensor* t = GetTensorHandle(arr.Get(static_cast<uint32_t>(i)));
+    if (!t) {
+      throw Napi::Error::New(env, "einsum: invalid tensor handle at index " + std::to_string(i));
+    }
+    handles[i] = t;
+  }
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_einsum(equation.c_str(), handles.data(), num_tensors, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_einsum")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorTril(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 2) {
+    throw Napi::Error::New(env, "tril requires 2 arguments (tensor, diagonal)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  int64_t diagonal = info[1].As<Napi::Number>().Int64Value();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_tril(tensor, diagonal, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_tril")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorToDevice(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 3) {
+    throw Napi::Error::New(env, "to_device requires 3 arguments (tensor, device, device_index)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  ts_DeviceType device = static_cast<ts_DeviceType>(info[1].As<Napi::Number>().Int32Value());
+  int device_index = info[2].As<Napi::Number>().Int32Value();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_to_device(tensor, device, device_index, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_to_device")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorMlpForward(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 4) {
+    throw Napi::Error::New(env, "mlp_forward requires 4 arguments (input, weights, biases, apply_relu_except_last)");
+  }
+
+  ts_Tensor* input = GetTensorHandle(info[0]);
+  if (!input) {
+    throw Napi::Error::New(env, "Invalid input tensor handle");
+  }
+
+  // Extract weights array
+  if (!info[1].IsArray()) {
+    throw Napi::Error::New(env, "mlp_forward: weights must be an array of tensor handles");
+  }
+  Napi::Array weights_arr = info[1].As<Napi::Array>();
+  size_t num_layers = weights_arr.Length();
+  if (num_layers == 0) {
+    throw Napi::Error::New(env, "mlp_forward: weights array must not be empty");
+  }
+
+  std::vector<ts_Tensor*> weights(num_layers);
+  for (size_t i = 0; i < num_layers; i++) {
+    ts_Tensor* t = GetTensorHandle(weights_arr.Get(static_cast<uint32_t>(i)));
+    if (!t) {
+      throw Napi::Error::New(env, "mlp_forward: invalid weight tensor handle at index " + std::to_string(i));
+    }
+    weights[i] = t;
+  }
+
+  // Extract biases array (allow null entries)
+  if (!info[2].IsArray()) {
+    throw Napi::Error::New(env, "mlp_forward: biases must be an array of tensor handles or nulls");
+  }
+  Napi::Array biases_arr = info[2].As<Napi::Array>();
+  if (biases_arr.Length() != num_layers) {
+    throw Napi::Error::New(env, "mlp_forward: biases array must have same length as weights array");
+  }
+
+  std::vector<ts_Tensor*> biases(num_layers);
+  for (size_t i = 0; i < num_layers; i++) {
+    Napi::Value val = biases_arr.Get(static_cast<uint32_t>(i));
+    if (val.IsNull() || val.IsUndefined()) {
+      biases[i] = nullptr;
+    } else {
+      ts_Tensor* t = GetTensorHandle(val);
+      if (!t) {
+        throw Napi::Error::New(env, "mlp_forward: invalid bias tensor handle at index " + std::to_string(i));
+      }
+      biases[i] = t;
+    }
+  }
+
+  int apply_relu_except_last = info[3].As<Napi::Boolean>().Value() ? 1 : 0;
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_mlp_forward(
+    input, weights.data(), biases.data(), num_layers, apply_relu_except_last, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_mlp_forward")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorRepeat(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 2) {
+    throw Napi::Error::New(env, "repeat requires 2 arguments (tensor, repeats)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  // Extract repeats from TypedArray (BigInt64Array)
+  Napi::TypedArray typed = info[1].As<Napi::TypedArray>();
+  int64_t* repeats = reinterpret_cast<int64_t*>(
+    static_cast<uint8_t*>(typed.ArrayBuffer().Data()) + typed.ByteOffset());
+  int num_dims = static_cast<int>(typed.ElementLength());
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_repeat(tensor, repeats, num_dims, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_repeat")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorExpand(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 2) {
+    throw Napi::Error::New(env, "expand requires 2 arguments (tensor, sizes)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  // Extract sizes from TypedArray (BigInt64Array)
+  Napi::TypedArray typed = info[1].As<Napi::TypedArray>();
+  int64_t* sizes = reinterpret_cast<int64_t*>(
+    static_cast<uint8_t*>(typed.ArrayBuffer().Data()) + typed.ByteOffset());
+  int num_dims = static_cast<int>(typed.ElementLength());
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_expand(tensor, sizes, num_dims, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_expand")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
+Napi::Value NapiTensorNonzero(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1) {
+    throw Napi::Error::New(env, "nonzero requires 1 argument (tensor)");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_nonzero(tensor, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_nonzero")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
 // ============================================================================
 // Module Registration
 // ============================================================================
@@ -798,4 +1080,24 @@ void InitRemainingOps(Napi::Env env, Napi::Object exports) {
     Napi::Function::New(env, NapiTensorNarrow));
   exports.Set("ts_tensor_triu",
     Napi::Function::New(env, NapiTensorTriu));
+
+  // Topk / Sort / Einsum / Tril / ToDevice / MlpForward / Repeat / Expand / Nonzero
+  exports.Set("ts_tensor_topk",
+    Napi::Function::New(env, NapiTensorTopk));
+  exports.Set("ts_tensor_sort",
+    Napi::Function::New(env, NapiTensorSort));
+  exports.Set("ts_tensor_einsum",
+    Napi::Function::New(env, NapiTensorEinsum));
+  exports.Set("ts_tensor_tril",
+    Napi::Function::New(env, NapiTensorTril));
+  exports.Set("ts_tensor_to_device",
+    Napi::Function::New(env, NapiTensorToDevice));
+  exports.Set("ts_tensor_mlp_forward",
+    Napi::Function::New(env, NapiTensorMlpForward));
+  exports.Set("ts_tensor_repeat",
+    Napi::Function::New(env, NapiTensorRepeat));
+  exports.Set("ts_tensor_expand",
+    Napi::Function::New(env, NapiTensorExpand));
+  exports.Set("ts_tensor_nonzero",
+    Napi::Function::New(env, NapiTensorNonzero));
 }

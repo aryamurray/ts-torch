@@ -25,7 +25,6 @@ export {
   createError,
   checkError,
   checkErrorBuffer,
-  withError,
   checkNull,
   validateShape,
   validateDtype,
@@ -37,5 +36,3 @@ export {
 // Re-export buffer pooling
 export { errorPool, shapeCache } from './buffer-pool.js'
 
-// Re-export koffi for direct access (used for address/decode in cat/stack operations)
-export { default as koffi } from 'koffi'

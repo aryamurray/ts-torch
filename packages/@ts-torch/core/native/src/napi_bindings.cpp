@@ -279,6 +279,29 @@ Napi::Value NapiTensorNdim(const Napi::CallbackInfo& info) {
   return Napi::Number::New(env, ndim);
 }
 
+Napi::Value NapiTensorSize(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 2) {
+    throw Napi::Error::New(env, "ts_tensor_size requires 2 arguments");
+  }
+
+  ts_Tensor* tensor = GetTensorHandle(info[0]);
+  if (!tensor) {
+    throw Napi::Error::New(env, "Invalid tensor handle");
+  }
+
+  int64_t dim = info[1].As<Napi::Number>().Int64Value();
+
+  ts_Error err = {0, ""};
+  int64_t size = ts_tensor_size(tensor, dim, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_size")) {
+    return env.Null();
+  }
+
+  return Napi::Number::New(env, size);
+}
+
 Napi::Value NapiTensorDtype(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   if (info.Length() < 1) {
@@ -487,6 +510,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   // Tensor properties (Phase 1)
   exports.Set(Napi::String::New(env, "ts_tensor_ndim"),
     Napi::Function::New(env, NapiTensorNdim));
+  exports.Set(Napi::String::New(env, "ts_tensor_size"),
+    Napi::Function::New(env, NapiTensorSize));
   exports.Set(Napi::String::New(env, "ts_tensor_dtype"),
     Napi::Function::New(env, NapiTensorDtype));
   exports.Set(Napi::String::New(env, "ts_tensor_numel"),

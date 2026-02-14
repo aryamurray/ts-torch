@@ -304,7 +304,7 @@ export class DeviceContext<Dev extends DeviceTypeName = DeviceTypeName> {
 
     try {
       const handle = lib.ts_tensor_from_buffer(
-        typedData.buffer,
+        typedData,
         shapeBuffer,
         dtype.value,
         this.deviceTypeValue,

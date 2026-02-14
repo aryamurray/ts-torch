@@ -13,7 +13,7 @@
  */
 
 import { getLib } from '../ffi/loader.js'
-import { withErrorFast, type Pointer } from '../ffi/error.js'
+import { type Pointer } from '../ffi/error.js'
 import { Tensor, type AnyTensor } from '../tensor/tensor.js'
 import type { DType, DTypeName } from '../types/index.js'
 
@@ -50,14 +50,14 @@ import type { DType, DTypeName } from '../types/index.js'
 export function batch<T extends AnyTensor>(fn: () => T): T {
   const lib = getLib()
 
-  const batchHandle = withErrorFast((err) => lib.ts_batch_begin(err))
+  const batchHandle = lib.ts_batch_begin()
 
   try {
     // Execute callback - ops will record and return placeholders
     const result = fn()
 
     // End batch and execute all recorded ops
-    const resultHandle = withErrorFast((err) => lib.ts_batch_end(batchHandle, err))
+    const resultHandle = lib.ts_batch_end(batchHandle)
 
     // Create result tensor with same metadata as placeholder result
     // The actual data comes from batch_end execution
@@ -115,17 +115,10 @@ export function chainMatmul<D extends DTypeName = 'float32'>(
 
   const lib = getLib()
 
-  // Create array of handles for FFI
+  // Pass tensor handles as a JS array — Napi wrapper extracts pointers
   const handles = tensors.map((t) => t.handle)
-  const handleArray = new BigUint64Array(handles.length)
-  for (let i = 0; i < handles.length; i++) {
-    // Convert handle to BigInt for the pointer array
-    handleArray[i] = BigInt(handles[i] as unknown as number)
-  }
 
-  const resultHandle = withErrorFast((err) =>
-    lib.ts_tensor_chain_matmul(handleArray, tensors.length, err),
-  )
+  const resultHandle = lib.ts_tensor_chain_matmul(handles)
 
   // Compute result shape: first tensor's batch dims + last tensor's final dim
   const first = tensors[0]!
@@ -173,27 +166,15 @@ export function mlpForward<D extends DTypeName = 'float32'>(
 
   const lib = getLib()
 
-  // Create arrays of handles
-  const weightHandles = new BigUint64Array(weights.length)
-  for (let i = 0; i < weights.length; i++) {
-    weightHandles[i] = BigInt(weights[i]!.handle as unknown as number)
-  }
+  // Pass tensor handles as JS arrays — Napi wrapper extracts pointers
+  const weightHandles = weights.map((w) => w.handle)
+  const biasHandles = weights.map((_, i) => biases?.[i]?.handle ?? null)
 
-  const biasHandles = new BigUint64Array(weights.length)
-  for (let i = 0; i < weights.length; i++) {
-    const bias = biases?.[i]
-    biasHandles[i] = bias ? BigInt(bias.handle as unknown as number) : BigInt(0)
-  }
-
-  const resultHandle = withErrorFast((err) =>
-    lib.ts_tensor_mlp_forward(
-      input.handle,
-      weightHandles,
-      biasHandles,
-      weights.length,
-      applyReluExceptLast ? 1 : 0,
-      err,
-    ),
+  const resultHandle = lib.ts_tensor_mlp_forward(
+    input.handle,
+    weightHandles,
+    biasHandles,
+    applyReluExceptLast,
   )
 
   // Compute result shape: [batch, last_layer_out_features]

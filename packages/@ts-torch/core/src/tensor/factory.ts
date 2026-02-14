@@ -11,7 +11,7 @@ import type { DType } from '../types/dtype.js'
 import { DType as DTypeConstants } from '../types/dtype.js'
 import type { DeviceType } from '../types/tensor.js'
 import { getLib } from '../ffi/index.js'
-import { withError, checkNull } from '../ffi/error.js'
+import { checkNull } from '../ffi/error.js'
 import { shapeCache } from '../ffi/buffer-pool.js'
 import {
   ValidationError,
@@ -735,33 +735,20 @@ export function einsum<D extends DType<string> = DType<'float32'>, Dev extends D
 
   const lib = getLib()
 
-  // Encode the equation string as a null-terminated buffer
-  const encoder = new TextEncoder()
-  const equationBytes = encoder.encode(equation + '\0')
-  const equationBuffer = equationBytes.buffer
+  // Pass tensor handles as a JS array — Napi wrapper extracts pointers
+  const handles = tensors.map((t) => t.handle)
 
-  // Get raw pointer addresses from tensor handles using koffi.address()
-  // Pack them into a BigUint64Array buffer for passing to FFI
-  const handleAddresses = new BigUint64Array(tensors.length)
-  for (let i = 0; i < tensors.length; i++) {
-    const handle = tensors[i]!.handle
-    // koffi.address() returns the raw address of an opaque pointer as BigInt
-    handleAddresses[i] = koffi.address(handle)
-  }
-
-  // Call native ts_tensor_einsum
-  const handle = withError((err) =>
-    lib.ts_tensor_einsum(equationBuffer, handleAddresses.buffer, tensors.length, err),
-  )
+  // Call native ts_tensor_einsum(equation, handles[])
+  const handle = lib.ts_tensor_einsum(equation, handles)
 
   checkNull(handle, 'Failed to perform einsum operation')
 
   // Query the result tensor's shape since einsum's output shape
   // depends on the equation which is only known at runtime
-  const ndim = withError((err) => lib.ts_tensor_ndim(handle!, err)) as number
+  const ndim = lib.ts_tensor_ndim(handle!) as number
   const shapeArray: number[] = []
   for (let i = 0; i < ndim; i++) {
-    const size = withError((err) => lib.ts_tensor_size(handle!, i, err)) as number
+    const size = lib.ts_tensor_size(handle!, i) as number
     shapeArray.push(size)
   }
 
