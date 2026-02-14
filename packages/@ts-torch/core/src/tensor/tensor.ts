@@ -173,8 +173,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    const result = withError((err) => lib.ts_tensor_requires_grad(this._handle, err))
-    return result !== 0 // Convert i32 to boolean
+    // Napi wrapper throws on error, returns boolean directly
+    return lib.ts_tensor_requires_grad(this._handle)
   }
 
   /**
@@ -184,7 +184,8 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_set_requires_grad(this._handle, value, err))
+    // Napi wrapper throws on error
+    lib.ts_tensor_set_requires_grad(this._handle, value)
 
     // Free and clear gradient cache when requiresGrad changes
     this._clearGradCache()
@@ -346,9 +347,6 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
     this._checkValid()
     const lib = getLib()
 
-    // Allocate buffer for data
-    const byteSize = this.numel * (BytesPerElement[this.dtype.name as keyof typeof BytesPerElement] || 4)
-
     let buffer: ArrayBuffer
     let result: Float32Array | Float64Array | Int32Array | BigInt64Array | Uint8Array
 
@@ -382,8 +380,9 @@ export class Tensor<S extends Shape = Shape, D extends DType<string> = DType<'fl
         throw new Error(`Unsupported dtype: ${this.dtype.name}`)
     }
 
-    // Copy data from native memory (koffi accepts ArrayBuffer directly)
-    withError((err) => lib.ts_tensor_copy_to_buffer(this._handle, buffer, BigInt(byteSize), err))
+    // Copy data from native memory
+    // Note: Napi wrapper handles buffer size automatically via ArrayBuffer.byteLength
+    lib.ts_tensor_copy_to_buffer(this._handle, buffer)
 
     return result
   }
@@ -1433,7 +1432,8 @@ mean(): Tensor<readonly [], D> {
     this._checkValid()
     const lib = getLib()
 
-    withError((err) => lib.ts_tensor_backward(this._handle, err))
+    // Napi wrapper handles errors internally
+    lib.ts_tensor_backward(this._handle)
   }
 
   /**

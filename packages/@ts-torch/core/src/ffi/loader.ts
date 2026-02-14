@@ -75,22 +75,20 @@ export type KoffiLibrary = {
     errBuffer: ArrayBufferLike
   ) => unknown
   ts_tensor_from_buffer: (
-    dataBuffer: ArrayBufferLike,
+    dataBuffer: TypedArray,
     shapeBuffer: ShapeBuffer,
-    shapeLength: number,
     dtype: number,
     device: number,
-    deviceIndex: number,
-    errBuffer: ArrayBufferLike
+    deviceIndex: number
   ) => unknown
 
   // Tensor properties and manipulation
   ts_tensor_shape: (tensor: unknown, outShape: Int32Array) => number
-  ts_tensor_requires_grad: (tensor: unknown, errBuffer: ArrayBufferLike) => boolean
-  ts_tensor_set_requires_grad: (tensor: unknown, value: boolean, errBuffer: ArrayBufferLike) => void
-  ts_tensor_dtype: (tensor: unknown, errBuffer: ArrayBufferLike) => number
-  ts_tensor_clone: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
-  ts_tensor_detach: (tensor: unknown, errBuffer: ArrayBufferLike) => unknown
+  ts_tensor_requires_grad: (tensor: unknown) => boolean
+  ts_tensor_set_requires_grad: (tensor: unknown, value: boolean) => void
+  ts_tensor_dtype: (tensor: unknown) => number
+  ts_tensor_clone: (tensor: unknown) => unknown
+  ts_tensor_detach: (tensor: unknown) => unknown
   ts_tensor_delete: (tensor: unknown) => void
 
   // Binary operations
@@ -137,11 +135,11 @@ export type KoffiLibrary = {
   ts_tensor_div_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
   ts_tensor_matmul_out: (a: unknown, b: unknown, out: unknown, errBuffer: ArrayBufferLike) => void
 
-  // Buffer operations
-  ts_tensor_copy_to_buffer: (tensor: unknown, buffer: ArrayBufferLike, byteSize: bigint, errBuffer: ArrayBufferLike) => void
+  // Buffer operations (Napi wrapper extracts buffer size automatically)
+  ts_tensor_copy_to_buffer: (tensor: unknown, buffer: ArrayBufferLike) => void
 
-  // Autograd operations
-  ts_tensor_backward: (tensor: unknown, retainGraph: boolean, errBuffer: ArrayBufferLike) => void
+  // Autograd operations (Napi wrapper handles errors internally)
+  ts_tensor_backward: (tensor: unknown) => void
 
   // Other operations not explicitly typed - use flexible signature
   [key: string]: (...args: any[]) => any

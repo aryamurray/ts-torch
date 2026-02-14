@@ -195,6 +195,35 @@ Napi::Value NapiTensorEmpty(const Napi::CallbackInfo& info) {
   return WrapTensorHandle(env, result);
 }
 
+Napi::Value NapiTensorFromBuffer(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 5) {
+    throw Napi::Error::New(env, "ts_tensor_from_buffer requires 5 arguments");
+  }
+
+  // Extract data as TypedArray
+  Napi::TypedArray data_arr = info[0].As<Napi::TypedArray>();
+  void* data = static_cast<char*>(data_arr.ArrayBuffer().Data()) + data_arr.ByteOffset();
+
+  // Extract shape array
+  Napi::TypedArray shape_arr = info[1].As<Napi::TypedArray>();
+  int64_t* shape = static_cast<int64_t*>(shape_arr.ArrayBuffer().Data()) + shape_arr.ByteOffset() / sizeof(int64_t);
+  size_t ndim = shape_arr.ElementLength();
+
+  ts_DType dtype = static_cast<ts_DType>(info[2].As<Napi::Number>().Int32Value());
+  ts_DeviceType device = static_cast<ts_DeviceType>(info[3].As<Napi::Number>().Int32Value());
+  int device_index = info[4].As<Napi::Number>().Int32Value();
+
+  ts_Error err = {0, ""};
+  ts_Tensor* result = ts_tensor_from_buffer(data, shape, ndim, dtype, device, device_index, &err);
+
+  if (CheckAndThrowError(env, err, "ts_tensor_from_buffer")) {
+    return env.Null();
+  }
+
+  return WrapTensorHandle(env, result);
+}
+
 // ============================================================================
 // Tensor Properties
 // ============================================================================
@@ -422,6 +451,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     Napi::Function::New(env, NapiTensorRandn));
   exports.Set(Napi::String::New(env, "ts_tensor_empty"),
     Napi::Function::New(env, NapiTensorEmpty));
+  exports.Set(Napi::String::New(env, "ts_tensor_from_buffer"),
+    Napi::Function::New(env, NapiTensorFromBuffer));
 
   // Tensor properties (Phase 1)
   exports.Set(Napi::String::New(env, "ts_tensor_ndim"),
