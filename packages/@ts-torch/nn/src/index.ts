@@ -89,16 +89,9 @@ export * from './init.js'
 // Functional API (stateless operations)
 export * as F from './functional.js'
 
-// Checkpoint / Serialization
-export {
-  saveCheckpoint,
-  loadCheckpoint,
-  encodeCheckpoint,
-  decodeCheckpoint,
-  float32Tensor,
-  paramsToTensors,
-} from './checkpoint.js'
-export type { TensorData, CheckpointData, StateDict } from './checkpoint.js'
+// Serialization types
+export type { TensorData, StateDict } from './safetensors.js'
+export { serializeMetadata, deserializeMetadata } from './safetensors.js'
 
 /**
  * Functional namespace (alternative import style)
@@ -137,3 +130,20 @@ export * as functional from './functional.js'
  */
 export { nn, input, sequence, fc } from './builders.js'
 export type { InputDef, BlockDef, SequenceDef, ActivationType, InitStrategy } from './builders.js'
+
+// Safetensors format
+export {
+  decodeSafetensors,
+  encodeSafetensors,
+  loadSafetensors,
+  saveSafetensors,
+} from './safetensors.js'
+
+// State dict validation
+export {
+  validateStateDict,
+  MissingKeyError,
+  UnexpectedKeyError,
+  ShapeMismatchError,
+  DTypeMismatchError,
+} from './validation.js'

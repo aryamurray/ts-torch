@@ -19,6 +19,8 @@ export interface EpochContext {
   history: History
   /** Total seconds since fit() started */
   elapsed: number
+  /** The model being trained (for checkpoint callbacks) */
+  model?: { save(path: string, metadata?: Record<string, unknown>): Promise<void> }
 }
 
 /**
@@ -160,22 +162,39 @@ export function earlyStop(opts: {
 }
 
 /**
- * Checkpoint callback (placeholder for model serialization)
+ * Checkpoint callback - saves model state at regular intervals.
  *
  * @example
  * ```ts
- * callbacks: [checkpoint({ every: 5 })]
+ * callbacks: [checkpoint({ every: 5, path: './checkpoints' })]
  * ```
  */
-export function checkpoint(_opts: {
+export function checkpoint(opts: {
   every: number
   path?: string
 }): Callback {
+  const dir = opts.path ?? './checkpoints'
+
   return {
-    onEpochEnd(ctx: EpochContext): void {
-      if (ctx.epoch % _opts.every === 0) {
-        console.log(`[Checkpoint] Epoch ${ctx.epoch} (placeholder - serialization not yet implemented)`)
+    async onEpochEnd(ctx: EpochContext): Promise<void> {
+      if (ctx.epoch % opts.every !== 0) return
+
+      if (!ctx.model) {
+        console.log(`[Checkpoint] Epoch ${ctx.epoch}: no model in context, skipping`)
+        return
       }
+
+      const { join } = await import('node:path')
+
+      const epochDir = join(dir, `epoch-${ctx.epoch}`)
+
+      await ctx.model.save(epochDir, {
+        epoch: ctx.epoch,
+        metrics: ctx.metrics,
+        valMetrics: ctx.valMetrics,
+      })
+
+      console.log(`[Checkpoint] Saved epoch ${ctx.epoch} to ${epochDir}`)
     },
   }
 }

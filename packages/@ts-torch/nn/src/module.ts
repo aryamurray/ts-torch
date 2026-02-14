@@ -7,7 +7,7 @@
 
 import type { Shape, DType, DeviceType } from '@ts-torch/core'
 import { fromArray, DType as DTypeNs } from '@ts-torch/core'
-import type { StateDict } from './checkpoint.js'
+import type { StateDict } from './safetensors.js'
 import { validateStateDict } from './validation.js'
 
 /**
@@ -434,7 +434,7 @@ export class Module<
    * @example
    * ```ts
    * const state = model.stateDict()
-   * await saveCheckpoint('./model.ckpt', { tensors: state })
+   * await saveSafetensors('./model.safetensors', state)
    * ```
    */
   stateDict(): StateDict {
@@ -471,8 +471,8 @@ export class Module<
    *
    * @example
    * ```ts
-   * const checkpoint = await loadCheckpoint('./model.ckpt')
-   * model.loadStateDict(checkpoint.tensors)
+   * const { tensors } = await loadSafetensors('./model.safetensors')
+   * model.loadStateDict(tensors)
    * ```
    */
   loadStateDict(state: StateDict, strict: boolean = true): void {
@@ -521,54 +521,48 @@ export class Module<
   }
 
   /**
-   * Save model to file
-   *
-   * @param path - File path to save to
-   * @param metadata - Optional metadata to include
-   */
-  async save(path: string, metadata: Record<string, unknown> = {}): Promise<void> {
-    const { saveCheckpoint } = await import('./checkpoint.js')
-    await saveCheckpoint(path, {
-      tensors: this.stateDict(),
-      metadata,
-    })
-  }
-
-  /**
-   * Load model from file
-   *
-   * @param path - File path to load from
-   * @param strict - If true (default), throws if keys don't match
-   * @returns Metadata from checkpoint
-   */
-  async load(path: string, strict: boolean = true): Promise<Record<string, unknown>> {
-    const { loadCheckpoint } = await import('./checkpoint.js')
-    const checkpoint = await loadCheckpoint(path)
-    this.loadStateDict(checkpoint.tensors, strict)
-    return checkpoint.metadata ?? {}
-  }
-
-  /**
-   * Save model to a HuggingFace-style directory (config.json + model.safetensors).
+   * Save model to a directory (config.json + model.safetensors).
    * Requires the model to have been created via config.init() or config.load().
    *
    * @param directory - Output directory path
+   * @param metadata - Optional metadata (epoch, loss, etc.) stored in safetensors header
    */
-  async saveHF(directory: string): Promise<void> {
+  async save(directory: string, metadata?: Record<string, unknown>): Promise<void> {
     const config = (this as any)._config
     if (!config) {
       throw new Error(
-        'Cannot saveHF: model has no _config. Model must be created via config.init() or config.load().',
+        'Cannot save: model has no _config. Model must be created via config.init() or config.load().',
       )
     }
 
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
-    const { saveSafetensors } = await import('./safetensors.js')
+    const { saveSafetensors, serializeMetadata } = await import('./safetensors.js')
 
     await mkdir(directory, { recursive: true })
     await writeFile(join(directory, 'config.json'), JSON.stringify(config, null, 2))
-    await saveSafetensors(join(directory, 'model.safetensors'), this.stateDict())
+    await saveSafetensors(
+      join(directory, 'model.safetensors'),
+      this.stateDict(),
+      serializeMetadata(metadata),
+    )
+  }
+
+  /**
+   * Load weights from a directory containing model.safetensors into this model.
+   * Useful for transfer learning with an existing model instance.
+   *
+   * @param directory - Directory containing model.safetensors
+   * @param strict - If true (default), throws if keys don't match exactly
+   * @returns Deserialized metadata from the safetensors file
+   */
+  async loadWeights(directory: string, strict: boolean = true): Promise<Record<string, unknown>> {
+    const { join } = await import('node:path')
+    const { loadSafetensors, deserializeMetadata } = await import('./safetensors.js')
+
+    const { tensors, metadata } = await loadSafetensors(join(directory, 'model.safetensors'))
+    this.loadStateDict(tensors, strict)
+    return deserializeMetadata(metadata)
   }
 
   /**

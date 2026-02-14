@@ -40,8 +40,8 @@ import { EpsilonGreedyStrategy } from '../strategies/epsilon-greedy.js'
 import { EnvelopeQStrategy } from '../strategies/envelope.js'
 import { conditionObservation } from '../utils/morl.js'
 import {
-  saveCheckpoint,
-  loadCheckpoint,
+  saveSafetensors,
+  loadSafetensors,
   type AgentStateDict,
   type TensorData,
 } from '../checkpoint.js'
@@ -400,30 +400,35 @@ export class DQNAgent implements Agent, MOAgent {
   // ==================== Checkpointing Methods ====================
 
   /**
-   * Save agent state to file
+   * Save agent state to a safetensors file.
+   * Merges model + target tensors with key prefixes into a single file.
    */
   async save(path: string): Promise<void> {
     const state = this.stateDict()
-    await saveCheckpoint(path, {
-      tensors: {
-        ...this.flattenStateDict(state.model, 'model'),
-        ...this.flattenStateDict(state.targetModel ?? {}, 'target'),
-      },
-      metadata: state.metadata,
-    })
+    const tensors = {
+      ...this.flattenStateDict(state.model, 'model'),
+      ...this.flattenStateDict(state.targetModel ?? {}, 'target'),
+    }
+    const metadata: Record<string, string> = {
+      framework: 'ts-torch',
+      agentType: 'dqn',
+      stepCount: String(state.metadata.stepCount),
+      version: state.metadata.version,
+    }
+    await saveSafetensors(path, tensors, metadata)
   }
 
   /**
-   * Load agent state from file
+   * Load agent state from a safetensors file
    */
   async load(path: string): Promise<void> {
-    const checkpoint = await loadCheckpoint(path)
+    const { tensors, metadata } = await loadSafetensors(path)
 
     // Reconstruct state dict from flat tensors
     const model: Record<string, TensorData> = {}
     const targetModel: Record<string, TensorData> = {}
 
-    for (const [key, tensor] of Object.entries(checkpoint.tensors)) {
+    for (const [key, tensor] of Object.entries(tensors)) {
       if (key.startsWith('model.')) {
         model[key.slice(6)] = tensor
       } else if (key.startsWith('target.')) {
@@ -434,7 +439,10 @@ export class DQNAgent implements Agent, MOAgent {
     const state: AgentStateDict = {
       model,
       targetModel: Object.keys(targetModel).length > 0 ? targetModel : undefined,
-      metadata: checkpoint.metadata as AgentStateDict['metadata'],
+      metadata: {
+        stepCount: metadata.stepCount ? Number(metadata.stepCount) : 0,
+        version: metadata.version ?? '1.0.0',
+      },
     }
 
     this.loadStateDict(state)
@@ -444,8 +452,8 @@ export class DQNAgent implements Agent, MOAgent {
    * Get serializable state dictionary
    */
   stateDict(): AgentStateDict {
-    const model = this.extractModuleState(this.qNetwork)
-    const targetModel = this.extractModuleState(this.targetNetwork)
+    const model = this.qNetwork.stateDict()
+    const targetModel = this.targetNetwork.stateDict()
 
     return {
       model,
@@ -463,11 +471,11 @@ export class DQNAgent implements Agent, MOAgent {
    */
   loadStateDict(state: AgentStateDict): void {
     // Load model weights
-    this.loadModuleState(this.qNetwork, state.model)
+    this.qNetwork.loadStateDict(state.model)
 
     // Load target model weights
     if (state.targetModel) {
-      this.loadModuleState(this.targetNetwork, state.targetModel)
+      this.targetNetwork.loadStateDict(state.targetModel)
     }
 
     // Restore metadata
@@ -701,53 +709,6 @@ export class DQNAgent implements Agent, MOAgent {
     return result
   }
 
-  /**
-   * Extract module state as TensorData records
-   */
-  private extractModuleState(module: Module<any, any, any, DeviceType>): Record<string, TensorData> {
-    const state: Record<string, TensorData> = {}
-    const namedParams = module.namedParameters()
-
-    for (const [name, param] of namedParams) {
-      const tensor = (param as any).data
-      if (tensor && typeof tensor.toArray === 'function') {
-        const data = tensor.toArray()
-        const shape = tensor.shape ?? [data.length]
-        state[name] = {
-          data: data instanceof Float32Array ? data : new Float32Array(data),
-          shape: Array.isArray(shape) ? shape : [shape],
-          dtype: 'float32',
-        }
-      }
-    }
-
-    return state
-  }
-
-  /**
-   * Load state into module parameters
-   */
-  private loadModuleState(
-    module: Module<any, any, any, DeviceType>,
-    state: Record<string, TensorData>,
-  ): void {
-    const namedParams = module.namedParameters()
-
-    for (const [name, param] of namedParams) {
-      const tensorData = state[name]
-      if (tensorData) {
-        const paramData = (param as any).data
-        if (paramData && typeof paramData.copy === 'function') {
-          // Create tensor from loaded data and copy
-          const loadedTensor = this.createTensor(
-            tensorData.data as Float32Array,
-            tensorData.shape,
-          )
-          paramData.copy(loadedTensor)
-        }
-      }
-    }
-  }
 }
 
 // ==================== Factory ====================

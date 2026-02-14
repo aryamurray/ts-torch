@@ -282,6 +282,7 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
         valMetrics,
         history,
         elapsed,
+        model: this.model as any,
       }
 
       // onEpochEnd callbacks — check for stop signal

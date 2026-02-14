@@ -107,6 +107,17 @@ export interface SequenceDef {
    * This is where memory allocation happens via C++ bindings.
    */
   init<Dev extends DeviceType>(device: DeviceContext<Dev>): Sequential<Shape, Shape, float32, Dev>
+
+  /**
+   * Load model from a directory (config.json + model.safetensors).
+   * Architecture comes from this config definition; weights come from the directory.
+   */
+  load<Dev extends DeviceType>(device: DeviceContext<Dev>, directory: string): Promise<{ model: Sequential<Shape, Shape, float32, Dev>; metadata: Record<string, unknown> }>
+
+  /**
+   * Serialize this config to a JSON-compatible object.
+   */
+  toJSON(): object
 }
 
 // ==================== Implementation ====================
@@ -201,6 +212,9 @@ class BlockDefImpl implements BlockDef {
 /**
  * Implementation of SequenceDef
  */
+/** Current config schema version */
+const CONFIG_VERSION = 1
+
 class SequenceDefImpl implements SequenceDef {
   constructor(
     readonly inputDef: InputDef,
@@ -238,7 +252,48 @@ class SequenceDefImpl implements SequenceDef {
 
     // Create on CPU and move to target device
     const cpuModel = new Sequential<Shape, Shape, float32, 'cpu'>(...layers)
+    cpuModel._config = this.toJSON()
     return cpuModel.to(device.type) as unknown as Sequential<Shape, Shape, float32, Dev>
+  }
+
+  async load<Dev extends DeviceType>(device: DeviceContext<Dev>, directory: string): Promise<{ model: Sequential<Shape, Shape, float32, Dev>; metadata: Record<string, unknown> }> {
+    const { join } = await import('node:path')
+    const { loadSafetensors, deserializeMetadata } = await import('./safetensors.js')
+
+    const model = this.init(device)
+    const { tensors, metadata } = await loadSafetensors(join(directory, 'model.safetensors'))
+    model.loadStateDict(tensors)
+    return { model, metadata: deserializeMetadata(metadata) }
+  }
+
+  toJSON(): object {
+    const blocks = this.blocks.map((block) => {
+      const obj: Record<string, unknown> = { outFeatures: block.outFeatures }
+
+      // Only serialize non-default values
+      if (block.bias === false) obj.bias = false
+      if (block.initStrategy !== 'kaiming_uniform') obj.init = block.initStrategy
+      if (block.activation !== undefined) obj.activation = block.activation
+      if (block.activationOptions !== undefined) {
+        if (block.activation === 'leaky_relu' && block.activationOptions.negativeSlope !== undefined) {
+          obj.negativeSlope = block.activationOptions.negativeSlope
+        }
+        if (block.activation === 'softmax' && block.activationOptions.dim !== undefined) {
+          obj.dim = block.activationOptions.dim
+        }
+      }
+      if (block.dropoutP !== undefined && block.dropoutP > 0) obj.dropoutP = block.dropoutP
+      if (block.useBatchNorm) obj.batchNorm = true
+
+      return obj
+    })
+
+    return {
+      format: 'ts-torch-sequence',
+      version: CONFIG_VERSION,
+      input: { shape: [...this.inputDef.shape] },
+      blocks,
+    }
   }
 }
 
@@ -351,6 +406,162 @@ export function sequence(inputDef: InputDef, ...blocks: BlockDef[]): SequenceDef
   return new SequenceDefImpl(inputDef, blocks)
 }
 
+// ==================== Config Validation ====================
+
+class UnknownFormatError extends Error {
+  constructor(format: string) {
+    super(`Unknown config format: "${format}" (expected "ts-torch-sequence")`)
+    this.name = 'UnknownFormatError'
+  }
+}
+
+class UnsupportedConfigVersionError extends Error {
+  constructor(version: number) {
+    super(`Unsupported config version: ${version} (this reader supports up to ${CONFIG_VERSION})`)
+    this.name = 'UnsupportedConfigVersionError'
+  }
+}
+
+const VALID_ACTIVATIONS = new Set<string>(['relu', 'gelu', 'sigmoid', 'tanh', 'leaky_relu', 'softmax'])
+const VALID_INIT_STRATEGIES = new Set<string>(['kaiming_uniform', 'kaiming_normal', 'xavier_uniform', 'xavier_normal', 'zeros'])
+
+/**
+ * Reconstruct a SequenceDef from a JSON config object with schema validation.
+ *
+ * @param json - JSON object (typically from config.json)
+ * @returns Validated SequenceDef
+ */
+export function fromJSON(json: unknown): SequenceDef {
+  if (!json || typeof json !== 'object') {
+    throw new Error('Config must be a non-null object')
+  }
+
+  const obj = json as Record<string, unknown>
+
+  // Format check
+  if (obj.format !== 'ts-torch-sequence') {
+    throw new UnknownFormatError(String(obj.format ?? ''))
+  }
+
+  // Version check
+  const version = obj.version
+  if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
+    throw new Error(`Invalid config version: ${version}`)
+  }
+  if (version > CONFIG_VERSION) {
+    throw new UnsupportedConfigVersionError(version)
+  }
+
+  // Input validation
+  const inputObj = obj.input as Record<string, unknown> | undefined
+  if (!inputObj || typeof inputObj !== 'object') {
+    throw new Error('Config must have an "input" object')
+  }
+  const shape = inputObj.shape
+  if (!Array.isArray(shape) || shape.length === 0 || !shape.every((d: unknown) => typeof d === 'number' && Number.isInteger(d) && d > 0)) {
+    throw new Error(`Invalid input shape: ${JSON.stringify(shape)} (must be array of positive integers)`)
+  }
+
+  // Blocks validation
+  const blocks = obj.blocks
+  if (!Array.isArray(blocks) || blocks.length === 0) {
+    throw new Error('Config must have a non-empty "blocks" array')
+  }
+
+  const blockDefs: BlockDef[] = blocks.map((b: unknown, i: number) => {
+    if (!b || typeof b !== 'object') {
+      throw new Error(`Block ${i} must be an object`)
+    }
+    const block = b as Record<string, unknown>
+
+    // outFeatures (required)
+    if (typeof block.outFeatures !== 'number' || !Number.isInteger(block.outFeatures) || block.outFeatures <= 0) {
+      throw new Error(`Block ${i}: outFeatures must be a positive integer, got ${block.outFeatures}`)
+    }
+
+    // bias (optional, defaults true)
+    if (block.bias !== undefined && typeof block.bias !== 'boolean') {
+      throw new Error(`Block ${i}: bias must be a boolean if present`)
+    }
+
+    // init (optional)
+    if (block.init !== undefined) {
+      if (typeof block.init !== 'string' || !VALID_INIT_STRATEGIES.has(block.init)) {
+        throw new Error(`Block ${i}: unknown init strategy "${block.init}"`)
+      }
+    }
+
+    // activation (optional)
+    if (block.activation !== undefined) {
+      if (typeof block.activation !== 'string' || !VALID_ACTIVATIONS.has(block.activation)) {
+        throw new Error(`Block ${i}: unknown activation "${block.activation}"`)
+      }
+    }
+
+    // dropoutP (optional)
+    if (block.dropoutP !== undefined) {
+      if (typeof block.dropoutP !== 'number' || block.dropoutP < 0 || block.dropoutP >= 1) {
+        throw new Error(`Block ${i}: dropoutP must be a number in [0, 1), got ${block.dropoutP}`)
+      }
+    }
+
+    // Build activation options
+    let activationOptions: { negativeSlope?: number; dim?: number } | undefined
+    if (block.activation === 'leaky_relu' && block.negativeSlope !== undefined) {
+      activationOptions = { negativeSlope: block.negativeSlope as number }
+    }
+    if (block.activation === 'softmax' && block.dim !== undefined) {
+      activationOptions = { dim: block.dim as number }
+    }
+
+    return new BlockDefImpl(
+      block.outFeatures as number,
+      (block.bias as boolean) ?? true,
+      (block.init as InitStrategy) ?? 'kaiming_uniform',
+      block.activation as ActivationType | undefined,
+      activationOptions,
+      block.dropoutP as number | undefined,
+      (block.batchNorm as boolean) ?? undefined,
+    )
+  })
+
+  return new SequenceDefImpl(
+    { kind: 'input', shape: shape as number[] },
+    blockDefs,
+  )
+}
+
+/**
+ * Load a model from a directory (config.json + model.safetensors).
+ *
+ * @param device - Target device
+ * @param directory - Path to directory containing config.json and model.safetensors
+ * @returns Object with loaded model and deserialized metadata
+ */
+async function load<Dev extends DeviceType>(
+  device: DeviceContext<Dev>,
+  directory: string,
+): Promise<{ model: Sequential<Shape, Shape, float32, Dev>; metadata: Record<string, unknown> }> {
+  const { readFile } = await import('node:fs/promises')
+  const { join } = await import('node:path')
+  const { loadSafetensors, deserializeMetadata } = await import('./safetensors.js')
+
+  // 1. Read and parse config.json
+  const configPath = join(directory, 'config.json')
+  const configJson = JSON.parse(await readFile(configPath, 'utf-8'))
+  const config = fromJSON(configJson)
+
+  // 2. Load safetensors weights
+  const safetensorsPath = join(directory, 'model.safetensors')
+  const { tensors, metadata } = await loadSafetensors(safetensorsPath)
+
+  // 3. Init model and load weights (loadStateDict validates internally)
+  const model = config.init(device)
+  model.loadStateDict(tensors)
+
+  return { model, metadata: deserializeMetadata(metadata) }
+}
+
 // ==================== nn Namespace ====================
 
 /**
@@ -377,4 +588,6 @@ export const nn = {
   input,
   sequence,
   fc,
+  fromJSON,
+  load,
 }

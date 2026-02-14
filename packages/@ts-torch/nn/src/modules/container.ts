@@ -44,6 +44,9 @@ export class Sequential<
 > extends Module<In, Out, D, Dev> {
   private readonly modules: Module<any, any, D, Dev>[]
 
+  /** Serialized config from SequenceDef.toJSON(), set during init()/load() */
+  _config?: object
+
   /**
    * Create a new Sequential container
    *

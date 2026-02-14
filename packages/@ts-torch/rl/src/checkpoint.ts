@@ -1,35 +1,33 @@
 /**
  * RL Agent Checkpointing
  *
- * Re-exports checkpoint utilities from @ts-torch/nn and adds
+ * Re-exports safetensors utilities from @ts-torch/nn and adds
  * RL-specific types like AgentStateDict.
  *
  * @example
  * ```ts
- * import { saveCheckpoint, loadCheckpoint, AgentStateDict } from '@ts-torch/rl'
+ * import { saveSafetensors, loadSafetensors, AgentStateDict } from '@ts-torch/rl'
  *
  * // Save agent state
  * const state: AgentStateDict = agent.stateDict()
- * await saveCheckpoint('./agent.ckpt', {
- *   tensors: { ...flattenStateDict(state.model, 'model') },
- *   metadata: state.metadata
+ * await saveSafetensors('./agent.safetensors', {
+ *   ...flattenStateDict(state.model, 'model'),
  * })
  *
  * // Load agent state
- * const checkpoint = await loadCheckpoint('./agent.ckpt')
+ * const { tensors } = await loadSafetensors('./agent.safetensors')
  * ```
  */
 
-// Re-export all checkpoint functionality from @ts-torch/nn
+// Re-export safetensors functionality from @ts-torch/nn
 export {
-  saveCheckpoint,
-  loadCheckpoint,
-  encodeCheckpoint,
-  decodeCheckpoint,
-  float32Tensor,
-  paramsToTensors,
+  saveSafetensors,
+  loadSafetensors,
+  encodeSafetensors,
+  decodeSafetensors,
+  serializeMetadata,
+  deserializeMetadata,
   type TensorData,
-  type CheckpointData,
   type StateDict,
 } from '@ts-torch/nn'
 

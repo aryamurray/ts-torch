@@ -64,7 +64,6 @@ export type {
   BlockDef,
   SequenceDef,
   StateDict,
-  CheckpointData,
 } from '@ts-torch/nn'
 
 // Optim Types

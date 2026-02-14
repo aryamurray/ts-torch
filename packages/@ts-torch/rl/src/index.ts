@@ -86,7 +86,7 @@ export type {
   RolloutEndData,
   EvalStartData,
   EvalEndData,
-  CheckpointData as CallbackCheckpointData,  // Aliased to avoid conflict with nn's CheckpointData
+  CheckpointData as CallbackCheckpointData,
   BestModelData,
 } from './callbacks/index.js'
 
@@ -120,14 +120,14 @@ export type {
 
 // Re-export from @ts-torch/nn for convenience
 export {
-  saveCheckpoint,
-  loadCheckpoint,
-  encodeCheckpoint,
-  decodeCheckpoint,
-  float32Tensor,
-  paramsToTensors,
+  saveSafetensors,
+  loadSafetensors,
+  encodeSafetensors,
+  decodeSafetensors,
+  serializeMetadata,
+  deserializeMetadata,
 } from '@ts-torch/nn'
-export type { TensorData, CheckpointData, StateDict } from '@ts-torch/nn'
+export type { TensorData, StateDict } from '@ts-torch/nn'
 
 // RL-specific checkpoint types
 export type { AgentStateDict } from './checkpoint.js'

@@ -35,6 +35,11 @@ export default defineConfig({
     alias: {
       '@ts-torch/test-utils': resolve(__dirname, '../../shared-test-utils/src/index.ts'),
       '@ts-torch/core': resolve(__dirname, '../core/src/index.ts'),
+      // Needed by e2e tests that import train/datasets
+      '@ts-torch/train': resolve(__dirname, '../train/src/index.ts'),
+      '@ts-torch/datasets': resolve(__dirname, '../datasets/src/index.ts'),
+      '@ts-torch/optim': resolve(__dirname, '../optim/src/index.ts'),
+      '@ts-torch/nn': resolve(__dirname, './src/index.ts'),
     },
   },
 });
