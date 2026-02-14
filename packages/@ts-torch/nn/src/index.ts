@@ -31,7 +31,7 @@
  */
 
 // Core module abstractions
-export { Module, Parameter, PipedModule, type Tensor, type float32 } from './module.js'
+export { Module, Parameter, PipedModule, type Tensor, type float32, type LoadWeightsOptions } from './module.js'
 
 // Neural network modules
 export {
@@ -129,7 +129,7 @@ export * as functional from './functional.js'
  * ```
  */
 export { nn, input, sequence, fc } from './builders.js'
-export type { InputDef, BlockDef, SequenceDef, ActivationType, InitStrategy } from './builders.js'
+export type { InputDef, BlockDef, SequenceDef, ActivationType, InitStrategy, InspectResult } from './builders.js'
 
 // Safetensors format
 export {
@@ -137,6 +137,7 @@ export {
   encodeSafetensors,
   loadSafetensors,
   saveSafetensors,
+  inspectSafetensorsHeader,
 } from './safetensors.js'
 
 // State dict validation

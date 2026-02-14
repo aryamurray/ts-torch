@@ -7,7 +7,7 @@
  * @see https://huggingface.co/docs/safetensors/
  */
 
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile, open } from 'node:fs/promises'
 
 // ==================== Types ====================
 
@@ -286,6 +286,54 @@ export function deserializeMetadata(meta: Record<string, string>): Record<string
   }
 
   return result
+}
+
+// ==================== Header Inspection ====================
+
+/**
+ * Read only the header of a safetensors file (no tensor data loaded).
+ * Useful for inspecting model structure without loading weights into memory.
+ *
+ * @param path - Path to .safetensors file
+ * @returns Parameter metadata and file-level metadata
+ */
+export async function inspectSafetensorsHeader(path: string): Promise<{
+  parameters: Record<string, { shape: number[]; dtype: string }>
+  metadata: Record<string, string>
+}> {
+  const fh = await open(path, 'r')
+  try {
+    // Read 8-byte header size
+    const sizeBuffer = Buffer.alloc(8)
+    await fh.read(sizeBuffer, 0, 8, 0)
+    const headerSize = Number(sizeBuffer.readBigUInt64LE(0))
+
+    if (headerSize > 100 * 1024 * 1024) {
+      throw new Error(`Safetensors header size ${headerSize} exceeds 100 MB limit`)
+    }
+
+    // Read header JSON only
+    const headerBuffer = Buffer.alloc(headerSize)
+    await fh.read(headerBuffer, 0, headerSize, 8)
+    const header: SafetensorsHeader = JSON.parse(headerBuffer.toString('utf-8'))
+
+    const parameters: Record<string, { shape: number[]; dtype: string }> = {}
+    let metadata: Record<string, string> = {}
+
+    for (const [key, entry] of Object.entries(header)) {
+      if (key === '__metadata__') {
+        metadata = entry as Record<string, string>
+        continue
+      }
+      const tensorMeta = entry as { dtype: string; shape: number[]; data_offsets: [number, number] }
+      const tsTorchDtype = SF_TO_TSTORCH[tensorMeta.dtype] ?? tensorMeta.dtype
+      parameters[key] = { shape: tensorMeta.shape, dtype: tsTorchDtype }
+    }
+
+    return { parameters, metadata }
+  } finally {
+    await fh.close()
+  }
 }
 
 // ==================== Utilities ====================

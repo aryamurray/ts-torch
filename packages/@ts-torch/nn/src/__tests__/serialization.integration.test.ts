@@ -20,7 +20,7 @@ import { nn } from '../builders.js'
 import { Linear } from '../modules/linear.js'
 import { ReLU } from '../modules/activation.js'
 import { Sequential } from '../modules/container.js'
-import { Module, Parameter } from '../module.js'
+import { Module, Parameter, PipedModule } from '../module.js'
 import { encodeSafetensors, decodeSafetensors } from '../safetensors.js'
 import { mkdtemp, rm, readFile, access } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -403,5 +403,316 @@ describe('atomic directory writes', () => {
     // Load and verify the second save's metadata
     const { metadata } = await nn.load(cpu, modelDir)
     expect(metadata.epoch).toBe(2)
+  })
+})
+
+// ==================== namedModules() ====================
+
+describe('namedModules()', () => {
+  test('Sequential(Linear(4,3)) has 2 modules', () => {
+    run(() => {
+      const model = new Sequential(new Linear(4, 3))
+      const modules = model.namedModules()
+
+      // root '' + '0' (Linear)
+      expect(modules.size).toBe(2)
+      expect(modules.has('')).toBe(true)
+      expect(modules.has('0')).toBe(true)
+      expect(modules.get('0')).toBeInstanceOf(Linear)
+    })
+  })
+
+  test('Sequential(Linear, ReLU, Linear) has correct names and types', () => {
+    run(() => {
+      const model = new Sequential(
+        new Linear(6, 3),
+        new ReLU(),
+        new Linear(3, 2),
+      )
+      const modules = model.namedModules()
+
+      // root + 3 children
+      expect(modules.size).toBe(4)
+      expect(modules.get('0')).toBeInstanceOf(Linear)
+      expect(modules.get('1')).toBeInstanceOf(ReLU)
+      expect(modules.get('2')).toBeInstanceOf(Linear)
+    })
+  })
+
+  test('deeply nested PipedModule uses dot notation', () => {
+    run(() => {
+      const piped = new Linear(4, 3).pipe(new ReLU())
+      const model = new Sequential(piped, new Linear(3, 2))
+      const modules = model.namedModules()
+
+      // Sequential root, '0' (PipedModule), '0.0' (Linear), '0.1' (ReLU), '1' (Linear)
+      expect(modules.has('0')).toBe(true)
+      expect(modules.has('0.0')).toBe(true)
+      expect(modules.has('0.1')).toBe(true)
+      expect(modules.has('1')).toBe(true)
+      expect(modules.get('0.0')).toBeInstanceOf(Linear)
+      expect(modules.get('0.1')).toBeInstanceOf(ReLU)
+    })
+  })
+})
+
+// ==================== parameterCount() ====================
+
+describe('parameterCount()', () => {
+  test('Linear(4, 3) has 15 parameters (12 weight + 3 bias)', () => {
+    run(() => {
+      const layer = new Linear(4, 3)
+      expect(layer.parameterCount()).toBe(15)
+    })
+  })
+
+  test('multi-layer model counts all parameters', () => {
+    run(() => {
+      const model = new Sequential(
+        new Linear(6, 3),
+        new ReLU(),
+        new Linear(3, 2),
+      )
+      // Linear(6,3): weight 18 + bias 3 = 21
+      // ReLU: 0
+      // Linear(3,2): weight 6 + bias 2 = 8
+      expect(model.parameterCount()).toBe(29)
+    })
+  })
+
+  test('trainable/frozen filters work after freezing', () => {
+    const model = new Sequential(
+      new Linear(4, 3),
+      new ReLU(),
+      new Linear(3, 2),
+    )
+    const total = model.parameterCount()
+
+    model.freeze('0.*')
+    expect(model.parameterCount('frozen')).toBe(15) // Linear(4,3) = 12 + 3
+    expect(model.parameterCount('trainable')).toBe(total - 15)
+    expect(model.parameterCount('all')).toBe(total)
+  })
+})
+
+// ==================== summary() ====================
+
+describe('summary()', () => {
+  test('Sequential(Linear(784,128), ReLU, Linear(128,10)) summary', () => {
+    run(() => {
+      const model = new Sequential(
+        new Linear(784, 128),
+        new ReLU(),
+        new Linear(128, 10),
+      )
+      const output = model.summary()
+
+      expect(output).toContain('Linear')
+      expect(output).toContain('ReLU')
+      expect(output).toContain('[*, 128]')
+      expect(output).toContain('[*, 10]')
+      expect(output).toContain('Total')
+      expect(output).toContain('Trainable params:')
+    })
+  })
+})
+
+// ==================== freeze() / unfreeze() ====================
+
+describe('freeze() / unfreeze()', () => {
+  test('freeze all → check all frozen', () => {
+    const model = new Sequential(
+      new Linear(4, 3),
+      new ReLU(),
+      new Linear(3, 2),
+    )
+    model.freeze()
+
+    for (const param of model.parameters()) {
+      expect(param.requiresGrad).toBe(false)
+    }
+  })
+
+  test('unfreeze all → check all trainable', () => {
+    const model = new Sequential(
+      new Linear(4, 3),
+      new ReLU(),
+      new Linear(3, 2),
+    )
+    model.freeze()
+    model.unfreeze()
+
+    for (const param of model.parameters()) {
+      expect(param.requiresGrad).toBe(true)
+    }
+  })
+
+  test('pattern freeze "0.*" only freezes layer 0', () => {
+    const model = new Sequential(
+      new Linear(4, 3),
+      new ReLU(),
+      new Linear(3, 2),
+    )
+    model.freeze('0.*')
+
+    const named = model.namedParameters()
+    for (const [name, param] of named) {
+      if (name.startsWith('0.')) {
+        expect(param.requiresGrad).toBe(false)
+      } else {
+        expect(param.requiresGrad).toBe(true)
+      }
+    }
+  })
+
+  test('pattern "*.weight" freezes all weights, biases trainable', () => {
+    const model = new Sequential(
+      new Linear(4, 3),
+      new ReLU(),
+      new Linear(3, 2),
+    )
+    model.freeze('*.weight')
+
+    const named = model.namedParameters()
+    for (const [name, param] of named) {
+      if (name.endsWith('.weight')) {
+        expect(param.requiresGrad).toBe(false)
+      } else {
+        expect(param.requiresGrad).toBe(true)
+      }
+    }
+  })
+
+  test('freeze/unfreeze chaining: model.freeze().unfreeze("2.*")', () => {
+    const model = new Sequential(
+      new Linear(4, 3),
+      new ReLU(),
+      new Linear(3, 2),
+    )
+    model.freeze().unfreeze('2.*')
+
+    const named = model.namedParameters()
+    for (const [name, param] of named) {
+      if (name.startsWith('2.')) {
+        expect(param.requiresGrad).toBe(true)
+      } else {
+        expect(param.requiresGrad).toBe(false)
+      }
+    }
+  })
+
+  test('parameterCount("frozen") reflects freeze state', () => {
+    const model = new Sequential(
+      new Linear(4, 3),
+      new ReLU(),
+      new Linear(3, 2),
+    )
+    expect(model.parameterCount('frozen')).toBe(0)
+
+    model.freeze()
+    expect(model.parameterCount('frozen')).toBe(model.parameterCount('all'))
+    expect(model.parameterCount('trainable')).toBe(0)
+  })
+})
+
+// ==================== partial loading (include/exclude) ====================
+
+describe('partial loading (include/exclude)', () => {
+  test('include: ["0.*"] loads only layer 0', async () => {
+    const dir = await createTempDir()
+    const modelDir = join(dir, 'partial-load')
+
+    const config = nn.sequence(
+      nn.input(4),
+      nn.fc(3).relu(),
+      nn.fc(2),
+    )
+
+    const model1 = config.init(cpu)
+    await model1.save(modelDir)
+
+    // Create fresh model with different weights
+    const model2 = config.init(cpu)
+    const stateBeforeLoad = model2.stateDict()
+
+    await model2.loadWeights(modelDir, { include: ['0.*'] })
+
+    const stateAfterLoad = model2.stateDict()
+    const model1State = model1.stateDict()
+
+    // Layer 0 params should match model1
+    for (const key of Object.keys(model1State)) {
+      if (key.startsWith('0.')) {
+        const orig = Array.from(model1State[key]!.data as Float32Array)
+        const loaded = Array.from(stateAfterLoad[key]!.data as Float32Array)
+        expect(loaded).toEqual(orig)
+      }
+    }
+  })
+
+  test('exclude: ["2.*"] loads everything except layer 2', async () => {
+    const dir = await createTempDir()
+    const modelDir = join(dir, 'partial-exclude')
+
+    const config = nn.sequence(
+      nn.input(4),
+      nn.fc(3).relu(),
+      nn.fc(2),
+    )
+
+    const model1 = config.init(cpu)
+    await model1.save(modelDir)
+
+    const model2 = config.init(cpu)
+    const stateBefore = model2.stateDict()
+
+    await model2.loadWeights(modelDir, { exclude: ['2.*'] })
+
+    const stateAfter = model2.stateDict()
+    const model1State = model1.stateDict()
+
+    // Layer 0 should match model1
+    for (const key of Object.keys(model1State)) {
+      if (key.startsWith('0.')) {
+        const orig = Array.from(model1State[key]!.data as Float32Array)
+        const loaded = Array.from(stateAfter[key]!.data as Float32Array)
+        expect(loaded).toEqual(orig)
+      }
+    }
+
+    // Layer 2 should NOT have been loaded (still model2's original weights)
+    for (const key of Object.keys(stateBefore)) {
+      if (key.startsWith('2.')) {
+        const before = Array.from(stateBefore[key]!.data as Float32Array)
+        const after = Array.from(stateAfter[key]!.data as Float32Array)
+        expect(after).toEqual(before)
+      }
+    }
+  })
+
+  test('boolean backward compat still works', async () => {
+    const dir = await createTempDir()
+    const modelDir = join(dir, 'compat')
+
+    const config = nn.sequence(
+      nn.input(4),
+      nn.fc(3),
+    )
+
+    const model1 = config.init(cpu)
+    await model1.save(modelDir)
+
+    const model2 = config.init(cpu)
+    // false = non-strict mode (boolean backward compat)
+    await model2.loadWeights(modelDir, false)
+
+    const state1 = model1.stateDict()
+    const state2 = model2.stateDict()
+
+    for (const key of Object.keys(state1)) {
+      const orig = Array.from(state1[key]!.data as Float32Array)
+      const loaded = Array.from(state2[key]!.data as Float32Array)
+      expect(loaded).toEqual(orig)
+    }
   })
 })

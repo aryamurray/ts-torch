@@ -209,6 +209,10 @@ export class Embedding<
     return result as unknown as Tensor<Shape, D, Dev>
   }
 
+  protected override _outputShapeHint(): string {
+    return `[*, *, ${this.embeddingDim}]`
+  }
+
   override toString(): string {
     let s = `Embedding(${this.numEmbeddings}, ${this.embeddingDim}`
     if (this.paddingIdx !== null) {

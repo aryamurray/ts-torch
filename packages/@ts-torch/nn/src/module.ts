@@ -11,6 +11,24 @@ import type { StateDict } from './safetensors.js'
 import { validateStateDict } from './validation.js'
 
 /**
+ * Convert a simple glob pattern to a RegExp.
+ * Supports `*` as wildcard (matches any characters including dots).
+ */
+function globToRegex(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp('^' + escaped.replace(/\*/g, '.*') + '$')
+}
+
+/**
+ * Options for loadWeights()
+ */
+export interface LoadWeightsOptions {
+  strict?: boolean
+  include?: string[]
+  exclude?: string[]
+}
+
+/**
  * Tensor interface matching core implementation
  *
  * This is a minimal interface for type checking in the nn package.
@@ -352,6 +370,151 @@ export class Module<
   }
 
   /**
+   * Get all modules recursively with dot-notation names
+   * Includes this module at '' key (PyTorch convention).
+   *
+   * @returns Map of module path to Module
+   */
+  namedModules(): Map<string, Module<any, any, D, Dev>> {
+    const result = new Map<string, Module<any, any, D, Dev>>()
+    result.set('', this)
+    for (const [name, module] of this._modules.entries()) {
+      result.set(name, module)
+      for (const [childName, childModule] of module.namedModules().entries()) {
+        if (childName === '') continue
+        result.set(`${name}.${childName}`, childModule)
+      }
+    }
+    return result
+  }
+
+  /**
+   * Count the total number of parameters in this module
+   *
+   * @param filter - 'all' (default), 'trainable', or 'frozen'
+   * @returns Total element count across all parameters
+   */
+  parameterCount(filter: 'all' | 'trainable' | 'frozen' = 'all'): number {
+    let count = 0
+    for (const param of this.parameters()) {
+      if (filter === 'trainable' && !param.requiresGrad) continue
+      if (filter === 'frozen' && param.requiresGrad) continue
+      const shape = param.data.shape as readonly number[]
+      count += shape.reduce((a, d) => a * d, 1)
+    }
+    return count
+  }
+
+  /**
+   * Count parameters that belong directly to this module (not children)
+   */
+  protected _directParameterCount(): number {
+    let count = 0
+    for (const param of this._parameters.values()) {
+      const shape = param.data.shape as readonly number[]
+      count += shape.reduce((a, d) => a * d, 1)
+    }
+    return count
+  }
+
+  /**
+   * Return an output shape hint string for summary display.
+   * Override in shape-transforming modules. Returns null by default,
+   * which means summary() carries forward the previous module's shape.
+   */
+  protected _outputShapeHint(): string | null {
+    return null
+  }
+
+  /**
+   * Print a formatted summary table of this model's layers, shapes, and parameter counts.
+   *
+   * @returns Formatted table string
+   */
+  summary(): string {
+    const modules = this.namedModules()
+    const rows: [string, string, string, number][] = []
+    let currentShape = '-'
+
+    for (const [name, mod] of modules) {
+      if (name === '') continue
+      const hint = mod._outputShapeHint()
+      if (hint !== null) currentShape = hint
+      rows.push([name, mod.constructor.name, currentShape, mod._directParameterCount()])
+    }
+
+    // Calculate column widths
+    const headers = ['Layer', 'Type', 'Output Shape', 'Params']
+    const formattedParams = rows.map(r => r[3].toLocaleString('en-US'))
+    const totalParams = this.parameterCount()
+    const trainableParams = this.parameterCount('trainable')
+    const frozenParams = this.parameterCount('frozen')
+    const totalFormatted = totalParams.toLocaleString('en-US')
+
+    const colWidths = [
+      Math.max(headers[0]!.length, ...rows.map(r => r[0].length), 'Total'.length),
+      Math.max(headers[1]!.length, ...rows.map(r => r[1].length)),
+      Math.max(headers[2]!.length, ...rows.map(r => r[2].length)),
+      Math.max(headers[3]!.length, ...formattedParams.map(p => p.length), totalFormatted.length),
+    ]
+
+    const pad = (s: string, w: number) => s + ' '.repeat(Math.max(0, w - s.length))
+    const padRight = (s: string, w: number) => ' '.repeat(Math.max(0, w - s.length)) + s
+    const hLine = (left: string, mid: string, right: string) =>
+      `${left}${colWidths.map(w => '─'.repeat(w + 2)).join(mid)}${right}`
+
+    const lines: string[] = []
+    lines.push(hLine('┌', '┬', '┐'))
+    lines.push(`│ ${pad(headers[0]!, colWidths[0]!)} │ ${pad(headers[1]!, colWidths[1]!)} │ ${pad(headers[2]!, colWidths[2]!)} │ ${padRight(headers[3]!, colWidths[3]!)} │`)
+    lines.push(hLine('├', '┼', '┤'))
+
+    for (let i = 0; i < rows.length; i++) {
+      const [name, type, shape] = rows[i]!
+      lines.push(`│ ${pad(name, colWidths[0]!)} │ ${pad(type, colWidths[1]!)} │ ${pad(shape, colWidths[2]!)} │ ${padRight(formattedParams[i]!, colWidths[3]!)} │`)
+    }
+
+    lines.push(hLine('├', '┼', '┤'))
+    lines.push(`│ ${pad('Total', colWidths[0]!)} │ ${pad('', colWidths[1]!)} │ ${pad('', colWidths[2]!)} │ ${padRight(totalFormatted, colWidths[3]!)} │`)
+    lines.push(hLine('└', '┴', '┘'))
+    lines.push(`Trainable params: ${trainableParams.toLocaleString('en-US')}`)
+    lines.push(`Non-trainable params: ${frozenParams.toLocaleString('en-US')}`)
+
+    return lines.join('\n')
+  }
+
+  /**
+   * Freeze parameters (set requiresGrad = false).
+   * If pattern is provided, only matching parameter names are frozen (glob syntax).
+   *
+   * @param pattern - Optional glob pattern to match parameter names
+   * @returns this for chaining
+   */
+  freeze(pattern?: string): this {
+    const regex = pattern ? globToRegex(pattern) : null
+    for (const [name, param] of this.namedParameters()) {
+      if (regex && !regex.test(name)) continue
+      param.requiresGrad = false
+    }
+    return this
+  }
+
+  /**
+   * Unfreeze parameters (set requiresGrad = true).
+   * If pattern is provided, only matching parameter names are unfrozen (glob syntax).
+   *
+   * @param pattern - Optional glob pattern to match parameter names
+   * @returns this for chaining
+   */
+  unfreeze(pattern?: string): this {
+    const regex = pattern ? globToRegex(pattern) : null
+    for (const [name, param] of this.namedParameters()) {
+      if (regex && !regex.test(name)) continue
+      param.requiresGrad = true
+    }
+    return this
+  }
+
+  /**
    * Move module to specified device (cpu, cuda, mps)
    *
    * **IMPORTANT: Mutation semantics**
@@ -563,14 +726,52 @@ export class Module<
    * Useful for transfer learning with an existing model instance.
    *
    * @param directory - Directory containing model.safetensors
-   * @param strict - If true (default), throws if keys don't match exactly
+   * @param options - boolean for backward compat (strict mode), or LoadWeightsOptions
    * @returns Deserialized metadata from the safetensors file
    */
-  async loadWeights(directory: string, strict: boolean = true): Promise<Record<string, unknown>> {
+  async loadWeights(
+    directory: string,
+    options?: boolean | LoadWeightsOptions,
+  ): Promise<Record<string, unknown>> {
     const { join } = await import('node:path')
     const { loadSafetensors, deserializeMetadata } = await import('./safetensors.js')
 
+    // Normalize options
+    let strict: boolean
+    let include: string[] | undefined
+    let exclude: string[] | undefined
+
+    if (typeof options === 'boolean') {
+      strict = options
+    } else if (options) {
+      include = options.include
+      exclude = options.exclude
+      // When include/exclude used, strict defaults to false
+      strict = options.strict ?? (include || exclude ? false : true)
+    } else {
+      strict = true
+    }
+
     const { tensors, metadata } = await loadSafetensors(join(directory, 'model.safetensors'))
+
+    // Filter state dict keys if include/exclude specified
+    if (include || exclude) {
+      const includeRegexes = include?.map(globToRegex)
+      const excludeRegexes = exclude?.map(globToRegex)
+
+      for (const key of Object.keys(tensors)) {
+        // If include is specified, key must match at least one pattern
+        if (includeRegexes && !includeRegexes.some(r => r.test(key))) {
+          delete tensors[key]
+          continue
+        }
+        // If exclude is specified, key must not match any pattern
+        if (excludeRegexes && excludeRegexes.some(r => r.test(key))) {
+          delete tensors[key]
+        }
+      }
+    }
+
     this.loadStateDict(tensors, strict)
     return deserializeMetadata(metadata)
   }

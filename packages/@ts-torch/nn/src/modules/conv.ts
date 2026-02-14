@@ -195,6 +195,10 @@ export class Conv2d<
     return result as Tensor<readonly [number, OutChannels, number, number], D>
   }
 
+  protected override _outputShapeHint(): string {
+    return `[*, ${this.outChannels}, ?, ?]`
+  }
+
   override toString(): string {
     return `Conv2d(${this.inChannels}, ${this.outChannels}, kernel_size=${JSON.stringify(this.kernelSize)}, stride=${JSON.stringify(this.stride)}, padding=${JSON.stringify(this.padding)})`
   }

@@ -290,6 +290,10 @@ export class RNN<
     }
   }
 
+  protected override _outputShapeHint(): string {
+    return `[*, *, ${this.hiddenSize * this.numDirections}]`
+  }
+
   override toString(): string {
     return `RNN(${this.inputSize}, ${this.hiddenSize}, num_layers=${this.numLayers}, nonlinearity='${this.nonlinearity}', bidirectional=${this.bidirectional})`
   }
@@ -525,6 +529,10 @@ export class LSTM<
     return [newHidden, newCell]
   }
 
+  protected override _outputShapeHint(): string {
+    return `[*, *, ${this.hiddenSize * this.numDirections}]`
+  }
+
   override toString(): string {
     return `LSTM(${this.inputSize}, ${this.hiddenSize}, num_layers=${this.numLayers}, bidirectional=${this.bidirectional})`
   }
@@ -746,6 +754,10 @@ export class GRU<
     const newHidden = oneMinusZ.mul(n as any).add(z.mul(hidden as any) as any) as Tensor<Shape, D, Dev>
 
     return newHidden
+  }
+
+  protected override _outputShapeHint(): string {
+    return `[*, *, ${this.hiddenSize * this.numDirections}]`
   }
 
   override toString(): string {

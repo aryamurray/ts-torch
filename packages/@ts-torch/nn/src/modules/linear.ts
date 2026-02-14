@@ -318,6 +318,10 @@ export class Linear<
     return new Parameter(bias, true)
   }
 
+  protected override _outputShapeHint(): string {
+    return `[*, ${this.outFeatures}]`
+  }
+
   /**
    * String representation
    */
@@ -518,6 +522,10 @@ export class FusedLinear<
 
     bias.escape()
     return new Parameter(bias, true)
+  }
+
+  protected override _outputShapeHint(): string {
+    return `[*, ${this.outFeatures}]`
   }
 
   /**

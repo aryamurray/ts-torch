@@ -579,6 +579,59 @@ async function load<Dev extends DeviceType>(
   return { model, metadata: deserializeMetadata(metadata) }
 }
 
+// ==================== Inspection ====================
+
+/**
+ * Result of inspecting a saved model directory
+ */
+export interface InspectResult {
+  config: object
+  parameters: Record<string, { shape: number[]; dtype: string }>
+  metadata: Record<string, unknown>
+  fileSize: string
+  fileSizeBytes: number
+}
+
+/**
+ * Format bytes into human-readable string
+ */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+/**
+ * Inspect a saved model directory without loading tensor data.
+ * Reads config.json, safetensors header, and file size.
+ *
+ * @param directory - Path to model directory
+ * @returns Inspection result with config, parameter info, metadata, and file size
+ */
+async function inspect(directory: string): Promise<InspectResult> {
+  const { readFile, stat } = await import('node:fs/promises')
+  const { join } = await import('node:path')
+  const { inspectSafetensorsHeader, deserializeMetadata } = await import('./safetensors.js')
+
+  const configPath = join(directory, 'config.json')
+  const safetensorsPath = join(directory, 'model.safetensors')
+
+  const [config, headerResult, fileStat] = await Promise.all([
+    readFile(configPath, 'utf-8').then(JSON.parse),
+    inspectSafetensorsHeader(safetensorsPath),
+    stat(safetensorsPath),
+  ])
+
+  return {
+    config,
+    parameters: headerResult.parameters,
+    metadata: deserializeMetadata(headerResult.metadata),
+    fileSize: formatBytes(fileStat.size),
+    fileSizeBytes: fileStat.size,
+  }
+}
+
 // ==================== nn Namespace ====================
 
 /**
@@ -607,4 +660,5 @@ export const nn = {
   fc,
   fromJSON,
   load,
+  inspect,
 }
