@@ -42,7 +42,13 @@ export type { DiscreteSpace, BoxSpace, BoxConfig, Space } from './spaces/index.j
 
 // ==================== Distributions ====================
 
-export { CategoricalDistribution, categorical, DiagGaussianDistribution, diagGaussian, getActions } from './distributions/index.js'
+export {
+  CategoricalDistribution,
+  categorical,
+  DiagGaussianDistribution,
+  diagGaussian,
+  getActions,
+} from './distributions/index.js'
 export type { Distribution } from './distributions/index.js'
 
 // ==================== Environment ====================
@@ -52,7 +58,15 @@ export type { EnvConfig, EnvStepResult, StepResult } from './environment.js'
 
 // ==================== Vectorized Environments ====================
 
-export { DummyVecEnv, vecEnv, dummyVecEnv, isDiscreteActionSpace, isContinuousActionSpace, getSpaceFlatSize, getNumActions } from './vec-env/index.js'
+export {
+  DummyVecEnv,
+  vecEnv,
+  dummyVecEnv,
+  isDiscreteActionSpace,
+  isContinuousActionSpace,
+  getSpaceFlatSize,
+  getNumActions,
+} from './vec-env/index.js'
 export type { VecEnv, VecEnvStepResult, EnvInfo, VecEnvConfig } from './vec-env/index.js'
 
 // ==================== Buffers ====================
@@ -66,11 +80,34 @@ export type { RolloutBufferConfig, RolloutBufferSamples } from './buffers/index.
 // ==================== Policies ====================
 
 export { ActorCriticPolicy, actorCriticPolicy, mlpPolicy, SACPolicy, sacPolicy } from './policies/index.js'
-export type { ActorCriticPolicyConfig, ActorCriticPolicyDef, PolicySpaces, NetArch, PolicyActivation, ForwardResult, EvaluateActionsResult, SACPolicyConfig, SACPolicyDef, SACPolicySpaces, SACNetArch } from './policies/index.js'
+export type {
+  ActorCriticPolicyConfig,
+  ActorCriticPolicyDef,
+  PolicySpaces,
+  NetArch,
+  PolicyActivation,
+  ForwardResult,
+  EvaluateActionsResult,
+  SACPolicyConfig,
+  SACPolicyDef,
+  SACPolicySpaces,
+  SACNetArch,
+} from './policies/index.js'
+
+// ==================== Dashboard ====================
+
+export { createRLDashboardCallback } from './dashboard-callback.js'
 
 // ==================== Callbacks ====================
 
-export { BaseCallback, CallbackList, StopTrainingCallback, EpisodeTrackingCallback, callbackList, maybeCallback } from './callbacks/index.js'
+export {
+  BaseCallback,
+  CallbackList,
+  StopTrainingCallback,
+  EpisodeTrackingCallback,
+  callbackList,
+  maybeCallback,
+} from './callbacks/index.js'
 export type {
   CallbackLocals,
   BaseAlgorithmRef,
@@ -94,7 +131,20 @@ export type {
 
 // Base classes (new SB3-style)
 export { BaseAlgorithm, OnPolicyAlgorithm, OffPolicyAlgorithm, PPO, ppo, A2C, a2c, SAC, sac } from './agents/index.js'
-export type { Schedule, LearnConfig, BaseAlgorithmConfig, OnPolicyConfig, OffPolicyConfig, PPOConfig, PPODef, PPOAgent, A2CConfig, A2CDef, SACConfig, SACDef } from './agents/index.js'
+export type {
+  Schedule,
+  LearnConfig,
+  BaseAlgorithmConfig,
+  OnPolicyConfig,
+  OffPolicyConfig,
+  PPOConfig,
+  PPODef,
+  PPOAgent,
+  A2CConfig,
+  A2CDef,
+  SACConfig,
+  SACDef,
+} from './agents/index.js'
 
 // Legacy agents
 export { DQNAgent, dqn, isMOAgent } from './agents/index.js'
@@ -195,7 +245,7 @@ export const RL = {
 
   /**
    * Create a vectorized environment (declarative API)
-   * 
+   *
    * @example
    * ```ts
    * const vecEnv = RL.vecEnv({

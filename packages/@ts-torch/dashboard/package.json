@@ -1,7 +1,7 @@
 {
-  "name": "@ts-torch/rl",
-  "version": "0.1.2",
-  "description": "Declarative reinforcement learning for ts-torch",
+  "name": "@ts-torch/dashboard",
+  "version": "0.1.0",
+  "description": "Real-time TUI training dashboard for ts-torch",
   "homepage": "https://github.com/aryamurray/ts-torch#readme",
   "bugs": {
     "url": "https://github.com/aryamurray/ts-torch/issues"
@@ -9,7 +9,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aryamurray/ts-torch.git",
-    "directory": "packages/@ts-torch/rl"
+    "directory": "packages/@ts-torch/dashboard"
   },
   "files": [
     "dist"
@@ -33,28 +33,14 @@
     "build": "vite build",
     "dev": "tsc --watch",
     "check-types": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "test:watch": "vitest watch",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage"
   },
-  "dependencies": {
-    "@ts-torch/core": "^0.1.0",
-    "@ts-torch/nn": "^0.1.0",
-    "@ts-torch/optim": "^0.1.0"
-  },
   "devDependencies": {
-    "@ts-torch/test-utils": "^0.1.0",
     "typescript": "5.9.2",
     "vitest": "^4.0.0"
-  },
-  "peerDependencies": {
-    "@ts-torch/dashboard": "^0.1.0"
-  },
-  "peerDependenciesMeta": {
-    "@ts-torch/dashboard": {
-      "optional": true
-    }
   },
   "engines": {
     "node": ">=18"

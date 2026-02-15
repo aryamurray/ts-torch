@@ -101,6 +101,9 @@ export interface LearnConfig {
 
   /** Number of episodes per evaluation (default: 5) */
   evalEpisodes?: number
+
+  /** Enable real-time TUI dashboard (requires @ts-torch/dashboard) */
+  dashboard?: boolean
 }
 
 /**
@@ -200,7 +203,7 @@ export abstract class BaseAlgorithm {
     if (typeof this.learningRate === 'number') {
       return this.learningRate
     }
-    const progressRemaining = 1.0 - (this.numTimesteps / this.totalTimesteps)
+    const progressRemaining = 1.0 - this.numTimesteps / this.totalTimesteps
     return this.learningRate(progressRemaining)
   }
 
@@ -235,13 +238,18 @@ export abstract class BaseAlgorithm {
    * @returns This algorithm instance for chaining
    */
   async learn(config: LearnConfig): Promise<this> {
-    const {
-      totalTimesteps,
-      callbacks,
-      callback,
-      resetNumTimesteps = true,
-      logInterval = 0,
-    } = config
+    const { totalTimesteps, callback, resetNumTimesteps = true, logInterval = 0 } = config
+
+    // Dashboard: dynamically create RL dashboard callbacks if requested
+    let callbacks = config.callbacks
+    if (config.dashboard && !callbacks) {
+      try {
+        const { createRLDashboardCallback } = await import('../dashboard-callback.js')
+        callbacks = await createRLDashboardCallback()
+      } catch (e) {
+        Logger.warn(`Dashboard requested but failed to initialize: ${e instanceof Error ? e.message : e}`)
+      }
+    }
 
     // Setup if not done
     if (!this.isSetup) {
@@ -347,9 +355,7 @@ export abstract class BaseAlgorithm {
    */
   protected logProgress(): void {
     const progress = (this.numTimesteps / this.totalTimesteps) * 100
-    Logger.info(
-      `Timesteps: ${this.numTimesteps}/${this.totalTimesteps} (${progress.toFixed(1)}%)`,
-    )
+    Logger.info(`Timesteps: ${this.numTimesteps}/${this.totalTimesteps} (${progress.toFixed(1)}%)`)
   }
 
   /**
@@ -359,10 +365,7 @@ export abstract class BaseAlgorithm {
    * @param deterministic - Use deterministic action selection
    * @returns Action(s)
    */
-  abstract predict(
-    observation: Float32Array,
-    deterministic?: boolean,
-  ): number | Float32Array
+  abstract predict(observation: Float32Array, deterministic?: boolean): number | Float32Array
 
   /**
    * Save the algorithm to a file

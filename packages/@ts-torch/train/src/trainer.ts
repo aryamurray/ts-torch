@@ -99,11 +99,14 @@ export interface TrainerOptions<M = Module<any, any, any, DeviceType>> {
   /** Shorthand sugar — wraps into an anonymous Callback internally */
   onEpochEnd?: (ctx: EpochContext) => void | Promise<void>
   scheduler?: SchedulerConfig
+  totalBatches?: number
   accumulate?: number
   clipGradNorm?: number
   amp?: boolean
   precision?: 'fp32' | 'fp16' | 'bf16'
   debug?: { tensors?: boolean; memory?: boolean; timing?: boolean; gradients?: boolean }
+  /** Enable the real-time TUI training dashboard. Requires @ts-torch/dashboard. */
+  dashboard?: boolean
 }
 
 /**
@@ -132,8 +135,10 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
   private validateEvery: number
   private callbacks: Callback[]
   private schedulerConfig: SchedulerConfig | null
+  private totalBatches?: number
   private accumulate: number
   private clipGradNorm?: number
+  private dashboard: boolean
 
   private optimizer: Optimizer | null = null
   private scheduler: LRScheduler | null = null
@@ -150,8 +155,10 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
     this.validation = options.validation
     this.validateEvery = options.validateEvery ?? 1
     this.schedulerConfig = options.scheduler ?? null
+    this.totalBatches = options.totalBatches
     this.accumulate = options.accumulate ?? 1
     this.clipGradNorm = options.clipGradNorm
+    this.dashboard = options.dashboard ?? false
 
     // Build callbacks array
     this.callbacks = [...(options.callbacks ?? [])]
@@ -168,6 +175,19 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
    */
   async fit(): Promise<History> {
     const startTime = Date.now()
+
+    // Dashboard callback (dynamic import, optional dep)
+    if (this.dashboard) {
+      try {
+        const { createDashboardCallback } = await import('./dashboard-callback.js')
+        const dashCb = await createDashboardCallback()
+        this.callbacks.unshift(dashCb)
+      } catch {
+        console.warn(
+          '[ts-torch] dashboard: true requires @ts-torch/dashboard to be installed. Continuing without dashboard.',
+        )
+      }
+    }
 
     // Create optimizer
     this.optimizer = this.optimizerConfig.create(this.model)
@@ -209,7 +229,7 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
 
       // onEpochStart
       for (const cb of this.callbacks) {
-        if (cb.onEpochStart) await cb.onEpochStart({ epoch })
+        if (cb.onEpochStart) await cb.onEpochStart({ epoch, totalEpochs: this.epochs })
       }
 
       let batchIdx = 0
@@ -219,7 +239,14 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
       for await (const batch of this.data) {
         // onBatchStart
         for (const cb of this.callbacks) {
-          if (cb.onBatchStart) await cb.onBatchStart({ step: batchIdx, epoch, loss: 0 })
+          if (cb.onBatchStart)
+            await cb.onBatchStart({
+              step: batchIdx,
+              epoch,
+              totalEpochs: this.epochs,
+              totalBatches: this.totalBatches,
+              loss: 0,
+            })
         }
 
         const batchLoss = this.trainStep(batch, batchIdx)
@@ -232,7 +259,14 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
 
         // onBatchEnd
         for (const cb of this.callbacks) {
-          if (cb.onBatchEnd) await cb.onBatchEnd({ step: batchIdx, epoch, loss: batchLoss })
+          if (cb.onBatchEnd)
+            await cb.onBatchEnd({
+              step: batchIdx,
+              epoch,
+              totalEpochs: this.epochs,
+              totalBatches: this.totalBatches,
+              loss: batchLoss,
+            })
         }
 
         // Step scheduler at batch level
@@ -250,7 +284,13 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
       // Validation
       let valMetrics: Record<string, number> | undefined
       if (this.validation && epoch % this.validateEvery === 0) {
+        for (const cb of this.callbacks) {
+          if (cb.onValidationStart) await cb.onValidationStart()
+        }
         valMetrics = await this.evaluate(this.validation)
+        for (const cb of this.callbacks) {
+          if (cb.onValidationEnd) await cb.onValidationEnd()
+        }
       }
 
       // Step scheduler at epoch end
@@ -278,6 +318,7 @@ export class Trainer<M extends Module<any, any, any, DeviceType>> {
       // Build EpochContext for callbacks
       const epochCtx: EpochContext = {
         epoch,
+        totalEpochs: this.epochs,
         metrics: epochMetrics,
         valMetrics,
         history,

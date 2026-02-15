@@ -36,12 +36,24 @@ export type { LossConfig } from './loss.js'
 export { consoleLogger, earlyStop, checkpoint, logger } from './callbacks.js'
 export type { Callback, CallbackResult, EpochContext, BatchContext, History, EpochRecord } from './callbacks.js'
 
+// Dashboard
+export { createDashboardCallback } from './dashboard-callback.js'
+
 // Optimizer factories
 export { Adam, SGD, AdamW, RMSprop } from './optimizers.js'
 export type { OptimizerConfig, AdamConfig, SGDConfig, AdamWConfig, RMSpropConfig } from './optimizers.js'
 
 // Metrics
-export { LossMetric, AccuracyMetric, TopKAccuracyMetric, CustomMetric, createMetrics, computeMetrics, resetMetrics, metric } from './metrics.js'
+export {
+  LossMetric,
+  AccuracyMetric,
+  TopKAccuracyMetric,
+  CustomMetric,
+  createMetrics,
+  computeMetrics,
+  resetMetrics,
+  metric,
+} from './metrics.js'
 export type { Metric, MetricFn, MetricSpec, BuiltinMetricName, NamedMetric } from './metrics.js'
 
 // Learning rate schedulers
