@@ -7,7 +7,7 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       formats: ['es', 'cjs'],
-      fileName: (format) => `index.${format === 'es' ? 'mjs' : 'cjs'}`
+      fileName: (format) => `index.${format === 'es' ? 'mjs' : 'cjs'}`,
     },
     rollupOptions: {
       // Externalize dependencies that shouldn't be bundled
@@ -16,23 +16,25 @@ export default defineConfig({
         '@ts-torch/core',
         '@ts-torch/nn',
         '@ts-torch/optim',
+        '@ts-torch/dashboard',
         // Node built-ins
+        /^node:/,
         'path',
         'fs',
         'url',
         'module',
         'os',
-        'process'
+        'process',
       ],
     },
     sourcemap: true,
-    outDir: 'dist'
+    outDir: 'dist',
   },
   plugins: [
     dts({
       rollupTypes: true,
       // Exclude test files
-      exclude: ['**/*.test.ts', '**/*.spec.ts']
-    })
-  ]
+      exclude: ['**/*.test.ts', '**/*.spec.ts'],
+    }),
+  ],
 })

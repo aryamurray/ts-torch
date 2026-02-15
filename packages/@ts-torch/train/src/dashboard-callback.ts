@@ -10,13 +10,13 @@ function formatMetric(name: string, value: number): string {
 }
 
 export async function createDashboardCallback(): Promise<Callback> {
-  const { Dashboard } = await import('@ts-torch/dashboard')
-  const dash = new Dashboard()
+  const { DashboardProcess } = await import('@ts-torch/dashboard')
+  const dash = new DashboardProcess()
   let batchCount = 0
 
   return {
-    onTrainStart() {
-      dash.start()
+    async onTrainStart() {
+      await dash.start()
     },
     onEpochStart(ctx) {
       batchCount = 0

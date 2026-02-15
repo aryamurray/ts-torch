@@ -1,12 +1,11 @@
 /**
  * Dashboard Callback for RL Agents
  *
- * Glue code that wires a @ts-torch/dashboard instance to the RL Callbacks interface.
+ * Glue code that wires a @ts-torch/dashboard DashboardProcess to the RL Callbacks interface.
  * Dynamically imports @ts-torch/dashboard so the dependency is optional.
  *
- * Because the RL training loop is synchronous (no awaits between rollout steps),
- * setInterval-based rendering never fires. Instead we call dash.requestRender()
- * after pushing data so the dashboard renders inline, throttled automatically.
+ * The dashboard runs in a child process so the synchronous RL training loop
+ * does not block rendering. Data is sent via IPC and rendered independently.
  */
 
 import type { Callbacks } from './callbacks/index.js'
@@ -21,8 +20,8 @@ function formatMetric(value: number): string {
 }
 
 export async function createRLDashboardCallback(title?: string): Promise<Callbacks> {
-  const { Dashboard } = await import('@ts-torch/dashboard')
-  const dash = new Dashboard({ title: title ?? 'ts-torch RL' })
+  const { DashboardProcess } = await import('@ts-torch/dashboard')
+  const dash = new DashboardProcess({ title: title ?? 'ts-torch RL' })
 
   let totalTimesteps = 0
   let recentEpisodeRewards: number[] = []
@@ -59,9 +58,6 @@ export async function createRLDashboardCallback(title?: string): Promise<Callbac
         { tag: 'Mean Reward', value: formatMetric(meanReward) },
       ])
 
-      // Synchronous render since the RL loop blocks the event loop
-      dash.requestRender()
-
       if (dash.quitRequested) return false
       return undefined
     },
@@ -71,7 +67,6 @@ export async function createRLDashboardCallback(title?: string): Promise<Callbac
         dash.numericMetrics.push('Rollout Reward', 'train', data.rolloutReward)
       }
       dash.textMetrics.push('Rollout', 'train', `${data.rolloutLength} steps, ${data.episodesCompleted} eps`)
-      dash.requestRender()
     },
 
     onEvalStart(data) {
@@ -79,7 +74,6 @@ export async function createRLDashboardCallback(title?: string): Promise<Callbac
         { tag: 'Timestep', value: data.timestep.toLocaleString() },
         { tag: 'Episodes', value: String(data.nEpisodes) },
       ])
-      dash.requestRender()
     },
 
     onEvalEnd(data) {
@@ -94,7 +88,6 @@ export async function createRLDashboardCallback(title?: string): Promise<Callbac
       dash.status.update('train', [
         { tag: 'Timesteps', value: `${data.timestep.toLocaleString()}/${totalTimesteps.toLocaleString()}` },
       ])
-      dash.requestRender()
 
       if (dash.quitRequested) return false
       return undefined
@@ -108,7 +101,6 @@ export async function createRLDashboardCallback(title?: string): Promise<Callbac
         { tag: 'Final Reward', value: formatMetric(data.finalReward) },
       ])
       dash.progress.update('train', 1, 1)
-      dash.requestRender()
       setTimeout(() => dash.destroy(), 500)
     },
   }

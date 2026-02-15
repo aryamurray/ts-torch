@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────
 
 export { Dashboard, type DashboardOptions } from './dashboard.js'
+export { DashboardProcess, type DashboardProcessOptions } from './process.js'
 export { NumericMetricsState, TextMetricsState, ProgressState, StatusState } from './data.js'
 export type { Split, StatusEntry, PlotKind } from './data.js'
 

@@ -3,6 +3,8 @@
 // Mirrors Burn's MetricsView layout: base.rs
 // ─────────────────────────────────────────────────────────────
 
+import { readSync, openSync, closeSync, constants as fsConstants } from 'node:fs'
+import { ReadStream } from 'node:tty'
 import { ansi } from './ansi.js'
 import { Buffer } from './buffer.js'
 import { Constraint, splitRect, type Rect } from './layout.js'
@@ -26,6 +28,7 @@ import { NumericMetricsState, TextMetricsState, ProgressState, StatusState, spli
 export interface DashboardOptions {
   title?: string
   refreshRate?: number // ms, default 100
+  onQuit?: () => void
 }
 
 export class Dashboard {
@@ -37,43 +40,47 @@ export class Dashboard {
   /** Set to true when the user presses 'q'. Check this for cooperative quit. */
   quitRequested = false
 
+  private opts: DashboardOptions
   private _title: string
   private refreshRate: number
   private interval: ReturnType<typeof setInterval> | null = null
   private destroyed = false
-
-  // Stdout interception — buffer stray writes while TUI is active
-  private _origStdoutWrite: typeof process.stdout.write | null = null
-  private _origStderrWrite: typeof process.stderr.write | null = null
-  private _bufferedOutput: string[] = []
+  private stdinFd: number | null = null
+  private stdinBuf = globalThis.Buffer.alloc(32)
+  private ttyStream: ReadStream | null = null
 
   constructor(opts: DashboardOptions = {}) {
+    this.opts = opts
     this._title = opts.title ?? 'ts-torch'
     this.refreshRate = opts.refreshRate ?? 100
   }
 
   /** Start the render loop. Call this once. */
   start() {
-    // Intercept stdout/stderr to prevent stray writes from corrupting the TUI
-    this._origStdoutWrite = process.stdout.write.bind(process.stdout) as typeof process.stdout.write
-    this._origStderrWrite = process.stderr.write.bind(process.stderr) as typeof process.stderr.write
-    const self = this
-    process.stdout.write = function (chunk: any, ...args: any[]): boolean {
-      // Allow our own render flushes through (they go via _rawWrite)
-      return self._bufferWrite(chunk, ...args)
-    } as typeof process.stdout.write
-    process.stderr.write = function (chunk: any, ...args: any[]): boolean {
-      return self._bufferWrite(chunk, ...args)
-    } as typeof process.stderr.write
-
-    // Enter alternate screen, hide cursor, enable raw mode
-    this._rawWrite(ansi.enterAlt() + ansi.hideCursor() + ansi.clear())
+    // Enter alternate screen, hide cursor
+    process.stdout.write(ansi.enterAlt() + ansi.hideCursor() + ansi.clear())
 
     if (process.stdin.isTTY) {
+      // In-process: use stdin events for keyboard input
       process.stdin.setRawMode(true)
       process.stdin.resume()
       process.stdin.setEncoding('utf8')
       process.stdin.on('data', (key: string) => this.handleKey(key))
+    }
+
+    // Open /dev/tty for non-blocking keyboard polling.
+    // Works both in-process (for blocked event loops) and in child processes (where stdin is /dev/null).
+    try {
+      this.stdinFd = openSync('/dev/tty', fsConstants.O_RDONLY | fsConstants.O_NONBLOCK)
+      // If stdin isn't a TTY (child process), set raw mode via /dev/tty directly
+      if (!process.stdin.isTTY) {
+        const ttyFd = openSync('/dev/tty', 'r')
+        this.ttyStream = new ReadStream(ttyFd)
+        this.ttyStream.setRawMode(true)
+        this.ttyStream.pause()
+      }
+    } catch {
+      // No TTY available (e.g. CI) — keyboard input won't work
     }
 
     // Handle resize
@@ -91,7 +98,10 @@ export class Dashboard {
       process.exit(0)
     })
 
-    this.interval = setInterval(() => this.render(), this.refreshRate)
+    this.interval = setInterval(() => {
+      this.pollStdin()
+      this.render()
+    }, this.refreshRate)
     this.render()
   }
 
@@ -100,43 +110,29 @@ export class Dashboard {
     if (this.destroyed) return
     this.destroyed = true
     if (this.interval) clearInterval(this.interval)
+    if (this.stdinFd !== null) {
+      try {
+        closeSync(this.stdinFd)
+      } catch {
+        /* ignore */
+      }
+      this.stdinFd = null
+    }
+    if (this.ttyStream) {
+      try {
+        this.ttyStream.setRawMode(false)
+        this.ttyStream.destroy()
+      } catch {
+        /* ignore */
+      }
+      this.ttyStream = null
+    }
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(false)
       process.stdin.pause()
     }
 
-    // Restore original stdout/stderr before writing cleanup sequences
-    if (this._origStdoutWrite) {
-      process.stdout.write = this._origStdoutWrite
-      this._origStdoutWrite = null
-    }
-    if (this._origStderrWrite) {
-      process.stderr.write = this._origStderrWrite
-      this._origStderrWrite = null
-    }
-
     process.stdout.write(ansi.showCursor() + ansi.leaveAlt())
-
-    // Flush buffered output so nothing is lost
-    if (this._bufferedOutput.length > 0) {
-      process.stdout.write(this._bufferedOutput.join(''))
-      this._bufferedOutput = []
-    }
-  }
-
-  /** Write directly to stdout, bypassing the intercept. Used by the renderer. */
-  private _rawWrite(data: string): boolean {
-    if (this._origStdoutWrite) {
-      return this._origStdoutWrite(data)
-    }
-    return process.stdout.write(data)
-  }
-
-  /** Buffer a stray write instead of letting it corrupt the TUI. */
-  private _bufferWrite(chunk: any, ..._args: any[]): boolean {
-    const str = typeof chunk === 'string' ? chunk : (chunk as Buffer).toString()
-    this._bufferedOutput.push(str)
-    return true
   }
 
   // ── Input handling ──
@@ -145,6 +141,7 @@ export class Dashboard {
     switch (key) {
       case 'q':
         this.quitRequested = true
+        this.opts.onQuit?.()
         break
       case '\x03': // Ctrl+C
         this.destroy()
@@ -170,11 +167,27 @@ export class Dashboard {
   /**
    * Request a synchronous render. Throttled to at most once per refreshRate ms.
    * Use this when the event loop is blocked (e.g. RL training) and setInterval can't fire.
+   * Also polls stdin for keypresses since event-based input can't fire in a blocked loop.
    */
   requestRender() {
+    this.pollStdin()
     const now = Date.now()
     if (now - this.lastRenderTime >= this.refreshRate) {
       this.render()
+    }
+  }
+
+  /** Non-blocking read from /dev/tty to handle keypresses when the event loop is blocked. */
+  private pollStdin() {
+    if (this.stdinFd === null) return
+    try {
+      const n = readSync(this.stdinFd, this.stdinBuf, 0, this.stdinBuf.length, null)
+      if (n > 0) {
+        const str = this.stdinBuf.toString('utf8', 0, n)
+        this.handleKey(str)
+      }
+    } catch {
+      // EAGAIN / EWOULDBLOCK — no data available, which is fine
     }
   }
 
@@ -188,7 +201,7 @@ export class Dashboard {
     const fullRect: Rect = { row: 1, col: 1, width: cols, height: rows }
 
     this.renderLayout(buf, fullRect)
-    buf.flush((data) => this._rawWrite(data))
+    buf.flush((data) => process.stdout.write(data))
   }
 
   /**
