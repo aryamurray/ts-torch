@@ -11,6 +11,8 @@
 export interface EpochContext {
   /** Current epoch number (1-indexed) */
   epoch: number
+  /** Total number of epochs */
+  totalEpochs?: number
   /** Train metrics for this epoch */
   metrics: Record<string, number>
   /** Validation metrics (if validation ran) */
@@ -31,6 +33,10 @@ export interface BatchContext {
   step: number
   /** Current epoch (1-indexed) */
   epoch: number
+  /** Total number of epochs */
+  totalEpochs?: number
+  /** Total number of batches per epoch (if known) */
+  totalBatches?: number
   /** Loss for this batch */
   loss: number
 }
@@ -46,10 +52,12 @@ export type CallbackResult = { stop?: boolean } | void
 export interface Callback {
   onTrainStart?(): CallbackResult | Promise<CallbackResult>
   onTrainEnd?(): CallbackResult | Promise<CallbackResult>
-  onEpochStart?(ctx: { epoch: number }): CallbackResult | Promise<CallbackResult>
+  onEpochStart?(ctx: { epoch: number; totalEpochs?: number }): CallbackResult | Promise<CallbackResult>
   onEpochEnd?(ctx: EpochContext): CallbackResult | Promise<CallbackResult>
   onBatchStart?(ctx: BatchContext): CallbackResult | Promise<CallbackResult>
   onBatchEnd?(ctx: BatchContext): CallbackResult | Promise<CallbackResult>
+  onValidationStart?(): CallbackResult | Promise<CallbackResult>
+  onValidationEnd?(): CallbackResult | Promise<CallbackResult>
 }
 
 // Import History type from trainer — but to avoid circular deps we define a minimal version here
@@ -72,7 +80,7 @@ export interface EpochRecord {
 export interface History {
   epochs: EpochRecord[]
   totalTime: number
-  config: Record<string, unknown>  // serializable subset of TrainerOptions
+  config: Record<string, unknown> // serializable subset of TrainerOptions
 }
 
 /**
@@ -132,11 +140,7 @@ export function consoleLogger(): Callback {
  * callbacks: [earlyStop({ patience: 5, monitor: 'loss', mode: 'min' })]
  * ```
  */
-export function earlyStop(opts: {
-  patience: number
-  monitor?: string
-  mode?: 'min' | 'max'
-}): Callback {
+export function earlyStop(opts: { patience: number; monitor?: string; mode?: 'min' | 'max' }): Callback {
   const { patience, monitor = 'loss', mode = 'min' } = opts
   let best = mode === 'min' ? Infinity : -Infinity
   let wait = 0
@@ -169,10 +173,7 @@ export function earlyStop(opts: {
  * callbacks: [checkpoint({ every: 5, path: './checkpoints' })]
  * ```
  */
-export function checkpoint(opts: {
-  every: number
-  path?: string
-}): Callback {
+export function checkpoint(opts: { every: number; path?: string }): Callback {
   const dir = opts.path ?? './checkpoints'
 
   return {
