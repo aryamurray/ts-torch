@@ -29,6 +29,8 @@ export default defineConfig({
         'node:module',
         'node:os',
         'node:process',
+        'crypto',
+        'node:crypto',
       ],
     },
     sourcemap: true,
