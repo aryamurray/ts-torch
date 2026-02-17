@@ -98,8 +98,8 @@ export class SAC extends OffPolicyAlgorithm {
 
   // Entropy coefficient
   private entCoefConfig: 'auto' | `auto_${number}` | number
-  private entCoef: number = 0.2  // Current entropy coefficient
-  private logEntCoef: number = Math.log(0.2)  // Log for optimization
+  private entCoef: number = 0.2 // Current entropy coefficient
+  private logEntCoef: number = Math.log(0.2) // Log for optimization
   private targetEntropy: number = 0
   private autoEntropyTuning: boolean = false
   private entCoefLearningRate: number
@@ -131,7 +131,7 @@ export class SAC extends OffPolicyAlgorithm {
   private getLearningRate(): number {
     const lr = this.learningRate
     if (typeof lr === 'number') return lr
-    return lr(1.0)  // Initial value
+    return lr(1.0) // Initial value
   }
 
   /**
@@ -239,7 +239,7 @@ export class SAC extends OffPolicyAlgorithm {
         const actionsTensor = cpu.tensor(batch.actions, [batchSize, actionDim]) as Tensor
         const nextStatesTensor = cpu.tensor(batch.nextStates, [batchSize, obsSize]) as Tensor
         const rewardsTensor = cpu.tensor(batch.rewards, [batchSize, 1]) as Tensor
-        
+
         // Convert dones to float32
         const donesFloat = new Float32Array(batchSize)
         for (let i = 0; i < batchSize; i++) {
@@ -249,8 +249,10 @@ export class SAC extends OffPolicyAlgorithm {
 
         // Get next actions and log probs from current policy (no grad for target computation)
         const nextActorOutput = this.policy.getActorOutput(nextStatesTensor as Tensor)
-        const { actionTensor: nextActionTensor, logProbTensor: nextLogProbTensor } = 
-          this.policy.sampleActionTensor(nextActorOutput, false)
+        const { actionTensor: nextActionTensor, logProbTensor: nextLogProbTensor } = this.policy.sampleActionTensor(
+          nextActorOutput,
+          false,
+        )
 
         // Get target Q-values for next state-action pairs
         const targetQValues = this.policy.getTargetCriticOutputs(nextStatesTensor as Tensor, nextActionTensor)
@@ -265,7 +267,7 @@ export class SAC extends OffPolicyAlgorithm {
         const entCoefTensor = cpu.tensor([this.entCoef], [1]) as Tensor
         const gammaTensor = cpu.tensor([this.gamma], [1]) as Tensor
         const onesTensor = cpu.ones([batchSize, 1]) as Tensor
-        
+
         const entropyTerm = (nextLogProbTensor.reshape([batchSize, 1]) as Tensor).mul(entCoefTensor)
         const nextValue = minTargetQ.sub(entropyTerm as Tensor)
         const notDone = onesTensor.sub(donesTensor)
@@ -337,11 +339,11 @@ export class SAC extends OffPolicyAlgorithm {
         // Loss = -log(alpha) * (log_prob + target_entropy)
         // Gradient: d(loss)/d(log_alpha) = -(log_prob + target_entropy)
         const gradient = -(meanLogProb + this.targetEntropy)
-        
+
         // Update log_ent_coef with simple gradient descent
         this.logEntCoef -= this.entCoefLearningRate * gradient
         this.entCoef = Math.exp(this.logEntCoef)
-        
+
         // Track loss
         const entCoefLoss = -this.logEntCoef * (meanLogProb + this.targetEntropy)
         this.entCoefLosses.push(entCoefLoss)
@@ -360,9 +362,9 @@ export class SAC extends OffPolicyAlgorithm {
 
       Logger.debug(
         `SAC Update - ` +
-        `Actor Loss: ${avgActorLoss.toFixed(4)}, ` +
-        `Critic Loss: ${avgCriticLoss.toFixed(4)}, ` +
-        `Ent Coef: ${this.entCoef.toFixed(4)}`,
+          `Actor Loss: ${avgActorLoss.toFixed(4)}, ` +
+          `Critic Loss: ${avgCriticLoss.toFixed(4)}, ` +
+          `Ent Coef: ${this.entCoef.toFixed(4)}`,
       )
 
       // Clear stats
@@ -384,7 +386,7 @@ export class SAC extends OffPolicyAlgorithm {
       for (let i = 0; i < sourceParams.length; i++) {
         const source = sourceParams[i] as any
         const target = targetParams[i] as any
-        
+
         if (source.data && target.data) {
           // target.data = tau * source.data + (1 - tau) * target.data
           // Using: target += tau * (source - target)
@@ -417,8 +419,7 @@ export class SAC extends OffPolicyAlgorithm {
    * Save the algorithm to a file
    */
   async save(path: string): Promise<void> {
-    // TODO: Implement checkpoint saving
-    Logger.info(`Saving SAC to ${path}`)
+    throw new Error(`save() is not implemented yet for SAC. Requested path: ${path}`)
   }
 
   /**

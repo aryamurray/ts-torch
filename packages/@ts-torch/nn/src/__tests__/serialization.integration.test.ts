@@ -20,7 +20,7 @@ import { nn } from '../builders.js'
 import { Linear } from '../modules/linear.js'
 import { ReLU } from '../modules/activation.js'
 import { Sequential } from '../modules/container.js'
-import { Module, Parameter, PipedModule } from '../module.js'
+import { Module, Parameter } from '../module.js'
 import { encodeSafetensors, decodeSafetensors } from '../safetensors.js'
 import { mkdtemp, rm, readFile, access } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -333,7 +333,6 @@ describe('atomic directory writes', () => {
     const model = config.init(cpu)
 
     // Sabotage stateDict to throw mid-save (after config.json is written to tmp)
-    const origStateDict = model.stateDict.bind(model)
     vi.spyOn(model, 'stateDict').mockImplementation(() => {
       throw new Error('sabotaged')
     })
@@ -550,8 +549,6 @@ describe('partial loading (include/exclude)', () => {
 
     // Create fresh model with different weights
     const model2 = config.init(cpu)
-    const stateBeforeLoad = model2.stateDict()
-
     await model2.loadWeights(modelDir, { include: ['0.*'] })
 
     const stateAfterLoad = model2.stateDict()

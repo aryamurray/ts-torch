@@ -144,7 +144,12 @@ export type NativeModule = {
   ts_batch_abort: (batch: unknown) => void
   ts_batch_is_recording: () => number
   ts_tensor_chain_matmul: (tensors: unknown[]) => unknown
-  ts_tensor_mlp_forward: (input: unknown, weights: unknown[], biases: unknown[], applyReluExceptLast: boolean) => unknown
+  ts_tensor_mlp_forward: (
+    input: unknown,
+    weights: unknown[],
+    biases: unknown[],
+    applyReluExceptLast: boolean,
+  ) => unknown
 
   // Additional tensor operations
   ts_tensor_cat: (tensors: unknown[], dim: number) => unknown
@@ -239,7 +244,13 @@ export type NativeModule = {
     momentum: number,
     eps: number,
   ) => unknown
-  ts_tensor_layer_norm: (input: unknown, normalizedShape: ShapeBuffer, weight: unknown | null, bias: unknown | null, eps: number) => unknown
+  ts_tensor_layer_norm: (
+    input: unknown,
+    normalizedShape: ShapeBuffer,
+    weight: unknown | null,
+    bias: unknown | null,
+    eps: number,
+  ) => unknown
 
   // Comparison operations
   ts_tensor_eq: (a: unknown, b: unknown) => unknown
@@ -267,10 +278,17 @@ export type NativeModule = {
 
   // RL fused operations
   ts_compute_gae: (
-    rewards: Float32Array, values: Float32Array, episodeStarts: Uint8Array,
-    lastValues: Float32Array, lastDones: Uint8Array,
-    bufferSize: number, nEnvs: number, gamma: number, gaeLambda: number,
-    advantagesOut: Float32Array, returnsOut: Float32Array,
+    rewards: Float32Array,
+    values: Float32Array,
+    episodeStarts: Uint8Array,
+    lastValues: Float32Array,
+    lastDones: Uint8Array,
+    bufferSize: number,
+    nEnvs: number,
+    gamma: number,
+    gaeLambda: number,
+    advantagesOut: Float32Array,
+    returnsOut: Float32Array,
   ) => void
   ts_clip_grad_norm_: (parameters: unknown[], maxNorm: number) => number
   ts_normalize_inplace: (data: Float32Array) => void
@@ -333,11 +351,6 @@ export function getPlatformPackage(): PlatformInfo {
             packageName: '@ts-torch-platform/linux-x64',
             libraryName: 'libts_torch',
           }
-        case 'arm64':
-          return {
-            packageName: '@ts-torch-platform/linux-arm64',
-            libraryName: 'libts_torch',
-          }
         default:
           throw new Error(`Unsupported Linux architecture: ${arch}`)
       }
@@ -347,11 +360,6 @@ export function getPlatformPackage(): PlatformInfo {
         case 'x64':
           return {
             packageName: '@ts-torch-platform/win32-x64',
-            libraryName: 'ts_torch',
-          }
-        case 'arm64':
-          return {
-            packageName: '@ts-torch-platform/win32-arm64',
             libraryName: 'ts_torch',
           }
         default:
@@ -442,9 +450,7 @@ function findWorkspaceRoot(): string | null {
 
       if (hasPackagesDir || hasAppsDir) {
         workspaceRoot = dir
-        Logger.debug(
-          `Found workspace root via directory pattern (${hasPackagesDir ? 'packages/' : 'apps/'}): ${dir}`
-        )
+        Logger.debug(`Found workspace root via directory pattern (${hasPackagesDir ? 'packages/' : 'apps/'}): ${dir}`)
         return workspaceRoot
       }
     }
@@ -639,9 +645,7 @@ export function getLibraryPath(): string {
 
   // Module not found - provide helpful setup instructions
   const isCudaSupported = process.platform === 'linux' || process.platform === 'win32'
-  const cudaInstructions = isCudaSupported
-    ? `\nFor GPU/CUDA support:\n` + `  bun run setup:cuda\n\n`
-    : ''
+  const cudaInstructions = isCudaSupported ? `\nFor GPU/CUDA support:\n` + `  bun run setup:cuda\n\n` : ''
 
   throw new Error(
     `Could not find ts-torch native module for ${process.platform}-${process.arch}.\n\n` +
@@ -652,7 +656,7 @@ export function getLibraryPath(): string {
       `  bun add ${packageName}\n\n` +
       `Or set TS_TORCH_LIB environment variable to point to your .node file.\n\n` +
       `For debugging, set TS_TORCH_DEBUG=1 to see detailed resolution info.\n\n` +
-      `Searched paths:\n${possiblePaths.map((p) => `  - ${p}`).join('\n')}`
+      `Searched paths:\n${possiblePaths.map((p) => `  - ${p}`).join('\n')}`,
   )
 }
 
@@ -774,7 +778,7 @@ export function getLib(): NativeModule {
         `  - Corrupted module file\n\n` +
         `Ensure libtorch is at project root: ts-torch/libtorch/\n` +
         `Or run "bun run setup" to download and build automatically.\n` +
-        `Or set LIBTORCH or LIBTORCH_PATH environment variable.`
+        `Or set LIBTORCH or LIBTORCH_PATH environment variable.`,
     )
   }
 }
