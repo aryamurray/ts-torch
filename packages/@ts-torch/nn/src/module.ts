@@ -823,13 +823,15 @@ export class Module<
   }
 
   /**
-   * Register a submodule
+   * Register a submodule and return it for assignment.
    *
-   * @param name - Module name
+   * @param name - Module name (used in state dict keys and namedModules)
    * @param module - Module to register
+   * @returns The registered module
    */
-  registerModule(name: string, module: Module<any, any, D, Dev>): void {
+  registerModule<M extends Module<any, any, D, Dev>>(name: string, module: M): M {
     this._modules.set(name, module)
+    return module
   }
 
   /**

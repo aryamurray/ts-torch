@@ -1389,6 +1389,7 @@ async function inspect(directory: string): Promise<InspectResult> {
  * Neural network namespace - fluent model building
  */
 export const nn = {
+  Module,
   input,
   sequence,
   fc,
