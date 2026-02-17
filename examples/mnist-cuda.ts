@@ -42,7 +42,8 @@ async function main() {
     nn.fc(10)
   ).init(gpu)
 
-  console.log('Model: 784 -> 128 -> 64 -> 10\n')
+  console.log(model.summary())
+  console.log()
 
   // Training - Trainer auto-moves batches to GPU
   const trainer = new Trainer({

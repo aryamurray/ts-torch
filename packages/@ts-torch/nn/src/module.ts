@@ -20,6 +20,16 @@ function globToRegex(pattern: string): RegExp {
 }
 
 /**
+ * Format a byte count as a human-readable string (KB, MB, GB).
+ */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+/**
  * Options for loadWeights()
  */
 export interface LoadWeightsOptions {
@@ -42,7 +52,11 @@ export interface LoadWeightsOptions {
  * Binary operations like matmul and add enforce device consistency through
  * the Dev type parameter - both operands must be on the same device.
  */
-export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType<any>, Dev extends DeviceType = DeviceType> {
+export interface Tensor<
+  S extends Shape = Shape,
+  D extends DType<string> = DType<any>,
+  Dev extends DeviceType = DeviceType,
+> {
   readonly shape: S
   readonly dtype: D
   readonly device: Dev
@@ -59,6 +73,7 @@ export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType
   clamp(min: number, max: number): Tensor<S, D, Dev>
   clampMin(min: number): Tensor<S, D, Dev>
   clampMax(max: number): Tensor<S, D, Dev>
+  flatten(startDim?: number, endDim?: number): Tensor<Shape, D, Dev>
   reshape<NS extends Shape>(shape: NS): Tensor<NS, D, Dev>
   squeeze(dim?: number): Tensor<Shape, D, Dev>
   unsqueeze(dim: number): Tensor<Shape, D, Dev>
@@ -101,14 +116,7 @@ export interface Tensor<S extends Shape = Shape, D extends DType<string> = DType
   abs(): Tensor<S, D, Dev>
   transpose(dim0: number, dim1: number): Tensor<any, D, Dev>
   clone(): Tensor<S, D, Dev>
-  toArray():
-    | Float32Array
-    | Float64Array
-    | Int32Array
-    | BigInt64Array
-    | Uint8Array
-    | Uint16Array
-    | number[]
+  toArray(): Float32Array | Float64Array | Int32Array | BigInt64Array | Uint8Array | Uint16Array | number[]
 
   // In-place operations (for optimizers)
   addScaledInplace(other: Tensor<S, D, Dev>, scalar: number): void
@@ -149,7 +157,11 @@ export type float32 = DType<'float32'>
  * @template D - Data type
  * @template Dev - Device type
  */
-export class Parameter<S extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> {
+export class Parameter<
+  S extends Shape = Shape,
+  D extends DType<string> = float32,
+  Dev extends DeviceType = DeviceType,
+> {
   private _requiresGrad: boolean
 
   constructor(
@@ -284,6 +296,9 @@ export class Module<
   protected _parameters: Map<string, Parameter<any, D, Dev>> = new Map()
   protected _modules: Map<string, Module<any, any, D, Dev>> = new Map()
 
+  /** Output shape string set by the builder for summary display */
+  _summaryOutputShape: string | null = null
+
   /**
    * Forward pass - must be implemented by subclasses
    *
@@ -329,7 +344,9 @@ export class Module<
    * const invalid = layer1.pipe(layer3); // ERROR: 128 !== 64
    * ```
    */
-  pipe<NextOut extends Shape>(next: Module<OutShape, NextOut, D, Dev>): PipedModule<InShape, OutShape, NextOut, D, Dev> {
+  pipe<NextOut extends Shape>(
+    next: Module<OutShape, NextOut, D, Dev>,
+  ): PipedModule<InShape, OutShape, NextOut, D, Dev> {
     return new PipedModule<InShape, OutShape, NextOut, D, Dev>(this, next)
   }
 
@@ -466,57 +483,92 @@ export class Module<
   }
 
   /**
+   * Detect the device of this module by inspecting its first parameter.
+   * Returns null if the module has no parameters.
+   */
+  private _detectDevice(): string | null {
+    for (const param of this.parameters()) {
+      return String(param.data.device ?? 'cpu')
+    }
+    return null
+  }
+
+  /**
+   * Compute total bytes used by parameters in this module (including children).
+   */
+  private _parameterBytes(): number {
+    let bytes = 0
+    for (const param of this.parameters()) {
+      const shape = param.data.shape as readonly number[]
+      const elements = shape.reduce((a, d) => a * d, 1)
+      bytes += elements * (param.data.dtype?.bytes ?? 4)
+    }
+    return bytes
+  }
+
+  /**
    * Print a formatted summary table of this model's layers, shapes, and parameter counts.
    *
    * @returns Formatted table string
    */
   summary(): string {
     const modules = this.namedModules()
-    const rows: [string, string, string, number][] = []
+    const rows: [string, string, string, string, number][] = []
     let currentShape = '-'
 
     for (const [name, mod] of modules) {
       if (name === '') continue
-      const hint = mod._outputShapeHint()
+      const hint = mod._summaryOutputShape ?? mod._outputShapeHint()
       if (hint !== null) currentShape = hint
-      rows.push([name, mod.constructor.name, currentShape, mod._directParameterCount()])
+      const device = mod._detectDevice() ?? '-'
+      rows.push([name, mod.constructor.name, currentShape, device, mod._directParameterCount()])
     }
 
     // Calculate column widths
-    const headers = ['Layer', 'Type', 'Output Shape', 'Params']
-    const formattedParams = rows.map(r => r[3].toLocaleString('en-US'))
+    const headers = ['Layer', 'Type', 'Output Shape', 'Device', 'Params']
+    const formattedParams = rows.map((r) => r[4].toLocaleString('en-US'))
     const totalParams = this.parameterCount()
     const trainableParams = this.parameterCount('trainable')
     const frozenParams = this.parameterCount('frozen')
     const totalFormatted = totalParams.toLocaleString('en-US')
 
     const colWidths = [
-      Math.max(headers[0]!.length, ...rows.map(r => r[0].length), 'Total'.length),
-      Math.max(headers[1]!.length, ...rows.map(r => r[1].length)),
-      Math.max(headers[2]!.length, ...rows.map(r => r[2].length)),
-      Math.max(headers[3]!.length, ...formattedParams.map(p => p.length), totalFormatted.length),
+      Math.max(headers[0]!.length, ...rows.map((r) => r[0].length), 'Total'.length),
+      Math.max(headers[1]!.length, ...rows.map((r) => r[1].length)),
+      Math.max(headers[2]!.length, ...rows.map((r) => r[2].length)),
+      Math.max(headers[3]!.length, ...rows.map((r) => r[3].length)),
+      Math.max(headers[4]!.length, ...formattedParams.map((p) => p.length), totalFormatted.length),
     ]
 
     const pad = (s: string, w: number) => s + ' '.repeat(Math.max(0, w - s.length))
     const padRight = (s: string, w: number) => ' '.repeat(Math.max(0, w - s.length)) + s
     const hLine = (left: string, mid: string, right: string) =>
-      `${left}${colWidths.map(w => '─'.repeat(w + 2)).join(mid)}${right}`
+      `${left}${colWidths.map((w) => '─'.repeat(w + 2)).join(mid)}${right}`
 
     const lines: string[] = []
     lines.push(hLine('┌', '┬', '┐'))
-    lines.push(`│ ${pad(headers[0]!, colWidths[0]!)} │ ${pad(headers[1]!, colWidths[1]!)} │ ${pad(headers[2]!, colWidths[2]!)} │ ${padRight(headers[3]!, colWidths[3]!)} │`)
+    lines.push(
+      `│ ${pad(headers[0]!, colWidths[0]!)} │ ${pad(headers[1]!, colWidths[1]!)} │ ${pad(headers[2]!, colWidths[2]!)} │ ${pad(headers[3]!, colWidths[3]!)} │ ${padRight(headers[4]!, colWidths[4]!)} │`,
+    )
     lines.push(hLine('├', '┼', '┤'))
 
     for (let i = 0; i < rows.length; i++) {
-      const [name, type, shape] = rows[i]!
-      lines.push(`│ ${pad(name, colWidths[0]!)} │ ${pad(type, colWidths[1]!)} │ ${pad(shape, colWidths[2]!)} │ ${padRight(formattedParams[i]!, colWidths[3]!)} │`)
+      const [name, type, shape, device] = rows[i]!
+      lines.push(
+        `│ ${pad(name, colWidths[0]!)} │ ${pad(type, colWidths[1]!)} │ ${pad(shape, colWidths[2]!)} │ ${pad(device, colWidths[3]!)} │ ${padRight(formattedParams[i]!, colWidths[4]!)} │`,
+      )
     }
 
     lines.push(hLine('├', '┼', '┤'))
-    lines.push(`│ ${pad('Total', colWidths[0]!)} │ ${pad('', colWidths[1]!)} │ ${pad('', colWidths[2]!)} │ ${padRight(totalFormatted, colWidths[3]!)} │`)
+    lines.push(
+      `│ ${pad('Total', colWidths[0]!)} │ ${pad('', colWidths[1]!)} │ ${pad('', colWidths[2]!)} │ ${pad('', colWidths[3]!)} │ ${padRight(totalFormatted, colWidths[4]!)} │`,
+    )
     lines.push(hLine('└', '┴', '┘'))
+
+    const totalBytes = this._parameterBytes()
     lines.push(`Trainable params: ${trainableParams.toLocaleString('en-US')}`)
     lines.push(`Non-trainable params: ${frozenParams.toLocaleString('en-US')}`)
+    lines.push(`Size: ${formatBytes(totalBytes)}`)
 
     return lines.join('\n')
   }
@@ -698,11 +750,7 @@ export class Module<
       }
 
       // Create new tensor from state dict data
-      const newTensor = fromArray(
-        tensorData.data as any,
-        tensorData.shape as readonly number[],
-        dtypeObj,
-      )
+      const newTensor = fromArray(tensorData.data as any, tensorData.shape as readonly number[], dtypeObj)
 
       // Move to same device as old tensor if needed
       const device = oldTensor.device
@@ -733,9 +781,7 @@ export class Module<
   async save(directory: string, metadata?: Record<string, unknown>): Promise<void> {
     const config = (this as any)._config
     if (!config) {
-      throw new Error(
-        'Cannot save: model has no _config. Model must be created via config.init() or config.load().',
-      )
+      throw new Error('Cannot save: model has no _config. Model must be created via config.init() or config.load().')
     }
 
     const { mkdir, writeFile, rename, rm } = await import('node:fs/promises')
@@ -747,11 +793,7 @@ export class Module<
     try {
       await mkdir(tmpDir, { recursive: true })
       await writeFile(join(tmpDir, 'config.json'), JSON.stringify(config, null, 2))
-      await saveSafetensors(
-        join(tmpDir, 'model.safetensors'),
-        this.stateDict(),
-        serializeMetadata(metadata),
-      )
+      await saveSafetensors(join(tmpDir, 'model.safetensors'), this.stateDict(), serializeMetadata(metadata))
       await rm(directory, { recursive: true, force: true }).catch(() => {})
       await rename(tmpDir, directory)
     } catch (err) {
@@ -768,10 +810,7 @@ export class Module<
    * @param options - boolean for backward compat (strict mode), or LoadWeightsOptions
    * @returns Deserialized metadata from the safetensors file
    */
-  async loadWeights(
-    directory: string,
-    options?: boolean | LoadWeightsOptions,
-  ): Promise<Record<string, unknown>> {
+  async loadWeights(directory: string, options?: boolean | LoadWeightsOptions): Promise<Record<string, unknown>> {
     const { join } = await import('node:path')
     const { loadSafetensors, deserializeMetadata } = await import('./safetensors.js')
 
@@ -800,12 +839,12 @@ export class Module<
 
       for (const key of Object.keys(tensors)) {
         // If include is specified, key must match at least one pattern
-        if (includeRegexes && !includeRegexes.some(r => r.test(key))) {
+        if (includeRegexes && !includeRegexes.some((r) => r.test(key))) {
           delete tensors[key]
           continue
         }
         // If exclude is specified, key must not match any pattern
-        if (excludeRegexes && excludeRegexes.some(r => r.test(key))) {
+        if (excludeRegexes && excludeRegexes.some((r) => r.test(key))) {
           delete tensors[key]
         }
       }
@@ -821,18 +860,20 @@ export class Module<
    * @param name - Parameter name
    * @param param - Parameter to register
    */
-  protected registerParameter(name: string, param: Parameter<any, D, Dev>): void {
+  registerParameter(name: string, param: Parameter<any, D, Dev>): void {
     this._parameters.set(name, param)
   }
 
   /**
-   * Register a submodule
+   * Register a submodule and return it for assignment.
    *
-   * @param name - Module name
+   * @param name - Module name (used in state dict keys and namedModules)
    * @param module - Module to register
+   * @returns The registered module
    */
-  protected registerModule(name: string, module: Module<any, any, D, Dev>): void {
+  registerModule<M extends Module<any, any, D, Dev>>(name: string, module: M): M {
     this._modules.set(name, module)
+    return module
   }
 
   /**

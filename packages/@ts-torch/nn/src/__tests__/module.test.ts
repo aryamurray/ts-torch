@@ -25,14 +25,8 @@ class ParameterizedModule<D extends DType<string> = float32> extends Module<
 
   constructor() {
     super()
-    this.weight = new Parameter(
-      mockTensorFactories.ones([3, 3]) as unknown as Tensor<readonly [3, 3], D>,
-      true
-    )
-    this.bias = new Parameter(
-      mockTensorFactories.zeros([3]) as unknown as Tensor<readonly [3], D>,
-      true
-    )
+    this.weight = new Parameter(mockTensorFactories.ones([3, 3]) as unknown as Tensor<readonly [3, 3], D>, true)
+    this.bias = new Parameter(mockTensorFactories.zeros([3]) as unknown as Tensor<readonly [3], D>, true)
     this.registerParameter('weight', this.weight)
     this.registerParameter('bias', this.bias)
   }
@@ -43,11 +37,7 @@ class ParameterizedModule<D extends DType<string> = float32> extends Module<
 }
 
 // Module with submodules
-class NestedModule<D extends DType<string> = float32> extends Module<
-  readonly [number, 3],
-  readonly [number, 3],
-  D
-> {
+class NestedModule<D extends DType<string> = float32> extends Module<readonly [number, 3], readonly [number, 3], D> {
   readonly layer1: ParameterizedModule<D>
   readonly layer2: ParameterizedModule<D>
 
@@ -265,6 +255,31 @@ describe('Module.to()', () => {
     const result = module.to('cpu' as unknown as Device)
 
     expect(result).toBe(module)
+  })
+})
+
+describe('Module.registerModule() returns module', () => {
+  test('returns the registered module for assignment', () => {
+    const child = new TestModule()
+    const parent = new TestModule()
+    const result = parent.registerModule('encoder', child)
+
+    expect(result).toBe(child)
+    expect(parent.modules().get('encoder')).toBe(child)
+  })
+})
+
+describe('Module without generics', () => {
+  test('can extend Module with no generic params', () => {
+    class SimpleModel extends Module {
+      forward(input: any): any {
+        return input
+      }
+    }
+
+    const model = new SimpleModel()
+    expect(model).toBeInstanceOf(Module)
+    expect(model.training).toBe(true)
   })
 })
 

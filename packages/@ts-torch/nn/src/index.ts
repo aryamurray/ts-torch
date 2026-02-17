@@ -71,7 +71,13 @@ export {
   Sequential,
   SequentialBuilder,
   sequential,
+  ModuleList,
+  ModuleDict,
+  HeadedSequential,
 } from './modules/container.js'
+
+// Flatten module
+export { Flatten } from './modules/flatten.js'
 
 // Re-export other modules (conv, pooling, etc.)
 export * from './modules/conv.js'
@@ -128,8 +134,36 @@ export * as functional from './functional.js'
  * const model = config.init(device.cuda(0));
  * ```
  */
-export { nn, input, sequence, fc } from './builders.js'
-export type { InputDef, BlockDef, SequenceDef, ActivationType, InitStrategy, InspectResult } from './builders.js'
+export {
+  nn,
+  input,
+  sequence,
+  fc,
+  conv2d,
+  maxPool2d,
+  avgPool2d,
+  adaptiveAvgPool2d,
+  flatten,
+  embedding,
+  transformerEncoder,
+  heads,
+} from './builders.js'
+export type {
+  InputDef,
+  BlockDef,
+  Conv2dBlockDef,
+  PoolBlockDef,
+  FlattenBlockDef,
+  EmbeddingBlockDef,
+  TransformerEncoderBlockDef,
+  HeadsBlockDef,
+  HeadlessSequenceDef,
+  AnyBlockDef,
+  SequenceDef,
+  ActivationType,
+  InitStrategy,
+  InspectResult,
+} from './builders.js'
 
 // Safetensors format
 export {

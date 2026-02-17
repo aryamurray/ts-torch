@@ -22,6 +22,7 @@ export default defineConfig({
       ],
     },
     sourcemap: true,
+    minify: false,
     outDir: 'dist'
   },
   plugins: [
