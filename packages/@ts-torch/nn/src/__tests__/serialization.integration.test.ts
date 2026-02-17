@@ -54,7 +54,7 @@ describe('stateDict roundtrip', () => {
       expect(keys.length).toBeGreaterThanOrEqual(1)
 
       // Weight should have shape [3, 4] for Linear(4, 3)
-      const weightKey = keys.find(k => k.includes('weight'))!
+      const weightKey = keys.find((k) => k.includes('weight'))!
       expect(weightKey).toBeDefined()
       expect(state[weightKey]!.shape).toEqual([3, 4])
       expect(state[weightKey]!.dtype).toBe('float32')
@@ -65,11 +65,7 @@ describe('stateDict roundtrip', () => {
 
   test('stateDict → encodeSafetensors → decodeSafetensors roundtrips', () => {
     run(() => {
-      const model = new Sequential(
-        new Linear(6, 3),
-        new ReLU(),
-        new Linear(3, 2),
-      )
+      const model = new Sequential(new Linear(6, 3), new ReLU(), new Linear(3, 2))
 
       const originalState = model.stateDict()
 
@@ -145,11 +141,7 @@ describe('model.save() and model.loadWeights()', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'my-model')
 
-    const config = nn.sequence(
-      nn.input(6),
-      nn.fc(3).relu(),
-      nn.fc(2),
-    )
+    const config = nn.sequence(nn.input(6), nn.fc(3).relu(), nn.fc(2))
 
     // Create models outside run() for async operations
     const model = config.init(cpu)
@@ -177,11 +169,7 @@ describe('config.load() from directory', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'my-model')
 
-    const config = nn.sequence(
-      nn.input(8),
-      nn.fc(4).relu(),
-      nn.fc(2),
-    )
+    const config = nn.sequence(nn.input(8), nn.fc(4).relu(), nn.fc(2))
 
     // Create model outside run() so tensors survive across async boundaries
     const model = config.init(cpu)
@@ -208,17 +196,13 @@ describe('config.load() from directory', () => {
 describe('_config field', () => {
   test('config.init() sets _config on Sequential', () => {
     // No run() needed — only checking metadata, not using tensors after this
-    const config = nn.sequence(
-      nn.input(10),
-      nn.fc(5).relu(),
-      nn.fc(3),
-    )
+    const config = nn.sequence(nn.input(10), nn.fc(5).relu(), nn.fc(3))
     const model = config.init(cpu)
 
     expect(model._config).toBeDefined()
     const cfg = model._config as any
     expect(cfg.format).toBe('ts-torch-sequence')
-    expect(cfg.version).toBe(1)
+    expect(cfg.version).toBe(2)
     expect(cfg.input.shape).toEqual([10])
     expect(cfg.blocks).toHaveLength(2)
   })
@@ -226,11 +210,7 @@ describe('_config field', () => {
   test('_config survives loadStateDict', () => {
     // No run() — loadStateDict frees/creates tensors internally;
     // wrapping in run() causes double-free on scope exit
-    const config = nn.sequence(
-      nn.input(10),
-      nn.fc(5).relu(),
-      nn.fc(3),
-    )
+    const config = nn.sequence(nn.input(10), nn.fc(5).relu(), nn.fc(3))
 
     const model1 = config.init(cpu)
     const state = model1.stateDict()
@@ -251,11 +231,7 @@ describe('directory save/load', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'my-model')
 
-    const config = nn.sequence(
-      nn.input(8),
-      nn.fc(4).relu(),
-      nn.fc(2),
-    )
+    const config = nn.sequence(nn.input(8), nn.fc(4).relu(), nn.fc(2))
 
     const model = config.init(cpu)
     await model.save(modelDir)
@@ -274,11 +250,7 @@ describe('directory save/load', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'my-model')
 
-    const config = nn.sequence(
-      nn.input(8),
-      nn.fc(4).relu(),
-      nn.fc(2),
-    )
+    const config = nn.sequence(nn.input(8), nn.fc(4).relu(), nn.fc(2))
 
     const model = config.init(cpu)
     const originalState = model.stateDict()
@@ -307,11 +279,7 @@ describe('directory save/load', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'my-model')
 
-    const config = nn.sequence(
-      nn.input(8),
-      nn.fc(4).relu(),
-      nn.fc(2),
-    )
+    const config = nn.sequence(nn.input(8), nn.fc(4).relu(), nn.fc(2))
 
     const model = config.init(cpu)
     await model.save(modelDir, { epoch: 10, loss: 0.05, note: 'best model' })
@@ -329,11 +297,7 @@ describe('directory roundtrip', () => {
     const dir1 = join(dir, 'step1')
     const dir2 = join(dir, 'step2')
 
-    const config = nn.sequence(
-      nn.input(6),
-      nn.fc(4).relu(),
-      nn.fc(2),
-    )
+    const config = nn.sequence(nn.input(6), nn.fc(4).relu(), nn.fc(2))
 
     // 1. Init and save to directory
     const model1 = config.init(cpu)
@@ -364,10 +328,7 @@ describe('atomic directory writes', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'atomic-test')
 
-    const config = nn.sequence(
-      nn.input(4),
-      nn.fc(3),
-    )
+    const config = nn.sequence(nn.input(4), nn.fc(3))
 
     const model = config.init(cpu)
 
@@ -389,10 +350,7 @@ describe('atomic directory writes', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'overwrite-test')
 
-    const config = nn.sequence(
-      nn.input(4),
-      nn.fc(3),
-    )
+    const config = nn.sequence(nn.input(4), nn.fc(3))
 
     const model1 = config.init(cpu)
     await model1.save(modelDir, { epoch: 1 })
@@ -424,11 +382,7 @@ describe('namedModules()', () => {
 
   test('Sequential(Linear, ReLU, Linear) has correct names and types', () => {
     run(() => {
-      const model = new Sequential(
-        new Linear(6, 3),
-        new ReLU(),
-        new Linear(3, 2),
-      )
+      const model = new Sequential(new Linear(6, 3), new ReLU(), new Linear(3, 2))
       const modules = model.namedModules()
 
       // root + 3 children
@@ -468,11 +422,7 @@ describe('parameterCount()', () => {
 
   test('multi-layer model counts all parameters', () => {
     run(() => {
-      const model = new Sequential(
-        new Linear(6, 3),
-        new ReLU(),
-        new Linear(3, 2),
-      )
+      const model = new Sequential(new Linear(6, 3), new ReLU(), new Linear(3, 2))
       // Linear(6,3): weight 18 + bias 3 = 21
       // ReLU: 0
       // Linear(3,2): weight 6 + bias 2 = 8
@@ -481,11 +431,7 @@ describe('parameterCount()', () => {
   })
 
   test('trainable/frozen filters work after freezing', () => {
-    const model = new Sequential(
-      new Linear(4, 3),
-      new ReLU(),
-      new Linear(3, 2),
-    )
+    const model = new Sequential(new Linear(4, 3), new ReLU(), new Linear(3, 2))
     const total = model.parameterCount()
 
     model.freeze('0.*')
@@ -500,11 +446,7 @@ describe('parameterCount()', () => {
 describe('summary()', () => {
   test('Sequential(Linear(784,128), ReLU, Linear(128,10)) summary', () => {
     run(() => {
-      const model = new Sequential(
-        new Linear(784, 128),
-        new ReLU(),
-        new Linear(128, 10),
-      )
+      const model = new Sequential(new Linear(784, 128), new ReLU(), new Linear(128, 10))
       const output = model.summary()
 
       expect(output).toContain('Linear')
@@ -521,11 +463,7 @@ describe('summary()', () => {
 
 describe('freeze() / unfreeze()', () => {
   test('freeze all → check all frozen', () => {
-    const model = new Sequential(
-      new Linear(4, 3),
-      new ReLU(),
-      new Linear(3, 2),
-    )
+    const model = new Sequential(new Linear(4, 3), new ReLU(), new Linear(3, 2))
     model.freeze()
 
     for (const param of model.parameters()) {
@@ -534,11 +472,7 @@ describe('freeze() / unfreeze()', () => {
   })
 
   test('unfreeze all → check all trainable', () => {
-    const model = new Sequential(
-      new Linear(4, 3),
-      new ReLU(),
-      new Linear(3, 2),
-    )
+    const model = new Sequential(new Linear(4, 3), new ReLU(), new Linear(3, 2))
     model.freeze()
     model.unfreeze()
 
@@ -548,11 +482,7 @@ describe('freeze() / unfreeze()', () => {
   })
 
   test('pattern freeze "0.*" only freezes layer 0', () => {
-    const model = new Sequential(
-      new Linear(4, 3),
-      new ReLU(),
-      new Linear(3, 2),
-    )
+    const model = new Sequential(new Linear(4, 3), new ReLU(), new Linear(3, 2))
     model.freeze('0.*')
 
     const named = model.namedParameters()
@@ -566,11 +496,7 @@ describe('freeze() / unfreeze()', () => {
   })
 
   test('pattern "*.weight" freezes all weights, biases trainable', () => {
-    const model = new Sequential(
-      new Linear(4, 3),
-      new ReLU(),
-      new Linear(3, 2),
-    )
+    const model = new Sequential(new Linear(4, 3), new ReLU(), new Linear(3, 2))
     model.freeze('*.weight')
 
     const named = model.namedParameters()
@@ -584,11 +510,7 @@ describe('freeze() / unfreeze()', () => {
   })
 
   test('freeze/unfreeze chaining: model.freeze().unfreeze("2.*")', () => {
-    const model = new Sequential(
-      new Linear(4, 3),
-      new ReLU(),
-      new Linear(3, 2),
-    )
+    const model = new Sequential(new Linear(4, 3), new ReLU(), new Linear(3, 2))
     model.freeze().unfreeze('2.*')
 
     const named = model.namedParameters()
@@ -602,11 +524,7 @@ describe('freeze() / unfreeze()', () => {
   })
 
   test('parameterCount("frozen") reflects freeze state', () => {
-    const model = new Sequential(
-      new Linear(4, 3),
-      new ReLU(),
-      new Linear(3, 2),
-    )
+    const model = new Sequential(new Linear(4, 3), new ReLU(), new Linear(3, 2))
     expect(model.parameterCount('frozen')).toBe(0)
 
     model.freeze()
@@ -622,11 +540,7 @@ describe('partial loading (include/exclude)', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'partial-load')
 
-    const config = nn.sequence(
-      nn.input(4),
-      nn.fc(3).relu(),
-      nn.fc(2),
-    )
+    const config = nn.sequence(nn.input(4), nn.fc(3).relu(), nn.fc(2))
 
     const model1 = config.init(cpu)
     await model1.save(modelDir)
@@ -654,11 +568,7 @@ describe('partial loading (include/exclude)', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'partial-exclude')
 
-    const config = nn.sequence(
-      nn.input(4),
-      nn.fc(3).relu(),
-      nn.fc(2),
-    )
+    const config = nn.sequence(nn.input(4), nn.fc(3).relu(), nn.fc(2))
 
     const model1 = config.init(cpu)
     await model1.save(modelDir)
@@ -694,10 +604,7 @@ describe('partial loading (include/exclude)', () => {
     const dir = await createTempDir()
     const modelDir = join(dir, 'compat')
 
-    const config = nn.sequence(
-      nn.input(4),
-      nn.fc(3),
-    )
+    const config = nn.sequence(nn.input(4), nn.fc(3))
 
     const model1 = config.init(cpu)
     await model1.save(modelDir)

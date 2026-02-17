@@ -39,12 +39,7 @@ import type { TransitionBatch } from '../replay-buffer.js'
 import { EpsilonGreedyStrategy } from '../strategies/epsilon-greedy.js'
 import { EnvelopeQStrategy } from '../strategies/envelope.js'
 import { conditionObservation } from '../utils/morl.js'
-import {
-  saveSafetensors,
-  loadSafetensors,
-  type AgentStateDict,
-  type TensorData,
-} from '../checkpoint.js'
+import { saveSafetensors, loadSafetensors, type AgentStateDict, type TensorData } from '../checkpoint.js'
 
 // ==================== Types ====================
 
@@ -132,8 +127,8 @@ export class DQNAgent implements Agent, MOAgent {
     this.deviceContext = config.device
     this.gamma = config.gamma ?? 0.99
     this.targetUpdateFreq = config.targetUpdateFreq ?? 500
-    this.tau = config.tau ?? 1.0  // Hard updates by default (matching Nature DQN)
-    this.maxGradNorm = config.maxGradNorm ?? 10.0  // Stable Baselines3 default
+    this.tau = config.tau ?? 1.0 // Hard updates by default (matching Nature DQN)
+    this.maxGradNorm = config.maxGradNorm ?? 10.0 // Stable Baselines3 default
     this.rewardDim_ = config.rewardDim ?? 1
 
     // Initialize Q-network from model definition
@@ -543,13 +538,13 @@ export class DQNAgent implements Agent, MOAgent {
 
   /**
    * Gather Q-values for specific actions using one-hot encoding
-   * 
+   *
    * This maintains the gradient computation graph by using tensor operations:
    * gathered = (qValues * one_hot).sumDim(1)
    */
   private gatherActions(qValues: Tensor, actions: Int32Array | number[], batchSize: number): Tensor {
     const numActions = this.actionSpace_
-    
+
     // Create one-hot encoding of actions [batch, nActions]
     const oneHot = new Float32Array(batchSize * numActions)
     for (let i = 0; i < batchSize; i++) {
@@ -557,7 +552,7 @@ export class DQNAgent implements Agent, MOAgent {
       oneHot[i * numActions + action] = 1.0
     }
     const oneHotTensor = this.createTensor(oneHot, [batchSize, numActions])
-    
+
     // Multiply and sum: (qValues * one_hot).sumDim(1) gives [batch]
     // This maintains gradients through qValues
     const masked = (qValues as any).mul(oneHotTensor)
@@ -676,6 +671,9 @@ export class DQNAgent implements Agent, MOAgent {
       throw new Error('Model must have at least one block to infer action space')
     }
     const lastBlock = blocks[blocks.length - 1]!
+    if (lastBlock.kind !== 'fc') {
+      throw new Error('Last block must be an fc block to infer action space')
+    }
     return lastBlock.outFeatures
   }
 
@@ -698,17 +696,13 @@ export class DQNAgent implements Agent, MOAgent {
   /**
    * Flatten state dict with prefix
    */
-  private flattenStateDict(
-    state: Record<string, TensorData>,
-    prefix: string,
-  ): Record<string, TensorData> {
+  private flattenStateDict(state: Record<string, TensorData>, prefix: string): Record<string, TensorData> {
     const result: Record<string, TensorData> = {}
     for (const [key, value] of Object.entries(state)) {
       result[`${prefix}.${key}`] = value
     }
     return result
   }
-
 }
 
 // ==================== Factory ====================
