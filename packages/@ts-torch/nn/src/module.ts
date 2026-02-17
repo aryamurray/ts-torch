@@ -20,6 +20,16 @@ function globToRegex(pattern: string): RegExp {
 }
 
 /**
+ * Format a byte count as a human-readable string (KB, MB, GB).
+ */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+/**
  * Options for loadWeights()
  */
 export interface LoadWeightsOptions {
@@ -286,6 +296,9 @@ export class Module<
   protected _parameters: Map<string, Parameter<any, D, Dev>> = new Map()
   protected _modules: Map<string, Module<any, any, D, Dev>> = new Map()
 
+  /** Output shape string set by the builder for summary display */
+  _summaryOutputShape: string | null = null
+
   /**
    * Forward pass - must be implemented by subclasses
    *
@@ -470,25 +483,50 @@ export class Module<
   }
 
   /**
+   * Detect the device of this module by inspecting its first parameter.
+   * Returns null if the module has no parameters.
+   */
+  private _detectDevice(): string | null {
+    for (const param of this.parameters()) {
+      return String(param.data.device ?? 'cpu')
+    }
+    return null
+  }
+
+  /**
+   * Compute total bytes used by parameters in this module (including children).
+   */
+  private _parameterBytes(): number {
+    let bytes = 0
+    for (const param of this.parameters()) {
+      const shape = param.data.shape as readonly number[]
+      const elements = shape.reduce((a, d) => a * d, 1)
+      bytes += elements * (param.data.dtype?.bytes ?? 4)
+    }
+    return bytes
+  }
+
+  /**
    * Print a formatted summary table of this model's layers, shapes, and parameter counts.
    *
    * @returns Formatted table string
    */
   summary(): string {
     const modules = this.namedModules()
-    const rows: [string, string, string, number][] = []
+    const rows: [string, string, string, string, number][] = []
     let currentShape = '-'
 
     for (const [name, mod] of modules) {
       if (name === '') continue
-      const hint = mod._outputShapeHint()
+      const hint = mod._summaryOutputShape ?? mod._outputShapeHint()
       if (hint !== null) currentShape = hint
-      rows.push([name, mod.constructor.name, currentShape, mod._directParameterCount()])
+      const device = mod._detectDevice() ?? '-'
+      rows.push([name, mod.constructor.name, currentShape, device, mod._directParameterCount()])
     }
 
     // Calculate column widths
-    const headers = ['Layer', 'Type', 'Output Shape', 'Params']
-    const formattedParams = rows.map((r) => r[3].toLocaleString('en-US'))
+    const headers = ['Layer', 'Type', 'Output Shape', 'Device', 'Params']
+    const formattedParams = rows.map((r) => r[4].toLocaleString('en-US'))
     const totalParams = this.parameterCount()
     const trainableParams = this.parameterCount('trainable')
     const frozenParams = this.parameterCount('frozen')
@@ -498,7 +536,8 @@ export class Module<
       Math.max(headers[0]!.length, ...rows.map((r) => r[0].length), 'Total'.length),
       Math.max(headers[1]!.length, ...rows.map((r) => r[1].length)),
       Math.max(headers[2]!.length, ...rows.map((r) => r[2].length)),
-      Math.max(headers[3]!.length, ...formattedParams.map((p) => p.length), totalFormatted.length),
+      Math.max(headers[3]!.length, ...rows.map((r) => r[3].length)),
+      Math.max(headers[4]!.length, ...formattedParams.map((p) => p.length), totalFormatted.length),
     ]
 
     const pad = (s: string, w: number) => s + ' '.repeat(Math.max(0, w - s.length))
@@ -509,24 +548,27 @@ export class Module<
     const lines: string[] = []
     lines.push(hLine('┌', '┬', '┐'))
     lines.push(
-      `│ ${pad(headers[0]!, colWidths[0]!)} │ ${pad(headers[1]!, colWidths[1]!)} │ ${pad(headers[2]!, colWidths[2]!)} │ ${padRight(headers[3]!, colWidths[3]!)} │`,
+      `│ ${pad(headers[0]!, colWidths[0]!)} │ ${pad(headers[1]!, colWidths[1]!)} │ ${pad(headers[2]!, colWidths[2]!)} │ ${pad(headers[3]!, colWidths[3]!)} │ ${padRight(headers[4]!, colWidths[4]!)} │`,
     )
     lines.push(hLine('├', '┼', '┤'))
 
     for (let i = 0; i < rows.length; i++) {
-      const [name, type, shape] = rows[i]!
+      const [name, type, shape, device] = rows[i]!
       lines.push(
-        `│ ${pad(name, colWidths[0]!)} │ ${pad(type, colWidths[1]!)} │ ${pad(shape, colWidths[2]!)} │ ${padRight(formattedParams[i]!, colWidths[3]!)} │`,
+        `│ ${pad(name, colWidths[0]!)} │ ${pad(type, colWidths[1]!)} │ ${pad(shape, colWidths[2]!)} │ ${pad(device, colWidths[3]!)} │ ${padRight(formattedParams[i]!, colWidths[4]!)} │`,
       )
     }
 
     lines.push(hLine('├', '┼', '┤'))
     lines.push(
-      `│ ${pad('Total', colWidths[0]!)} │ ${pad('', colWidths[1]!)} │ ${pad('', colWidths[2]!)} │ ${padRight(totalFormatted, colWidths[3]!)} │`,
+      `│ ${pad('Total', colWidths[0]!)} │ ${pad('', colWidths[1]!)} │ ${pad('', colWidths[2]!)} │ ${pad('', colWidths[3]!)} │ ${padRight(totalFormatted, colWidths[4]!)} │`,
     )
     lines.push(hLine('└', '┴', '┘'))
+
+    const totalBytes = this._parameterBytes()
     lines.push(`Trainable params: ${trainableParams.toLocaleString('en-US')}`)
     lines.push(`Non-trainable params: ${frozenParams.toLocaleString('en-US')}`)
+    lines.push(`Size: ${formatBytes(totalBytes)}`)
 
     return lines.join('\n')
   }

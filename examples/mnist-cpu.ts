@@ -35,7 +35,8 @@ async function main() {
     nn.fc(10)
   ).init(cpu)
 
-  console.log('Model: 784 -> 128 -> 64 -> 10\n')
+  console.log(model.summary())
+  console.log()
 
   // Training
   const trainer = new Trainer({

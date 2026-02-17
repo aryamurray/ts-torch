@@ -250,6 +250,17 @@ type ShapeState =
   | { mode: 'spatial'; c: number; h: number; w: number }
   | { mode: 'sequence'; embedDim: number }
 
+function formatShapeState(state: ShapeState): string {
+  switch (state.mode) {
+    case '1d':
+      return `[*, ${state.features}]`
+    case 'spatial':
+      return `[*, ${state.c}, ${state.h}, ${state.w}]`
+    case 'sequence':
+      return `[*, seq, ${state.embedDim}]`
+  }
+}
+
 function shapeStateFromInput(shape: number[]): ShapeState {
   if (shape.length === 3) {
     return { mode: 'spatial', c: shape[0]!, h: shape[1]!, w: shape[2]! }
@@ -699,7 +710,12 @@ class SequenceDefImpl implements SequenceDef {
     // Process shared/regular blocks
     const sharedLayers: Module<any, any, float32, 'cpu'>[] = []
     for (const block of regularBlocks) {
+      const before = sharedLayers.length
       state = processBlock(block as Exclude<AnyBlockDef, HeadsBlockDef>, state, sharedLayers, this._buildFcLayers)
+      const shapeStr = formatShapeState(state)
+      for (let i = before; i < sharedLayers.length; i++) {
+        sharedLayers[i]!._summaryOutputShape = shapeStr
+      }
     }
 
     if (!hasHeads) {
@@ -721,12 +737,17 @@ class SequenceDefImpl implements SequenceDef {
       const headLayers: Module<any, any, float32, 'cpu'>[] = []
       let headState = { ...state } as ShapeState
       for (const block of headDef.blocks) {
+        const before = headLayers.length
         headState = processBlock(
           block as Exclude<AnyBlockDef, HeadsBlockDef>,
           headState,
           headLayers,
           this._buildFcLayers,
         )
+        const shapeStr = formatShapeState(headState)
+        for (let i = before; i < headLayers.length; i++) {
+          headLayers[i]!._summaryOutputShape = shapeStr
+        }
       }
       headSequentials[headName] = new Sequential<Shape, Shape, float32, 'cpu'>(...headLayers)
     }
