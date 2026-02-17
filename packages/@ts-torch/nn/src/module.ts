@@ -818,7 +818,7 @@ export class Module<
    * @param name - Parameter name
    * @param param - Parameter to register
    */
-  protected registerParameter(name: string, param: Parameter<any, D, Dev>): void {
+  registerParameter(name: string, param: Parameter<any, D, Dev>): void {
     this._parameters.set(name, param)
   }
 
@@ -828,7 +828,7 @@ export class Module<
    * @param name - Module name
    * @param module - Module to register
    */
-  protected registerModule(name: string, module: Module<any, any, D, Dev>): void {
+  registerModule(name: string, module: Module<any, any, D, Dev>): void {
     this._modules.set(name, module)
   }
 

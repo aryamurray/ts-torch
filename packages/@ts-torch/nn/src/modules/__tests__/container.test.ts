@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect } from 'vitest'
-import { Sequential, SequentialBuilder, sequential } from '../container.js'
+import { Sequential, SequentialBuilder, sequential, ModuleList, ModuleDict } from '../container.js'
 import { Module, type Tensor } from '../../module.js'
 import { mockTensorFactories } from '@ts-torch/test-utils'
 import type { Shape, DType } from '@ts-torch/core'
@@ -70,9 +70,7 @@ describe('Sequential', () => {
       const module = new Identity<readonly [number, 10]>()
       const seq = new Sequential(module)
 
-      const input = mockTensorFactories.randn([32, 10]) as unknown as Tensor<
-        readonly [number, 10]
-      >
+      const input = mockTensorFactories.randn([32, 10]) as unknown as Tensor<readonly [number, 10]>
       const output = seq.forward(input)
 
       expect(output).toBe(input) // Identity returns input unchanged
@@ -395,5 +393,135 @@ describe('Sequential edge cases', () => {
     expect(modules1).toHaveLength(3)
     expect(modules2).toHaveLength(3)
     expect(modules1[0]).toBe(modules2[0])
+  })
+})
+
+describe('ModuleList', () => {
+  test('creates empty list', () => {
+    const list = new ModuleList()
+    expect(list.length).toBe(0)
+  })
+
+  test('creates from array of modules', () => {
+    const m1 = new Identity()
+    const m2 = new Doubler()
+    const list = new ModuleList([m1, m2])
+    expect(list.length).toBe(2)
+    expect(list.at(0)).toBe(m1)
+    expect(list.at(1)).toBe(m2)
+  })
+
+  test('append adds module', () => {
+    const list = new ModuleList()
+    const m = new Identity()
+    list.append(m)
+    expect(list.length).toBe(1)
+    expect(list.at(0)).toBe(m)
+  })
+
+  test('append returns this for chaining', () => {
+    const list = new ModuleList()
+    const result = list.append(new Identity())
+    expect(result).toBe(list)
+  })
+
+  test('at returns undefined for out-of-bounds', () => {
+    const list = new ModuleList([new Identity()])
+    expect(list.at(5)).toBeUndefined()
+  })
+
+  test('is iterable', () => {
+    const m1 = new Identity()
+    const m2 = new Doubler()
+    const list = new ModuleList([m1, m2])
+    const items = Array.from(list)
+    expect(items).toEqual([m1, m2])
+  })
+
+  test('parameters are visible via modules()', () => {
+    const m1 = new Identity()
+    const m2 = new Doubler()
+    const list = new ModuleList([m1, m2])
+    const mods = list.modules()
+    expect(mods.get('0')).toBe(m1)
+    expect(mods.get('1')).toBe(m2)
+  })
+
+  test('train/eval propagation', () => {
+    const m1 = new Identity()
+    const m2 = new Doubler()
+    const list = new ModuleList([m1, m2])
+    list.eval()
+    expect(m1.training).toBe(false)
+    expect(m2.training).toBe(false)
+    list.train()
+    expect(m1.training).toBe(true)
+    expect(m2.training).toBe(true)
+  })
+})
+
+describe('ModuleDict', () => {
+  test('creates empty dict', () => {
+    const dict = new ModuleDict()
+    expect(dict.size).toBe(0)
+  })
+
+  test('creates from record', () => {
+    const m1 = new Identity()
+    const m2 = new Doubler()
+    const dict = new ModuleDict({ a: m1, b: m2 })
+    expect(dict.size).toBe(2)
+    expect(dict.get('a')).toBe(m1)
+    expect(dict.get('b')).toBe(m2)
+  })
+
+  test('set and get', () => {
+    const dict = new ModuleDict()
+    const m = new Identity()
+    dict.set('layer', m)
+    expect(dict.get('layer')).toBe(m)
+    expect(dict.has('layer')).toBe(true)
+    expect(dict.has('missing')).toBe(false)
+  })
+
+  test('set returns this for chaining', () => {
+    const dict = new ModuleDict()
+    const result = dict.set('x', new Identity())
+    expect(result).toBe(dict)
+  })
+
+  test('get returns undefined for missing key', () => {
+    const dict = new ModuleDict()
+    expect(dict.get('missing')).toBeUndefined()
+  })
+
+  test('keys/values/entries iterators', () => {
+    const m1 = new Identity()
+    const m2 = new Doubler()
+    const dict = new ModuleDict({ a: m1, b: m2 })
+    expect([...dict.keys()]).toEqual(['a', 'b'])
+    expect([...dict.values()]).toEqual([m1, m2])
+    expect([...dict.entries()]).toEqual([
+      ['a', m1],
+      ['b', m2],
+    ])
+  })
+
+  test('parameters are visible via modules()', () => {
+    const m1 = new Identity()
+    const dict = new ModuleDict({ layer: m1 })
+    expect(dict.modules().get('layer')).toBe(m1)
+  })
+
+  test('train/eval propagation', () => {
+    const m1 = new Identity()
+    const m2 = new Doubler()
+    const dict = new ModuleDict({ a: m1, b: m2 })
+    dict.eval()
+    expect(m1.training).toBe(false)
+    expect(m2.training).toBe(false)
+    dict.train()
+    expect(m1.training).toBe(true)
+    expect(m2.training).toBe(true)
   })
 })

@@ -152,7 +152,12 @@ export class Sequential<
  * // Type is: Sequential<readonly [number, 784], readonly [number, 10]>
  * ```
  */
-export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType> {
+export class SequentialBuilder<
+  In extends Shape = Shape,
+  Out extends Shape = Shape,
+  D extends DType<string> = float32,
+  Dev extends DeviceType = DeviceType,
+> {
   private modules: Module<any, any, D, Dev>[] = []
 
   private constructor(
@@ -174,7 +179,9 @@ export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Sha
    * const builder = sequential<readonly [number, 784]>();
    * ```
    */
-  static create<In extends Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType>(_inputShape?: In): SequentialBuilder<In, In, D, Dev> {
+  static create<In extends Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType>(
+    _inputShape?: In,
+  ): SequentialBuilder<In, In, D, Dev> {
     return new SequentialBuilder<In, In, D, Dev>(_inputShape)
   }
 
@@ -217,6 +224,172 @@ export class SequentialBuilder<In extends Shape = Shape, Out extends Shape = Sha
  *   .build();
  * ```
  */
-export function sequential<In extends Shape, D extends DType<string> = float32, Dev extends DeviceType = DeviceType>(): SequentialBuilder<In, In, D, Dev> {
+export function sequential<
+  In extends Shape,
+  D extends DType<string> = float32,
+  Dev extends DeviceType = DeviceType,
+>(): SequentialBuilder<In, In, D, Dev> {
   return SequentialBuilder.create<In, D, Dev>()
+}
+
+/**
+ * Dynamic list of modules where parameters are visible in parameters() and stateDict().
+ * Modules are registered with numeric string keys ("0", "1", ...).
+ *
+ * Users iterate manually in their custom forward — ModuleList does not define forward().
+ */
+export class ModuleList<D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<
+  any,
+  any,
+  D,
+  Dev
+> {
+  private _list: Module<any, any, D, Dev>[] = []
+
+  constructor(modules?: Module<any, any, D, Dev>[]) {
+    super()
+    if (modules) {
+      for (const m of modules) {
+        this.append(m)
+      }
+    }
+  }
+
+  append(module: Module<any, any, D, Dev>): this {
+    this.registerModule(String(this._list.length), module)
+    this._list.push(module)
+    return this
+  }
+
+  at(index: number): Module<any, any, D, Dev> | undefined {
+    return this._list[index]
+  }
+
+  get length(): number {
+    return this._list.length
+  }
+
+  *[Symbol.iterator](): Iterator<Module<any, any, D, Dev>> {
+    yield* this._list
+  }
+}
+
+/**
+ * Dynamic named collection of modules where parameters are visible in parameters() and stateDict().
+ * Modules are registered with their string key.
+ */
+export class ModuleDict<D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<
+  any,
+  any,
+  D,
+  Dev
+> {
+  private _dict: Map<string, Module<any, any, D, Dev>> = new Map()
+
+  constructor(modules?: Record<string, Module<any, any, D, Dev>>) {
+    super()
+    if (modules) {
+      for (const [k, v] of Object.entries(modules)) {
+        this.set(k, v)
+      }
+    }
+  }
+
+  set(key: string, module: Module<any, any, D, Dev>): this {
+    this.registerModule(key, module)
+    this._dict.set(key, module)
+    return this
+  }
+
+  get(key: string): Module<any, any, D, Dev> | undefined {
+    return this._dict.get(key)
+  }
+
+  has(key: string): boolean {
+    return this._dict.has(key)
+  }
+
+  keys(): IterableIterator<string> {
+    return this._dict.keys()
+  }
+
+  values(): IterableIterator<Module<any, any, D, Dev>> {
+    return this._dict.values()
+  }
+
+  entries(): IterableIterator<[string, Module<any, any, D, Dev>]> {
+    return this._dict.entries()
+  }
+
+  get size(): number {
+    return this._dict.size
+  }
+}
+
+/**
+ * Multi-head model: shared backbone + named head branches.
+ * Created by the builder API when nn.heads() is the terminal block.
+ *
+ * State dict keys: shared.0.weight, head.pi.0.weight, head.vf.0.weight
+ */
+export class HeadedSequential<D extends DType<string> = float32, Dev extends DeviceType = DeviceType> extends Module<
+  Shape,
+  Shape,
+  D,
+  Dev
+> {
+  private _shared: Sequential<Shape, Shape, D, Dev>
+  private _heads: Map<string, Sequential<Shape, Shape, D, Dev>>
+  private _defaultHead: string
+
+  /** Serialized config from SequenceDef.toJSON(), set during init()/load() */
+  _config?: object
+
+  constructor(
+    shared: Sequential<Shape, Shape, D, Dev>,
+    heads: Record<string, Sequential<Shape, Shape, D, Dev>>,
+    defaultHead?: string,
+  ) {
+    super()
+    this._shared = shared
+    this._heads = new Map(Object.entries(heads))
+    this._defaultHead = defaultHead ?? Object.keys(heads)[0]!
+
+    this.registerModule('shared', shared)
+    for (const [name, head] of Object.entries(heads)) {
+      this.registerModule(`head.${name}`, head)
+    }
+  }
+
+  forward(input: Tensor<Shape, D, Dev>): Tensor<Shape, D, Dev>
+  forward(input: Tensor<Shape, D, Dev>, headName: string): Tensor<Shape, D, Dev>
+  forward(input: Tensor<Shape, D, Dev>, headName?: string): Tensor<Shape, D, Dev> {
+    const features = this._shared.forward(input)
+    const head = this._heads.get(headName ?? this._defaultHead)
+    if (!head) {
+      throw new Error(`Unknown head: "${headName}". Available heads: ${[...this._heads.keys()].join(', ')}`)
+    }
+    return head.forward(features)
+  }
+
+  forwardAll(input: Tensor<Shape, D, Dev>): Record<string, Tensor<Shape, D, Dev>> {
+    const features = this._shared.forward(input)
+    const result: Record<string, Tensor<Shape, D, Dev>> = {}
+    for (const [name, head] of this._heads) {
+      result[name] = head.forward(features)
+    }
+    return result
+  }
+
+  get headNames(): string[] {
+    return [...this._heads.keys()]
+  }
+
+  get defaultHeadName(): string {
+    return this._defaultHead
+  }
+
+  getHead(name: string): Sequential<Shape, Shape, D, Dev> | undefined {
+    return this._heads.get(name)
+  }
 }

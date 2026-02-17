@@ -71,6 +71,9 @@ export {
   Sequential,
   SequentialBuilder,
   sequential,
+  ModuleList,
+  ModuleDict,
+  HeadedSequential,
 } from './modules/container.js'
 
 // Flatten module
@@ -143,6 +146,7 @@ export {
   flatten,
   embedding,
   transformerEncoder,
+  heads,
 } from './builders.js'
 export type {
   InputDef,
@@ -152,6 +156,8 @@ export type {
   FlattenBlockDef,
   EmbeddingBlockDef,
   TransformerEncoderBlockDef,
+  HeadsBlockDef,
+  HeadlessSequenceDef,
   AnyBlockDef,
   SequenceDef,
   ActivationType,

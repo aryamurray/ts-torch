@@ -27,10 +27,10 @@ async function main() {
   const trainLoader = Data.pipeline(mnistTrain)
     .shuffle()
     .batch(64)
-    .map((b) => ({ input: b.input.reshape([-1, 1, 28, 28]), target: b.target }))
+    .map((b) => ({ input: b.input.reshape([b.input.shape[0], 1, 28, 28]), target: b.target }))
   const testLoader = Data.pipeline(mnistTest)
     .batch(64)
-    .map((b) => ({ input: b.input.reshape([-1, 1, 28, 28]), target: b.target }))
+    .map((b) => ({ input: b.input.reshape([b.input.shape[0], 1, 28, 28]), target: b.target }))
 
   // CNN model definition
   // Input: [1, 28, 28] -> Conv(32,3,pad=1) -> Pool(2) -> Conv(64,3,pad=1) -> Pool(2) -> Flatten -> FC(128) -> FC(10)

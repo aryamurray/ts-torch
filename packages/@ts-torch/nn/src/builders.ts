@@ -22,7 +22,7 @@
  * ```
  */
 
-import { Sequential } from './modules/container.js'
+import { Sequential, HeadedSequential } from './modules/container.js'
 import { Linear, FusedLinear } from './modules/linear.js'
 import { ReLU, Sigmoid, Tanh, Softmax, LeakyReLU, GELU } from './modules/activation.js'
 import { Dropout, Dropout2d } from './modules/dropout.js'
@@ -172,6 +172,24 @@ export interface TransformerEncoderBlockDef {
 }
 
 /**
+ * Headless sequence definition — used inside nn.heads() for head branches.
+ * No inputDef — input shape is inferred from the shared layers' output at init() time.
+ */
+export interface HeadlessSequenceDef {
+  readonly blocks: readonly AnyBlockDef[]
+}
+
+/**
+ * Heads block definition — terminal block that splits into named head branches.
+ * Must be the last block in a sequence.
+ */
+export interface HeadsBlockDef {
+  readonly kind: 'heads'
+  readonly headDefs: Record<string, HeadlessSequenceDef>
+  readonly defaultHead?: string
+}
+
+/**
  * Union of all block definition types
  */
 export type AnyBlockDef =
@@ -181,6 +199,7 @@ export type AnyBlockDef =
   | FlattenBlockDef
   | EmbeddingBlockDef
   | TransformerEncoderBlockDef
+  | HeadsBlockDef
 
 /**
  * Sequence definition - holds input definition and block configurations.
@@ -211,6 +230,17 @@ export interface SequenceDef {
    * Serialize this config to a JSON-compatible object.
    */
   toJSON(): object
+}
+
+/**
+ * Identity module — passes input through unchanged.
+ * Used internally when a HeadedSequential has no shared layers.
+ * @internal
+ */
+class Identity extends Module<any, any, any, any> {
+  forward(input: any): any {
+    return input
+  }
 }
 
 // ==================== Shape Tracking ====================
@@ -424,7 +454,233 @@ class Conv2dBlockDefImpl implements Conv2dBlockDef {
  * Implementation of SequenceDef
  */
 /** Current config schema version */
-const CONFIG_VERSION = 2
+const CONFIG_VERSION = 3
+
+/**
+ * Process a single block, appending layers and updating shape state.
+ * Shared by SequenceDefImpl.init() and head branch processing.
+ * @internal
+ */
+function processBlock(
+  block: Exclude<AnyBlockDef, HeadsBlockDef>,
+  state: ShapeState,
+  layers: Module<any, any, float32, 'cpu'>[],
+  buildFcLayers: (layers: Module<any, any, float32, 'cpu'>[], block: BlockDef, inFeatures: number) => void,
+): ShapeState {
+  switch (block.kind) {
+    case 'fc': {
+      if (state.mode !== '1d') {
+        throw new Error(
+          `nn.fc() requires 1D input (mode='1d'), but current mode is '${state.mode}'. ` +
+            `Add nn.flatten() before nn.fc() to convert spatial/sequence data to 1D.`,
+        )
+      }
+      const inFeatures = state.features
+      buildFcLayers(layers, block, inFeatures)
+      return { mode: '1d', features: block.outFeatures }
+    }
+
+    case 'conv2d': {
+      if (state.mode !== 'spatial') {
+        throw new Error(
+          `nn.conv2d() requires spatial input (mode='spatial' with shape [C, H, W]), ` +
+            `but current mode is '${state.mode}'. Use nn.input([C, H, W]) for image data.`,
+        )
+      }
+      const inChannels = state.c
+      layers.push(
+        new Conv2d(inChannels, block.outChannels, block.kernelSize, {
+          stride: block.stride,
+          padding: block.padding,
+          dilation: block.dilation,
+          groups: block.groups,
+          bias: block.bias,
+        }) as Module<any, any, float32, 'cpu'>,
+      )
+
+      if (block.useBatchNorm) {
+        layers.push(new BatchNorm2d(block.outChannels) as Module<any, any, float32, 'cpu'>)
+      }
+      if (block.activation) {
+        layers.push(createActivation(block.activation, block.activationOptions) as Module<any, any, float32, 'cpu'>)
+      }
+      if (block.dropoutP !== undefined && block.dropoutP > 0) {
+        layers.push(new Dropout2d(block.dropoutP) as Module<any, any, float32, 'cpu'>)
+      }
+
+      const outH = convOutputDim(state.h, block.kernelSize, block.stride, block.padding, block.dilation)
+      const outW = convOutputDim(state.w, block.kernelSize, block.stride, block.padding, block.dilation)
+      return { mode: 'spatial', c: block.outChannels, h: outH, w: outW }
+    }
+
+    case 'maxPool2d':
+    case 'avgPool2d': {
+      if (state.mode !== 'spatial') {
+        throw new Error(`nn.${block.kind}() requires spatial input, but current mode is '${state.mode}'.`)
+      }
+      const ks = block.kernelSize!
+      const poolStride = block.stride ?? ks
+      const poolPadding = block.padding ?? 0
+      if (block.kind === 'maxPool2d') {
+        layers.push(new MaxPool2d(ks, { stride: poolStride, padding: poolPadding }) as Module<any, any, float32, 'cpu'>)
+      } else {
+        layers.push(new AvgPool2d(ks, { stride: poolStride, padding: poolPadding }) as Module<any, any, float32, 'cpu'>)
+      }
+      const outH = convOutputDim(state.h, ks, poolStride, poolPadding, 1)
+      const outW = convOutputDim(state.w, ks, poolStride, poolPadding, 1)
+      return { mode: 'spatial', c: state.c, h: outH, w: outW }
+    }
+
+    case 'adaptiveAvgPool2d': {
+      if (state.mode !== 'spatial') {
+        throw new Error(`nn.adaptiveAvgPool2d() requires spatial input, but current mode is '${state.mode}'.`)
+      }
+      const outSize = block.outputSize!
+      layers.push(new AdaptiveAvgPool2d(outSize) as Module<any, any, float32, 'cpu'>)
+      return { mode: 'spatial', c: state.c, h: outSize, w: outSize }
+    }
+
+    case 'flatten': {
+      if (state.mode === 'spatial') {
+        layers.push(new Flatten(block.startDim, block.endDim) as Module<any, any, float32, 'cpu'>)
+        return { mode: '1d', features: state.c * state.h * state.w }
+      } else if (state.mode === 'sequence') {
+        layers.push(new Flatten(block.startDim, block.endDim) as Module<any, any, float32, 'cpu'>)
+        return { mode: '1d', features: state.embedDim }
+      } else {
+        layers.push(new Flatten(block.startDim, block.endDim) as Module<any, any, float32, 'cpu'>)
+        return state
+      }
+    }
+
+    case 'embedding': {
+      layers.push(
+        new Embedding(block.numEmbeddings, block.embeddingDim, {
+          paddingIdx: block.paddingIdx ?? null,
+        }) as Module<any, any, float32, 'cpu'>,
+      )
+      return { mode: 'sequence', embedDim: block.embeddingDim }
+    }
+
+    case 'transformerEncoder': {
+      if (state.mode !== 'sequence') {
+        throw new Error(
+          `nn.transformerEncoder() requires sequence input (mode='sequence'), ` +
+            `but current mode is '${state.mode}'. Add nn.embedding() before nn.transformerEncoder().`,
+        )
+      }
+      const dModel = state.embedDim
+      const encOpts: Record<string, unknown> = { batchFirst: true }
+      if (block.dimFeedforward !== undefined) encOpts.dimFeedforward = block.dimFeedforward
+      if (block.dropout !== undefined) encOpts.dropout = block.dropout
+      if (block.activation !== undefined) encOpts.activation = block.activation
+      if (block.normFirst !== undefined) encOpts.normFirst = block.normFirst
+      const encoderLayer = new TransformerEncoderLayer(dModel, block.nHead, encOpts as any)
+      layers.push(new TransformerEncoder(encoderLayer, block.numLayers) as Module<any, any, float32, 'cpu'>)
+      return state
+    }
+  }
+}
+
+/**
+ * Serialize a single block definition to a JSON-compatible object.
+ * @internal
+ */
+function serializeBlock(block: AnyBlockDef): Record<string, unknown> {
+  switch (block.kind) {
+    case 'fc': {
+      const obj: Record<string, unknown> = { kind: 'fc', outFeatures: block.outFeatures }
+      if (block.bias === false) obj.bias = false
+      if (block.initStrategy !== 'kaiming_uniform') obj.init = block.initStrategy
+      if (block.activation !== undefined) obj.activation = block.activation
+      if (block.activationOptions !== undefined) {
+        if (block.activation === 'leaky_relu' && block.activationOptions.negativeSlope !== undefined) {
+          obj.negativeSlope = block.activationOptions.negativeSlope
+        }
+        if (block.activation === 'softmax' && block.activationOptions.dim !== undefined) {
+          obj.dim = block.activationOptions.dim
+        }
+      }
+      if (block.dropoutP !== undefined && block.dropoutP > 0) obj.dropoutP = block.dropoutP
+      if (block.useBatchNorm) obj.batchNorm = true
+      return obj
+    }
+
+    case 'conv2d': {
+      const obj: Record<string, unknown> = {
+        kind: 'conv2d',
+        outChannels: block.outChannels,
+        kernelSize: block.kernelSize,
+      }
+      if (block.stride !== 1) obj.stride = block.stride
+      if (block.padding !== 0) obj.padding = block.padding
+      if (block.dilation !== 1) obj.dilation = block.dilation
+      if (block.groups !== 1) obj.groups = block.groups
+      if (block.bias === false) obj.bias = false
+      if (block.activation !== undefined) obj.activation = block.activation
+      if (block.activationOptions !== undefined) {
+        if (block.activation === 'leaky_relu' && block.activationOptions.negativeSlope !== undefined) {
+          obj.negativeSlope = block.activationOptions.negativeSlope
+        }
+      }
+      if (block.dropoutP !== undefined && block.dropoutP > 0) obj.dropoutP = block.dropoutP
+      if (block.useBatchNorm) obj.batchNorm = true
+      return obj
+    }
+
+    case 'maxPool2d':
+    case 'avgPool2d': {
+      const obj: Record<string, unknown> = { kind: block.kind, kernelSize: block.kernelSize }
+      if (block.stride !== undefined && block.stride !== block.kernelSize) obj.stride = block.stride
+      if (block.padding !== undefined && block.padding !== 0) obj.padding = block.padding
+      return obj
+    }
+
+    case 'adaptiveAvgPool2d': {
+      return { kind: 'adaptiveAvgPool2d', outputSize: block.outputSize }
+    }
+
+    case 'flatten': {
+      const obj: Record<string, unknown> = { kind: 'flatten' }
+      if (block.startDim !== 1) obj.startDim = block.startDim
+      if (block.endDim !== -1) obj.endDim = block.endDim
+      return obj
+    }
+
+    case 'embedding': {
+      const obj: Record<string, unknown> = {
+        kind: 'embedding',
+        numEmbeddings: block.numEmbeddings,
+        embeddingDim: block.embeddingDim,
+      }
+      if (block.paddingIdx !== undefined) obj.paddingIdx = block.paddingIdx
+      return obj
+    }
+
+    case 'transformerEncoder': {
+      const obj: Record<string, unknown> = {
+        kind: 'transformerEncoder',
+        nHead: block.nHead,
+        numLayers: block.numLayers,
+      }
+      if (block.dimFeedforward !== undefined) obj.dimFeedforward = block.dimFeedforward
+      if (block.dropout !== undefined) obj.dropout = block.dropout
+      if (block.activation !== undefined) obj.activation = block.activation
+      if (block.normFirst !== undefined) obj.normFirst = block.normFirst
+      return obj
+    }
+
+    case 'heads': {
+      const headsObj: Record<string, unknown> = {}
+      for (const [name, headDef] of Object.entries(block.headDefs)) {
+        headsObj[name] = { blocks: headDef.blocks.map((b) => serializeBlock(b)) }
+      }
+      const obj: Record<string, unknown> = { kind: 'heads', heads: headsObj }
+      if (block.defaultHead !== undefined) obj.defaultHead = block.defaultHead
+      return obj
+    }
+  }
+}
 
 class SequenceDefImpl implements SequenceDef {
   constructor(
@@ -433,141 +689,49 @@ class SequenceDefImpl implements SequenceDef {
   ) {}
 
   init<Dev extends DeviceType>(device: DeviceContext<Dev>): Sequential<Shape, Shape, float32, Dev> {
-    const layers: Module<any, any, float32, 'cpu'>[] = []
     let state = shapeStateFromInput(this.inputDef.shape)
 
-    for (const block of this.blocks) {
-      switch (block.kind) {
-        case 'fc': {
-          if (state.mode !== '1d') {
-            throw new Error(
-              `nn.fc() requires 1D input (mode='1d'), but current mode is '${state.mode}'. ` +
-                `Add nn.flatten() before nn.fc() to convert spatial/sequence data to 1D.`,
-            )
-          }
-          const inFeatures = state.features
-          this._buildFcLayers(layers, block, inFeatures)
-          state = { mode: '1d', features: block.outFeatures }
-          break
-        }
+    // Check if last block is heads
+    const lastBlock = this.blocks[this.blocks.length - 1]
+    const hasHeads = lastBlock?.kind === 'heads'
+    const regularBlocks = hasHeads ? this.blocks.slice(0, -1) : this.blocks
 
-        case 'conv2d': {
-          if (state.mode !== 'spatial') {
-            throw new Error(
-              `nn.conv2d() requires spatial input (mode='spatial' with shape [C, H, W]), ` +
-                `but current mode is '${state.mode}'. Use nn.input([C, H, W]) for image data.`,
-            )
-          }
-          const inChannels = state.c
-          layers.push(
-            new Conv2d(inChannels, block.outChannels, block.kernelSize, {
-              stride: block.stride,
-              padding: block.padding,
-              dilation: block.dilation,
-              groups: block.groups,
-              bias: block.bias,
-            }) as Module<any, any, float32, 'cpu'>,
-          )
-
-          if (block.useBatchNorm) {
-            layers.push(new BatchNorm2d(block.outChannels) as Module<any, any, float32, 'cpu'>)
-          }
-          if (block.activation) {
-            layers.push(createActivation(block.activation, block.activationOptions) as Module<any, any, float32, 'cpu'>)
-          }
-          if (block.dropoutP !== undefined && block.dropoutP > 0) {
-            layers.push(new Dropout2d(block.dropoutP) as Module<any, any, float32, 'cpu'>)
-          }
-
-          const outH = convOutputDim(state.h, block.kernelSize, block.stride, block.padding, block.dilation)
-          const outW = convOutputDim(state.w, block.kernelSize, block.stride, block.padding, block.dilation)
-          state = { mode: 'spatial', c: block.outChannels, h: outH, w: outW }
-          break
-        }
-
-        case 'maxPool2d':
-        case 'avgPool2d': {
-          if (state.mode !== 'spatial') {
-            throw new Error(`nn.${block.kind}() requires spatial input, but current mode is '${state.mode}'.`)
-          }
-          const ks = block.kernelSize!
-          const poolStride = block.stride ?? ks
-          const poolPadding = block.padding ?? 0
-          if (block.kind === 'maxPool2d') {
-            layers.push(
-              new MaxPool2d(ks, { stride: poolStride, padding: poolPadding }) as Module<any, any, float32, 'cpu'>,
-            )
-          } else {
-            layers.push(
-              new AvgPool2d(ks, { stride: poolStride, padding: poolPadding }) as Module<any, any, float32, 'cpu'>,
-            )
-          }
-          const outH = convOutputDim(state.h, ks, poolStride, poolPadding, 1)
-          const outW = convOutputDim(state.w, ks, poolStride, poolPadding, 1)
-          state = { mode: 'spatial', c: state.c, h: outH, w: outW }
-          break
-        }
-
-        case 'adaptiveAvgPool2d': {
-          if (state.mode !== 'spatial') {
-            throw new Error(`nn.adaptiveAvgPool2d() requires spatial input, but current mode is '${state.mode}'.`)
-          }
-          const outSize = block.outputSize!
-          layers.push(new AdaptiveAvgPool2d(outSize) as Module<any, any, float32, 'cpu'>)
-          state = { mode: 'spatial', c: state.c, h: outSize, w: outSize }
-          break
-        }
-
-        case 'flatten': {
-          if (state.mode === 'spatial') {
-            layers.push(new Flatten(block.startDim, block.endDim) as Module<any, any, float32, 'cpu'>)
-            state = { mode: '1d', features: state.c * state.h * state.w }
-          } else if (state.mode === 'sequence') {
-            layers.push(new Flatten(block.startDim, block.endDim) as Module<any, any, float32, 'cpu'>)
-            // After flattening sequence: [B, seqLen, embedDim] -> [B, seqLen*embedDim]
-            // We don't know seqLen at config time, so we use embedDim as a placeholder
-            // The actual shape is computed at runtime by the Flatten module
-            state = { mode: '1d', features: state.embedDim }
-          } else {
-            layers.push(new Flatten(block.startDim, block.endDim) as Module<any, any, float32, 'cpu'>)
-            // Already 1d, flatten is a no-op but allowed
-          }
-          break
-        }
-
-        case 'embedding': {
-          layers.push(
-            new Embedding(block.numEmbeddings, block.embeddingDim, {
-              paddingIdx: block.paddingIdx ?? null,
-            }) as Module<any, any, float32, 'cpu'>,
-          )
-          state = { mode: 'sequence', embedDim: block.embeddingDim }
-          break
-        }
-
-        case 'transformerEncoder': {
-          if (state.mode !== 'sequence') {
-            throw new Error(
-              `nn.transformerEncoder() requires sequence input (mode='sequence'), ` +
-                `but current mode is '${state.mode}'. Add nn.embedding() before nn.transformerEncoder().`,
-            )
-          }
-          const dModel = state.embedDim
-          const encOpts: Record<string, unknown> = { batchFirst: true }
-          if (block.dimFeedforward !== undefined) encOpts.dimFeedforward = block.dimFeedforward
-          if (block.dropout !== undefined) encOpts.dropout = block.dropout
-          if (block.activation !== undefined) encOpts.activation = block.activation
-          if (block.normFirst !== undefined) encOpts.normFirst = block.normFirst
-          const encoderLayer = new TransformerEncoderLayer(dModel, block.nHead, encOpts as any)
-          layers.push(new TransformerEncoder(encoderLayer, block.numLayers) as Module<any, any, float32, 'cpu'>)
-          // Shape stays the same: sequence mode with same embedDim
-          break
-        }
-      }
+    // Process shared/regular blocks
+    const sharedLayers: Module<any, any, float32, 'cpu'>[] = []
+    for (const block of regularBlocks) {
+      state = processBlock(block as Exclude<AnyBlockDef, HeadsBlockDef>, state, sharedLayers, this._buildFcLayers)
     }
 
-    // Create on CPU and move to target device
-    const cpuModel = new Sequential<Shape, Shape, float32, 'cpu'>(...layers)
+    if (!hasHeads) {
+      // No heads — return Sequential as before
+      const cpuModel = new Sequential<Shape, Shape, float32, 'cpu'>(...sharedLayers)
+      cpuModel._config = this.toJSON()
+      return cpuModel.to(device.type) as unknown as Sequential<Shape, Shape, float32, Dev>
+    }
+
+    // Build headed model
+    const headsBlock = lastBlock as HeadsBlockDef
+    const sharedSeq =
+      sharedLayers.length > 0
+        ? new Sequential<Shape, Shape, float32, 'cpu'>(...sharedLayers)
+        : new Sequential<Shape, Shape, float32, 'cpu'>(new Identity())
+
+    const headSequentials: Record<string, Sequential<Shape, Shape, float32, 'cpu'>> = {}
+    for (const [headName, headDef] of Object.entries(headsBlock.headDefs)) {
+      const headLayers: Module<any, any, float32, 'cpu'>[] = []
+      let headState = { ...state } as ShapeState
+      for (const block of headDef.blocks) {
+        headState = processBlock(
+          block as Exclude<AnyBlockDef, HeadsBlockDef>,
+          headState,
+          headLayers,
+          this._buildFcLayers,
+        )
+      }
+      headSequentials[headName] = new Sequential<Shape, Shape, float32, 'cpu'>(...headLayers)
+    }
+
+    const cpuModel = new HeadedSequential<float32, 'cpu'>(sharedSeq, headSequentials, headsBlock.defaultHead)
     cpuModel._config = this.toJSON()
     return cpuModel.to(device.type) as unknown as Sequential<Shape, Shape, float32, Dev>
   }
@@ -621,95 +785,13 @@ class SequenceDefImpl implements SequenceDef {
   }
 
   toJSON(): object {
-    const blocks = this.blocks.map((block) => {
-      switch (block.kind) {
-        case 'fc': {
-          const obj: Record<string, unknown> = { kind: 'fc', outFeatures: block.outFeatures }
-          if (block.bias === false) obj.bias = false
-          if (block.initStrategy !== 'kaiming_uniform') obj.init = block.initStrategy
-          if (block.activation !== undefined) obj.activation = block.activation
-          if (block.activationOptions !== undefined) {
-            if (block.activation === 'leaky_relu' && block.activationOptions.negativeSlope !== undefined) {
-              obj.negativeSlope = block.activationOptions.negativeSlope
-            }
-            if (block.activation === 'softmax' && block.activationOptions.dim !== undefined) {
-              obj.dim = block.activationOptions.dim
-            }
-          }
-          if (block.dropoutP !== undefined && block.dropoutP > 0) obj.dropoutP = block.dropoutP
-          if (block.useBatchNorm) obj.batchNorm = true
-          return obj
-        }
+    const hasHeads = this.blocks.some((b) => b.kind === 'heads')
 
-        case 'conv2d': {
-          const obj: Record<string, unknown> = {
-            kind: 'conv2d',
-            outChannels: block.outChannels,
-            kernelSize: block.kernelSize,
-          }
-          if (block.stride !== 1) obj.stride = block.stride
-          if (block.padding !== 0) obj.padding = block.padding
-          if (block.dilation !== 1) obj.dilation = block.dilation
-          if (block.groups !== 1) obj.groups = block.groups
-          if (block.bias === false) obj.bias = false
-          if (block.activation !== undefined) obj.activation = block.activation
-          if (block.activationOptions !== undefined) {
-            if (block.activation === 'leaky_relu' && block.activationOptions.negativeSlope !== undefined) {
-              obj.negativeSlope = block.activationOptions.negativeSlope
-            }
-          }
-          if (block.dropoutP !== undefined && block.dropoutP > 0) obj.dropoutP = block.dropoutP
-          if (block.useBatchNorm) obj.batchNorm = true
-          return obj
-        }
-
-        case 'maxPool2d':
-        case 'avgPool2d': {
-          const obj: Record<string, unknown> = { kind: block.kind, kernelSize: block.kernelSize }
-          if (block.stride !== undefined && block.stride !== block.kernelSize) obj.stride = block.stride
-          if (block.padding !== undefined && block.padding !== 0) obj.padding = block.padding
-          return obj
-        }
-
-        case 'adaptiveAvgPool2d': {
-          return { kind: 'adaptiveAvgPool2d', outputSize: block.outputSize }
-        }
-
-        case 'flatten': {
-          const obj: Record<string, unknown> = { kind: 'flatten' }
-          if (block.startDim !== 1) obj.startDim = block.startDim
-          if (block.endDim !== -1) obj.endDim = block.endDim
-          return obj
-        }
-
-        case 'embedding': {
-          const obj: Record<string, unknown> = {
-            kind: 'embedding',
-            numEmbeddings: block.numEmbeddings,
-            embeddingDim: block.embeddingDim,
-          }
-          if (block.paddingIdx !== undefined) obj.paddingIdx = block.paddingIdx
-          return obj
-        }
-
-        case 'transformerEncoder': {
-          const obj: Record<string, unknown> = {
-            kind: 'transformerEncoder',
-            nHead: block.nHead,
-            numLayers: block.numLayers,
-          }
-          if (block.dimFeedforward !== undefined) obj.dimFeedforward = block.dimFeedforward
-          if (block.dropout !== undefined) obj.dropout = block.dropout
-          if (block.activation !== undefined) obj.activation = block.activation
-          if (block.normFirst !== undefined) obj.normFirst = block.normFirst
-          return obj
-        }
-      }
-    })
+    const blocks = this.blocks.map((block) => serializeBlock(block))
 
     return {
       format: 'ts-torch-sequence',
-      version: CONFIG_VERSION,
+      version: hasHeads ? CONFIG_VERSION : 2,
       input: { shape: [...this.inputDef.shape] },
       blocks,
     }
@@ -903,19 +985,65 @@ export function input(arg: number | number[] | { shape: number[] }): InputDef {
 
 /**
  * Create a sequence definition from an input definition and block definitions.
- *
- * @param inputDef - Input definition created with `nn.input()`
- * @param blocks - Block definitions created with factory functions
- * @returns SequenceDef that can be initialized with `.init(device)`
+ * When called without an InputDef as the first argument, creates a headless sequence
+ * for use inside nn.heads().
  */
-export function sequence(inputDef: InputDef, ...blocks: AnyBlockDef[]): SequenceDef {
-  if (inputDef.kind !== 'input') {
-    throw new Error('First argument to sequence() must be an InputDef created with nn.input()')
+export function sequence(inputDef: InputDef, ...blocks: AnyBlockDef[]): SequenceDef
+export function sequence(...blocks: AnyBlockDef[]): HeadlessSequenceDef
+export function sequence(...args: (InputDef | AnyBlockDef)[]): SequenceDef | HeadlessSequenceDef {
+  const first = args[0]
+  if (first && typeof first === 'object' && 'kind' in first && first.kind === 'input') {
+    // Full sequence with input
+    const inputDef = first as InputDef
+    const blocks = args.slice(1) as AnyBlockDef[]
+    if (blocks.length === 0) {
+      throw new Error('Sequence requires at least one block')
+    }
+    // Validate: heads block must be last
+    for (let i = 0; i < blocks.length; i++) {
+      if (blocks[i]!.kind === 'heads' && i !== blocks.length - 1) {
+        throw new Error('nn.heads() must be the last block in a sequence')
+      }
+    }
+    return new SequenceDefImpl(inputDef, blocks)
   }
+  // Headless sequence (for use inside nn.heads())
+  const blocks = args as AnyBlockDef[]
   if (blocks.length === 0) {
-    throw new Error('Sequence requires at least one block')
+    throw new Error('Headless sequence requires at least one block')
   }
-  return new SequenceDefImpl(inputDef, blocks)
+  // Heads inside heads not allowed
+  for (const b of blocks) {
+    if (b.kind === 'heads') {
+      throw new Error('nn.heads() cannot be used inside a headless sequence')
+    }
+  }
+  return { blocks }
+}
+
+/**
+ * Create a heads block definition for multi-head models.
+ * Must be the last block in nn.sequence().
+ *
+ * @param headDefs - Record of head name to headless sequence definition
+ * @param options - Optional default head name
+ */
+export function heads(
+  headDefs: Record<string, HeadlessSequenceDef>,
+  options?: { defaultHead?: string },
+): HeadsBlockDef {
+  const keys = Object.keys(headDefs)
+  if (keys.length === 0) {
+    throw new Error('nn.heads() requires at least one head')
+  }
+  if (options?.defaultHead && !headDefs[options.defaultHead]) {
+    throw new Error(`Default head "${options.defaultHead}" not found in head definitions`)
+  }
+  const result: HeadsBlockDef = { kind: 'heads', headDefs }
+  if (options?.defaultHead) {
+    ;(result as { defaultHead: string }).defaultHead = options.defaultHead
+  }
+  return result
 }
 
 // ==================== Config Validation ====================
@@ -1073,6 +1201,41 @@ function parseBlock(block: Record<string, unknown>, i: number, version: number):
         activation: block.activation as 'relu' | 'gelu' | undefined,
         normFirst: block.normFirst as boolean | undefined,
       }
+
+    case 'heads': {
+      const headsRaw = block.heads
+      if (!headsRaw || typeof headsRaw !== 'object') {
+        throw new Error(`Block ${i}: heads block requires a "heads" object`)
+      }
+      const headEntries = Object.entries(headsRaw as Record<string, unknown>)
+      if (headEntries.length === 0) {
+        throw new Error(`Block ${i}: heads block requires at least one head`)
+      }
+      const headDefs: Record<string, HeadlessSequenceDef> = {}
+      for (const [headName, headRaw] of headEntries) {
+        if (!headRaw || typeof headRaw !== 'object') {
+          throw new Error(`Block ${i}, head "${headName}": must be an object`)
+        }
+        const headObj = headRaw as Record<string, unknown>
+        const headBlocks = headObj.blocks
+        if (!Array.isArray(headBlocks) || headBlocks.length === 0) {
+          throw new Error(`Block ${i}, head "${headName}": must have a non-empty "blocks" array`)
+        }
+        headDefs[headName] = {
+          blocks: headBlocks.map((hb: unknown, hi: number) => {
+            if (!hb || typeof hb !== 'object') {
+              throw new Error(`Block ${i}, head "${headName}", block ${hi}: must be an object`)
+            }
+            return parseBlock(hb as Record<string, unknown>, hi, version)
+          }),
+        }
+      }
+      const headsResult: HeadsBlockDef = { kind: 'heads', headDefs }
+      if (typeof block.defaultHead === 'string') {
+        ;(headsResult as { defaultHead: string }).defaultHead = block.defaultHead
+      }
+      return headsResult
+    }
 
     default:
       throw new Error(`Block ${i}: unknown block kind "${kind}"`)
@@ -1236,6 +1399,7 @@ export const nn = {
   flatten,
   embedding,
   transformerEncoder,
+  heads,
   fromJSON,
   load,
   inspect,
